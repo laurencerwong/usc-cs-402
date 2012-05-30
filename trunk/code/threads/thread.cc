@@ -214,6 +214,7 @@ Thread::Sleep ()
     Thread *nextThread;
     
     ASSERT(this == currentThread);
+
     ASSERT(interrupt->getLevel() == IntOff);
     
     DEBUG('t', "Sleeping thread \"%s\"\n", getName());
