@@ -65,6 +65,7 @@ class Semaphore {
 
 class Lock {
   public:
+  	enum LockStatus {BUSY, FREE};
     Lock(char* debugName);  		// initialize lock to be FREE
     ~Lock();				// deallocate lock
     char* getName() { return name; }	// debugging assist
@@ -79,6 +80,10 @@ class Lock {
 
   private:
     char* name;				// for debugging
+    LockStatus state; //for checking if lock is acquired or not
+    List* queue; // track threads waiting
+    Thread* threadWithPossession; //used for checking if release() is called
+    										//by same thread as the one which acquired lock
     // plus some other stuff you'll need to define
 };
 
@@ -131,6 +136,8 @@ class Condition {
 
   private:
     char* name;
+    List* queue;
+		Lock* waitingLock;
     // plus some other stuff you'll need to define
 };
 #endif // SYNCH_H
