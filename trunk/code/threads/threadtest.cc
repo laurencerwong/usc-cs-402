@@ -438,28 +438,32 @@ int custNumberForSales[MAX_SALESMEN];
 
 int greetingCustWaitingLineCount = 0;
 
-Lock *salesmanLock[MAX_SALESMEN];
-Lock *salesLock = new Lock ("Customer Waiting Lock");
+Lock *individualSalesmanLock[MAX_SALESMEN];
+Lock *salesLock = new Lock("Overall sales lock");
 
 Condition *salesmanCV[MAX_SALESMEN];
 Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable");
+Condition *complainingCustCV = new Condition("Complaining Customer Condition Variable");
 
 Lock *shelfLock[NUM_ITEMS];
 Condition *shelfCV[NUM_ITEMS];
+
+int shelfInventory[NUM_ITEMS];
 
 void initShelves() {
 	for(int i = 0; i < NUM_ITEMS; i++) {
 		selfLock[i] = new Lock("shelfLock %d", i);
 		shelfCV[i] = new Condition("shelfCV %d", i);
+		shelfInventory[i] = 5;
 	}
 }
 
 void initGreetingCustomer(){
 
 	for(int i = 0; i < MAX_SALESMEN; i++){
-		currentSalesStatus[i] = SalesmanStatus::NOT_BUSY;
-		currentlyTalkingTo[i] = WhomIWantToTalkTo::UNKNOWN;
-		salesmanLock[i] = new Lock(("Salesman Lock"));
+		currentSalesStatus[i] = NOT_BUSY;
+		currentlyTalkingTo[i] = UNKNOWN;
+		individualSalesmanLock[i] = new Lock(("Salesman Lock"));
 		salesmanCV[i] = new Condition(("Salesman Control Variable"));
 		salesCustNumber[i] = 0;
 		custNumberForSales[i] = 0;
@@ -471,15 +475,34 @@ void initGreetingCustomer(){
 
 void Customer(int myIndex){
 
+	//choose the items we want to buy
+	int numItemsToBuy = 3;	//TODO actually decide how many items and which to buy
+	int *itemsToBuy;
+	int *qtyToBuy;
+	int *itemsInCart;
+	int *qtyItemsInCart;
+	itemsToBuy = new int[numItemsToBuy];
+	qtyToBuy = new int[numItemsToBuy];
+	itemsInCart = new int[numItemsToBuy];
+	qtyItemsInCart = new int[numItemsToBuy];
+
+	for(int i = 0; i < numItemsToBuy; i++) {
+		//TODO- Put a random item/qty picker here
+		itemsToBuy[i] = i;
+		qtyToBuy[i] = 2;
+		itemsInCart[i] = -1;
+		qtyItemsInCart[i] = -1;
+	}
+
+
+
 	salesLock->Acquire();
 	int mySalesIndex = -1;
 
 	//Selects a salesman
-
 	for(int i = 0; i < MAX_SALESMEN; i++){
-		if(currentSalesStatus[i] == SalesmanStatus::NOT_BUSY){
+		if(currentSalesStatus[i] == NOT_BUSY){
 			mySalesIndex = i;
-
 			break;
 		}
 	}
@@ -494,17 +517,59 @@ void Customer(int myIndex){
 		}
 	}
 
-	
-
-	salesmanLock[mySalesIndex]->Acquire();
+	individualSalesmanLock[mySalesIndex]->Acquire();
 	salesCustNumber[mySalesIndex] = myIndex;
-	salesmanCV[mySalesIndex]->Signal(salesmanLock[mySalesIndex]);
-	salesmanCV[mySalesIndex]->Wait (salesmanLock[mySalesIndex]);
+	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
+	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
+
+	for(int i = 0; i < numItemsToBuy; i++) {
+		for(int shelfNum = 0; shelfNum < NUM_ITEMS; shelfNum++) {
+			while(qtyItemsInCart[i] < qtyItemsToBuy[i]) {
+				shelfLock[shelfNum]->Acquire();
+				if(shelfInventory[shelfNum] != 0) {
+					shelfInventory[shelfNum]--;
+					itemsInCart[i]++;
+					shelfLock[shelfNum]->Release();
+				}
+				else {	//We are out of this item, go tell sales!
+					shelfLock[shelfNum]->Release();
+
+					salesLock->Acquire();
+					for(int j = 0; j < NUM_SALESMEN; j++) {
+						if(custWaitingLineCount == 0 && salesmanStatus[j] == NOT_BUSY) {
+							individualSalesmanLock[j]->Acquire();
+							salesmanStatus[j] = BUSY;
+							//TODO tell salesman what kind of person I am
+							salesLock->Release();
+							salesmanCV[j]->Signal(individualSalesmanLock[j]);
+							salesmanCV[j]->Wait(individualSalesmanLock[j]);	//I walk up to him and wait
+						}
+						else {	//no salesmen are free, I have to wait in line
+							custWaitingLineCount++;
+							complainingCustCV->Wait(salesLock);
+						}
+						//now proceed with interaction
+
+					}
+				}
+			}
+		}
+	}
 }
 
 //Salesman Code
 
 void Salesman (int myIndex){
+
+	salesLock->Acquire();
+	//------------------------------
+	//Check if there is someone in line
+	//and wake them up
+	//------------------------------
+
+	if(custWaitingLineCount > 0){
+		greetingCustCV->Signal(salesLock);
+	}
 
 	salesLock->Acquire();
 
@@ -520,7 +585,7 @@ void Salesman (int myIndex){
 
 	salesmanLock[myIndex]->Acquire();
 	salesLock->Release();
-	salesmanCV[myIndex]->Wait(salesmanLock[myIndex]);
+	salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);
 	custNumberForSales[myIndex] = salesCustNumber[myIndex];
 }
 
