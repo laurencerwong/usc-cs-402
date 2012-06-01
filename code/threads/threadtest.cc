@@ -35,7 +35,7 @@ SimpleThread(int which)
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Set up a ping-pong between two threads, by forking a thread 
-//	to call SimpleThread, and then calling SimpleThread ourselves.
+//	To call SimpleThread, and then calling SimpleThread ourselves.
 //----------------------------------------------------------------------
 
 void
@@ -412,3 +412,87 @@ void TestSuite() {
 
 }
 #endif
+
+
+// --------------------------------------------------
+// Greeting Customer and Salesman Code
+//     
+//     
+// --------------------------------------------------
+
+
+#define MAX_SALESMEN 3
+#define MAX_CUSTOMERS 60
+
+
+// --------------------------------------------------
+// Enums for the salesmen status
+// --------------------------------------------------
+
+enum SalesmanStatus {NOT_BUSY, BUSY, ON_BREAK, READY_TO_TALK};
+
+SalesmanStatus currentSalesStatus[MAX_SALESMEN];
+
+int salesCustNumber[MAX_SALESMEN];
+
+int custWaitingLineCount = 0;
+
+Lock *salesmanLock[MAX_SALESMEN];
+Lock *custWaitingLineLock = new Lock ("Customer Waiting Lock");
+
+Condition *salesmanCV[MAX_SALESMEN];
+Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable");
+
+void initGreetingCustomer(){
+
+  for(int i = 0; i < MAX_SALESMEN; i++){
+    currentSalesStatus[i] = NOT_BUSY;
+    salesmanLock[i] = new Lock(("Salesman Lock"));
+    salesmanCV[i] = new Condition(("Salesman Control Variable"));
+    salesCustNumber[i] = 0;
+  }
+  
+}
+
+//-------------------------------
+//Customer's function
+//-------------------------------
+
+void Customer(int myIndex){
+
+  custWaitingLineLock->Acquire();
+  int mySalesIndex = 0;
+
+  //-----------------------------------
+  //Selects a salesman
+  //-----------------------------------
+  for(int i = 0; i < MAX_SALESMEN; i++){
+    if(currentSalesStatus[i] == NOT_BUSY){
+      mySalesIndex = i;
+      break;
+    }
+  }
+
+  salesmanLock[mySalesIndex]->Acquire();
+  salesCustNumber[mySalesIndex] = myIndex;
+  salesmanCV[mySalesIndex]->Signal(salesmanLock[mySalesIndex]);
+  salesmanCV[mySalesIndex]->Wait (salesmanLock[mySalesIndex]);
+}
+
+//------------------------------
+//Salesman Code
+//------------------------------
+
+void Salesman (int myIndex){
+
+  custWaitingLineLock->Acquire();
+  //------------------------------
+  //Check if there is someone in line
+  //and wake them up
+  //------------------------------
+  
+  if(custWaitingLineCount > 0){
+    greetingCustCV->Signal(custWaitingLineLock);
+  }
+  
+}
