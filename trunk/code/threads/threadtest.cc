@@ -423,7 +423,7 @@ void TestSuite() {
 
 #define MAX_SALESMEN 3
 #define MAX_CUSTOMERS 60
-
+#define NUM_ITEMS 10
 
 // --------------------------------------------------
 // Enums for the salesmen status
@@ -442,6 +442,16 @@ Lock *custWaitingLineLock = new Lock ("Customer Waiting Lock");
 
 Condition *salesmanCV[MAX_SALESMEN];
 Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable");
+
+Lock *shelfLock[NUM_ITEMS];
+Condition *shelfCV[NUM_ITEMS];
+
+void initShelves() {
+	for(int i = 0; i < NUM_ITEMS; i++) {
+		selfLock[i] = new Lock("shelfLock %d", i);
+		shelfCV[i] = new Condition("shelfCV %d", i);
+	}
+}
 
 void initGreetingCustomer(){
 
