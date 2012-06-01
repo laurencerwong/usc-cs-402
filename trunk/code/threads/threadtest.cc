@@ -710,14 +710,14 @@ void customer(int myID){
 	}
 	else type = "Customer";
 	cashierLinesLock->Acquire();
-	printf("%s %d is looking for the cashier\n", type, myID );
+	printf("%s %d is looking for the cashier.\n", type, myID );
 	for(int i = 0; i < cashierNumber; i++ ){
 		//if I find a cashier who is free, I will:
 		if(cashierStatus[i] == 0){
 			myCashier = i; //remember who he is
 			cashierStatus[i] = CASH_BUSY; //prevent others from thinking he's free
 			cashierLock[i]->Acquire(); //get his lock before I wake him up
-			printf("%s %d chose Cashier %d who is free", type, myID, myCashier);
+			printf("%s %d chose Cashier %d who is free.\n", type, myID, myCashier);
 			cashierLinesLock->Release(); //allow other to view monitor vars since they can't
 										//affect my operations
 			break; //stop searching through lines
@@ -749,13 +749,13 @@ void customer(int myID){
 				}
 			}
 			myCashier = minCashierID;
-			printf("%s %d chose Cashier %d of line length %d\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
+			printf("%s %d chose Cashier %d of line length %d.\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
 			linesIAmLookingAt[minCashierID]++;
 			linesIAmLookingAtCV[minCashierID]->Wait(cashierLinesLock); //wait in line
 			//code after this means I have been woken up after getting to the front of the line
 			cashierStatus[myCashier] = CASH_BUSY;
 			cashierLock[i]->Acquire();
-			printf("%s %d is now engaged with Cashier %d after waiting in line", type, myID, myCashier);
+			printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
 			cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
 						//my claim on this cashier
 			break;
@@ -773,6 +773,8 @@ void customer(int myID){
 		}
 	}
 	cashierDesk[myCashier] = -1;
+	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
+	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 	//when I get here, the cashier has loaded my total
 	//If I don't have enough money, leave the error flag -1 on the cashier's desk
 	if(cashierDesk[myCashier] > myCash){
@@ -787,13 +789,15 @@ void customer(int myID){
 		myCash -= cashierDesk[myCashier];
 		//Now I wait for my receipt
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-		printf("%s %d pays %d and is now waiting for receipt\n", type, myID, cashierDesk[myCashier]);
+		printf("%s %d pays %d and is now waiting for receipt.\n", type, myID, cashierDesk[myCashier]);
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 		//now I've received my receipt and should release the cashier
+		cout << type << " " << myID << " got receipt from Cashier " << myCashier << " and is now leaving." << endl;
 		cashierStatus[myCashier] = CASH_NOT_BUSY;
 		cashierLock[myCashier]->Release();
 		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
 	}
+
 	//TODO replace trolly and leave store
 }
 
@@ -841,7 +845,7 @@ void cashier(int myCounter){
 	int total = 0;
 	int custID = cashierDesk[myCounter];
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
-		cout << "Cashier " << myCounter << " from the trolly of Customer " << custID << endl;
+		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of Customer " << custID << endl;
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 		total += scan(cashierDesk[myCounter]);
@@ -989,7 +993,8 @@ void testCustomerCheckOutWithMoney(){
 
 void Problem2(){
 		cout << "Menu:" << endl;
-		cout << "1. Test customer-cashier" << endl;
+		cout << "1. Test customer choosing from cashier lines" << endl;
+		cout << "2. Test customer-cashier interaction" << endl;
 		// put your necessary menu options here
 		cout << "Please input the number option you wish to take: " << endl;
 		int choice;
@@ -1001,7 +1006,7 @@ void Problem2(){
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
-			else if(choice > 1 || choice < 1){ //change this if you add more options
+			else if(choice > 2 || choice < 2){ //change this if you add more options
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
