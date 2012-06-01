@@ -144,7 +144,7 @@ void Lock::Release() {
 	Thread* thread;
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(!isHeldByCurrentThread()){
-		printf("Thread calling Release() on Lock %s does not have lock\n", name);
+		printf("Thread %s calling Release() on Lock %s does not have lock\n", currentThread->getName(), name);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return; //kicks out a thread that didn't acquire Lock
 	}

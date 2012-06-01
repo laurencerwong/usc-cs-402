@@ -541,25 +541,21 @@ void initCustomerCashier(){
 		name = new char [20];
 		sprintf(name,"priv cashier line CV %d",i);
 		privilegedCashierLineCV[i] = new Condition(name);
-		delete name;
 	}
 	for(int i = 0; i < cashierNumber; i++){
 		name = new char[20];
 		sprintf(name, "unpriv cashier line CV %d", i);
 		unprivilegedCashierLineCV[i] = new Condition(name);
-		delete name;
 	}
 	for(int i = 0; i < cashierNumber; i++){
 			name = new char[20];
 			sprintf(name, "cashier lock %d", i);
 			cashierLock[i] = new Lock(name);
-			delete name;
 		}
 	for(int i = 0; i < cashierNumber; i++){
 			name = new char[20];
 			sprintf(name, "cashier cust CV %d", i);
 			cashierToCustCV[i] = new Condition(name);
-			delete name;
 	}
 	for(int i = 0; i < cashierNumber; i++){
 			cashierStatus[i] = CASH_NOT_BUSY;
@@ -713,7 +709,7 @@ void customer(int myID){
 	printf("%s %d is looking for the cashier.\n", type, myID );
 	for(int i = 0; i < cashierNumber; i++ ){
 		//if I find a cashier who is free, I will:
-		if(cashierStatus[i] == 0){
+		if(cashierStatus[i] == CASH_NOT_BUSY){
 			myCashier = i; //remember who he is
 			cashierStatus[i] = CASH_BUSY; //prevent others from thinking he's free
 			cashierLock[i]->Acquire(); //get his lock before I wake him up
@@ -752,9 +748,10 @@ void customer(int myID){
 			printf("%s %d chose Cashier %d of line length %d.\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
 			linesIAmLookingAt[minCashierID]++;
 			linesIAmLookingAtCV[minCashierID]->Wait(cashierLinesLock); //wait in line
+			cout<< "Customer " << myID << " has gotten to the front of the line" << endl;
 			//code after this means I have been woken up after getting to the front of the line
 			cashierStatus[myCashier] = CASH_BUSY;
-			cashierLock[i]->Acquire();
+			cashierLock[minCashierID]->Acquire();
 			printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
 			cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
 						//my claim on this cashier
@@ -795,6 +792,7 @@ void customer(int myID){
 		cout << type << " " << myID << " got receipt from Cashier " << myCashier << " and is now leaving." << endl;
 		cashierStatus[myCashier] = CASH_NOT_BUSY;
 		cashierLock[myCashier]->Release();
+		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
 	}
 
@@ -816,7 +814,7 @@ int scan(int item){
 //cashier code
 
 void cashier(int myCounter){
-	while(true){
+	while(true){cout<< "Beginning of customer loop" << endl;
 	cashierLinesLock->Acquire();
 	//check if my lines have anyone in it
 	if(privilegedLineCount[myCounter]){
@@ -825,9 +823,12 @@ void cashier(int myCounter){
 	}
 	else if(unprivilegedLineCount[myCounter]){
 		cashierStatus[myCounter] = CASH_BUSY;
+		cout << "Signalling customer in line" << endl;
 		unprivilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 	}
-	else cashierStatus[myCounter] = CASH_NOT_BUSY;
+	else{
+		cashierStatus[myCounter] = CASH_NOT_BUSY;
+	}
 	//whether or not I'm ready for a customer, I can get my lock and go to sleep
 	cashierLock[myCounter]->Acquire();
 	cashierLinesLock->Release();
@@ -862,10 +863,14 @@ void cashier(int myCounter){
 		//signal the manager
 	}
 	else{
+		//giving the customer a receipt
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
+		//wait for customer to acknowledge getting receipt and release lock
+		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 		cashierStatus[myCounter] = CASH_NOT_BUSY;
 	}
 	cashierLock[myCounter]->Release();
+	cashierDesk[myCounter] = 0;
 	//done, just need to loop back and check for more customers
 	}
 }
@@ -979,14 +984,12 @@ void testCustomerCheckOutWithMoney(){
 		sprintf(name, "cashier%d", i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
-		delete name;
 	}
 	for(int i = 0; i < custNumber; i++){
 		name = new char [20];
 		sprintf(name,"cust%d",i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)customer, i);
-		delete name;
 	}
 
 }
@@ -1019,8 +1022,8 @@ void Problem2(){
 				testCustomerGettingInLine();
 				break;
 		case 2:
-				cashierNumber = 1;
-				custNumber = 1;
+				cashierNumber = 4;
+				custNumber = 30;
 				testCustomerCheckOutWithMoney();
 				break;
 		//add cases here for your test
