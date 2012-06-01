@@ -417,14 +417,41 @@ void TestSuite() {
 #endif
 
 
+/*
+ *
+ *Greeting Customer and Salesman Code
+ *
+ */
 
-/*--------------------------------
-Customer-Cashier Code
+#define MAX_SALESMEN 3
+#define MAX_CUSTOMERS 60
+#define NUM_ITEMS 10
 
 
-*/
+// Enums for the salesmen status
 
-//Global data
+enum SalesmanStatus {NOT_BUSY, BUSY, ON_BREAK, READY_TO_TALK};
+SalesmanStatus currentSalesStatus[MAX_SALESMEN];
+
+enum WhomIWantToTalkTo {GREETING, COMPLAINING, GOODSLOADER, UNKNOWN};
+WhomIWantToTalkTo currentlyTalkingTo[MAX_SALESMEN];
+
+int salesCustNumber[MAX_SALESMEN]; //The array of customer indicies that the customers update
+int custNumberForSales[MAX_SALESMEN]; //Array that the salesman copies the salesCustNumber to to keep a local copy
+
+int greetingCustWaitingLineCount = 0; //How many customers need to be greeted
+
+Lock *individualSalesmanLock[MAX_SALESMEN]; //The lock that each salesman uses for his own "desk"
+Lock *salesLock = new Lock("Overall sales lock"); //The lock that protects the salesmen statuses and the line for all three
+
+Condition *salesmanCV[MAX_SALESMEN]; //The condition variable for one on one interactions with the Salesman
+Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable"); //The condition var that represents the line all the greeters stay in
+Condition *complainingCustCV = new Condition("Complaining Customer Condition Variable"); //Represents the line that the complainers stay in
+
+Lock *shelfLock[NUM_ITEMS];
+Condition *shelfCV[NUM_ITEMS];
+
+int shelfInventory[NUM_ITEMS];
 
 //will be grabbed when a privileged customer checks line lengths/cashier status
 Lock* cashierLinesLock;
@@ -461,6 +488,29 @@ int cashierNumber = 5;
 //number of customers
 int custNumber = 20;
 
+
+
+
+void initShelves() {
+	for(int i = 0; i < NUM_ITEMS; i++) {
+		selfLock[i] = new Lock("shelfLock");
+		shelfCV[i] = new Condition("shelfCV");
+		shelfInventory[i] = 5;
+	}
+}
+
+void initGreetingCustomer(){
+
+	for(int i = 0; i < MAX_SALESMEN; i++){
+		currentSalesStatus[i] = NOT_BUSY;
+		currentlyTalkingTo[i] = UNKNOWN;
+		individualSalesmanLock[i] = new Lock(("Salesman Lock"));
+		salesmanCV[i] = new Condition(("Salesman Control Variable"));
+		salesCustNumber[i] = 0;
+		custNumberForSales[i] = 0;
+	}
+
+}
 
 
 void initCustomerCashier(){
@@ -505,11 +555,97 @@ void initCustomerCashier(){
 			unprivilegedLineCount[i] = 0;
 	}
 
+}
 
+
+
+//Customer's function
+
+void Customer(int myIndex){
+
+	//choose the items we want to buy
+	int numItemsToBuy = 3;	//TODO actually decide how many items and which to buy
+	int *itemsToBuy;
+	int *qtyToBuy;
+	int *itemsInCart;
+	int *qtyItemsInCart;
+	itemsToBuy = new int[numItemsToBuy];
+	qtyToBuy = new int[numItemsToBuy];
+	itemsInCart = new int[numItemsToBuy];
+	qtyItemsInCart = new int[numItemsToBuy];
+
+	for(int i = 0; i < numItemsToBuy; i++) {
+		//TODO- Put a random item/qty picker here
+		itemsToBuy[i] = i;
+		qtyToBuy[i] = 2;
+		itemsInCart[i] = -1;
+		qtyItemsInCart[i] = -1;
+	}
+
+
+
+	salesLock->Acquire();
+	int mySalesIndex = 0;
+
+	//Selects a salesman
+
+	if(greetingCustWaitingLineCount > 0){
+		greetingCustWaitingLineCount++;
+		greetingCustCV->Wait(salesLock);
+	}
+
+	for(int i = 0; i < MAX_SALESMEN; i++){
+		if(currentSalesStatus[i] == SalesmanStatus::NOT_BUSY){
+			mySalesIndex = i;
+			currentSalesStatus[i] = SalesmanStatus::BUSY;
+			currentlyTalkingTo[i] = WhomIWantToTalkTo::GREETING;
+			break;
+		}
+	}
+
+	salesLock->Release();
+	individualSalesmanLock[mySalesIndex]->Acquire(); //Acquire the salesman's "desk" lock
+	salesCustNumber[mySalesIndex] = myIndex; //Sets the customer number of the salesman to this customer's index
+	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
+	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
+	
+	for(int i = 0; i < numItemsToBuy; i++) {
+		for(int shelfNum = 0; shelfNum < NUM_ITEMS; shelfNum++) {
+			while(qtyItemsInCart[i] < qtyItemsToBuy[i]) {
+				shelfLock[shelfNum]->Acquire();
+				if(shelfInventory[shelfNum] != 0) {
+					shelfInventory[shelfNum]--;
+					itemsInCart[i]++;
+					shelfLock[shelfNum]->Release();
+				}
+				else {	//We are out of this item, go tell sales!
+					shelfLock[shelfNum]->Release();
+
+					salesLock->Acquire();
+					for(int j = 0; j < NUM_SALESMEN; j++) {
+						if(custWaitingLineCount == 0 && salesmanStatus[j] == NOT_BUSY) {
+							individualSalesmanLock[j]->Acquire();
+							salesmanStatus[j] = BUSY;
+							//TODO tell salesman what kind of person I am
+							salesLock->Release();
+							salesmanCV[j]->Signal(individualSalesmanLock[j]);
+							salesmanCV[j]->Wait(individualSalesmanLock[j]);	//I walk up to him and wait
+						}
+						else {	//no salesmen are free, I have to wait in line
+							custWaitingLineCount++;
+							complainingCustCV->Wait(salesLock);
+						}
+						//now proceed with interaction
+
+					}
+				}
+			}
+		}
+	}
 }
 
 //----------------------------------------------------
-//customer method
+//customer method with cashier
 //---------------------------------------------------
 void customer(int myID){
 	int privileged = 0;
@@ -575,6 +711,67 @@ void customer(int myID){
 	}
 }
 
+//Salesman Code
+
+void Salesman (int myIndex){
+
+	salesLock->Acquire();
+
+	//Check if there is someone in line
+	//and wake them up
+
+	if(greetingCustWaitingLineCount > 0){
+
+		greetingCustCV->Signal(salesLock);
+		greetingCustWaitingLineCount--;
+		currentlyTalkingTo[myIndex] = WhomIWantToTalkTo::GREETING;
+
+	}
+	else{
+		currentlyTalkingTo[myIndex] = WhomIWantToTalkTo::UNKNOWN;
+	}
+
+	individualSalesmanLock[myIndex]->Acquire();
+	salesLock->Release();
+	salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);
+	custNumberForSales[myIndex] = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
+}
+
+//Test for greeting the customer
+
+
+
+void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
+	Thread *t;
+	char *name;
+
+	printf ("Initializing Variables for 'Greeting Customer Test'\n");
+
+	initGreetingCustomer();
+
+
+	printf ("Starting 'Greeting Customer Test'\n");
+
+	//Fork Salesmen Threads
+
+	for(int i = 0; i < NUM_SALESMEN; i++){
+		name = new char [20];
+		sprintf(name,"salesman_thread_%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Salesman,i);
+	}
+
+	//Fork Customer Threads
+
+	for(int i = 0; i < NUM_CUSTOMERS; i++){
+		name = new char [20];
+		sprintf(name,"customer_thread_%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Salesman,i);
+	}
+
+}
+
 void testCustomerGettingInLine(){
 	initCustomerCashier();
 	char* name;
@@ -625,7 +822,4 @@ void Problem2(){
 		default: break;
 		}
 }
-
-
-//
 
