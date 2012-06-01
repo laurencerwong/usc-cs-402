@@ -433,17 +433,17 @@ SalesmanStatus currentSalesStatus[MAX_SALESMEN];
 enum WhomIWantToTalkTo {GREETING, COMPLAINING, GOODSLOADER, UNKNOWN};
 WhomIWantToTalkTo currentlyTalkingTo[MAX_SALESMEN];
 
-int salesCustNumber[MAX_SALESMEN];
-int custNumberForSales[MAX_SALESMEN];
+int salesCustNumber[MAX_SALESMEN]; //The array of customer indicies that the customers update
+int custNumberForSales[MAX_SALESMEN]; //Array that the salesman copies the salesCustNumber to to keep a local copy
 
-int greetingCustWaitingLineCount = 0;
+int greetingCustWaitingLineCount = 0; //How many customers need to be greeted
 
-Lock *individualSalesmanLock[MAX_SALESMEN];
-Lock *salesLock = new Lock("Overall sales lock");
+Lock *individualSalesmanLock[MAX_SALESMEN]; //The lock that each salesman uses for his own "desk"
+Lock *salesLock = new Lock("Overall sales lock"); //The lock that protects the salesmen statuses and the line for all three
 
-Condition *salesmanCV[MAX_SALESMEN];
-Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable");
-Condition *complainingCustCV = new Condition("Complaining Customer Condition Variable");
+Condition *salesmanCV[MAX_SALESMEN]; //The condition variable for one on one interactions with the Salesman
+Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable"); //The condition var that represents the line all the greeters stay in
+Condition *complainingCustCV = new Condition("Complaining Customer Condition Variable"); //Represents the line that the complainers stay in
 
 Lock *shelfLock[NUM_ITEMS];
 Condition *shelfCV[NUM_ITEMS];
@@ -452,7 +452,7 @@ int shelfInventory[NUM_ITEMS];
 
 void initShelves() {
 	for(int i = 0; i < NUM_ITEMS; i++) {
-		selfLock[i] = new Lock("shelfLock %d", i);
+		shelfLock[i] = new Lock("shelfLock %d", i);
 		shelfCV[i] = new Condition("shelfCV %d", i);
 		shelfInventory[i] = 5;
 	}
@@ -497,31 +497,30 @@ void Customer(int myIndex){
 
 
 	salesLock->Acquire();
-	int mySalesIndex = -1;
+	int mySalesIndex = 0;
 
 	//Selects a salesman
+
+	if(greetingCustWaitingLineCount > 0){
+		greetingCustWaitingLineCount++;
+		greetingCustCV->Wait(salesLock);
+	}
+
 	for(int i = 0; i < MAX_SALESMEN; i++){
-		if(currentSalesStatus[i] == NOT_BUSY){
+		if(currentSalesStatus[i] == SalesmanStatus::NOT_BUSY){
 			mySalesIndex = i;
+			currentSalesStatus[i] = SalesmanStatus::BUSY;
+			currentlyTalkingTo[i] = WhomIWantToTalkTo::GREETING;
 			break;
 		}
 	}
 
-	if(mySalesIndex == -1){
-		greetingCustCV->Wait(salesLock);
-		for(int i = 0; i < MAX_SALESMEN; i++){
-			if(currentSalesStatus[i] == SalesmanStatus::NOT_BUSY){
-				mySalesIndex = i;
-				break;
-			}
-		}
-	}
-
-	individualSalesmanLock[mySalesIndex]->Acquire();
-	salesCustNumber[mySalesIndex] = myIndex;
+	salesLock->Release();
+	individualSalesmanLock[mySalesIndex]->Acquire(); //Acquire the salesman's "desk" lock
+	salesCustNumber[mySalesIndex] = myIndex; //Sets the customer number of the salesman to this customer's index
 	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
 	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
-
+	
 	for(int i = 0; i < numItemsToBuy; i++) {
 		for(int shelfNum = 0; shelfNum < NUM_ITEMS; shelfNum++) {
 			while(qtyItemsInCart[i] < qtyItemsToBuy[i]) {
@@ -562,16 +561,6 @@ void Customer(int myIndex){
 void Salesman (int myIndex){
 
 	salesLock->Acquire();
-	//------------------------------
-	//Check if there is someone in line
-	//and wake them up
-	//------------------------------
-
-	if(custWaitingLineCount > 0){
-		greetingCustCV->Signal(salesLock);
-	}
-
-	salesLock->Acquire();
 
 	//Check if there is someone in line
 	//and wake them up
@@ -579,14 +568,18 @@ void Salesman (int myIndex){
 	if(greetingCustWaitingLineCount > 0){
 
 		greetingCustCV->Signal(salesLock);
+		greetingCustWaitingLineCount--;
 		currentlyTalkingTo[myIndex] = WhomIWantToTalkTo::GREETING;
 
 	}
+	else{
+		currentlyTalkingTo[myIndex] = WhomIWantToTalkTo::UNKNOWN;
+	}
 
-	salesmanLock[myIndex]->Acquire();
+	individualSalesmanLock[myIndex]->Acquire();
 	salesLock->Release();
 	salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);
-	custNumberForSales[myIndex] = salesCustNumber[myIndex];
+	custNumberForSales[myIndex] = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
 }
 
 //Test for greeting the customer
