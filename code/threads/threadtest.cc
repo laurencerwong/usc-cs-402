@@ -702,7 +702,7 @@ void customer(int myID){
 	for(int i = 0; i < numItemsToBuy; i++) {
 		//TODO- Put a random item/qty picker here
 
-		itemsInCart[i] = i
+		itemsInCart[i] = i;
 		qtyItemsInCart[i] = 3 - i;
 	}
 	if(privileged){
@@ -760,42 +760,43 @@ void customer(int myID){
 						//my claim on this cashier
 			break;
 		}
-		cashierDesk[myCashier] = myID;
+	}
+	cashierDesk[myCashier] = myID;
+	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
+	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
+	//cycle through all items in my inventory, handing one item to cashier ata time
+	for(int i = 0; i < numItemsToBuy; i++){
+		for(int j = 0; j < numItemsToBuy; j++){
+			cashierDesk[i] = itemsInCart[i]; //tells the cashier what type of item
+			cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
+			cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
+		}
+	}
+	cashierDesk[myCashier] = -1;
+	//when I get here, the cashier has loaded my total
+	//If I don't have enough money, leave the error flag -1 on the cashier's desk
+	if(cashierDesk[myCashier] > myCash){
+		cashierDesk[myCashier] = -1;
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
-		//cycle through all items in my inventory, handing one item to cashier ata time
-		for(int i = 0; i < numItemsToBuy; i++){
-			for(int j = 0; j < numItemsToBuy; j++){
-				cashierDesk[i] = itemsInCart[i]; //tells the cashier what type of item
-				cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-				cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
-			}
-		}
-		cashierDesk[i] = -1;
-		//when I get here, the cashier has loaded my total
-		//If I don't have enough money, leave the error flag -1 on the cashier's desk
-		if(cashierDesk[myCashier] > myCash){
-			cashierDesk[myCashier] = -1;
-			cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-			cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
-			//TODO manager-customer interaction
-		}
-		//if I do have money, I just need to update my cash and leave
-		//the money there
-		else{
-			myCash -= cashierDesk[myCashier];
-			//Now I wait for my receipt
-			cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-			printf("%s %d pays %d and is now waiting for receipt\n", type, myID, cashierDesk[myCashier]);
-			cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
-			//now I've received my receipt and should release the cashier
-			cashierStatus[myCashier] = NOT_BUSY;
-			cashierLock[myCashier]->Release();
-			myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
-		}
-		//TODO replace trolly and leave store
+		//TODO manager-customer interaction
 	}
+	//if I do have money, I just need to update my cash and leave
+	//the money there
+	else{
+		myCash -= cashierDesk[myCashier];
+		//Now I wait for my receipt
+		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
+		printf("%s %d pays %d and is now waiting for receipt\n", type, myID, cashierDesk[myCashier]);
+		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
+		//now I've received my receipt and should release the cashier
+		cashierStatus[myCashier] = CASH_NOT_BUSY;
+		cashierLock[myCashier]->Release();
+		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
+	}
+	//TODO replace trolly and leave store
 }
+
 
 
 int scan(int item){
@@ -803,7 +804,7 @@ int scan(int item){
 	case 0: return 5;
 	case 1: return 2;
 	case 2: return 3;
-	case 2: return 8;
+	case 3: return 8;
 	default: return 0;
 	}
 }
@@ -815,14 +816,14 @@ void cashier(int myCounter){
 	cashierLinesLock->Acquire();
 	//check if my lines have anyone in it
 	if(privilegedLineCount[myCounter]){
-		cashierStatus[myCounter] = BUSY;
+		cashierStatus[myCounter] = CASH_BUSY;
 		privilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 	}
 	else if(unprivilegedLineCount[myCounter]){
-		cashierStatus[myCounter] = BUSY;
+		cashierStatus[myCounter] = CASH_BUSY;
 		unprivilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 	}
-	else cashierStatus[myCounter] = NOT_BUSY;
+	else cashierStatus[myCounter] = CASH_NOT_BUSY;
 	//whether or not I'm ready for a customer, I can get my lock and go to sleep
 	cashierLock[myCounter]->Acquire();
 	cashierLinesLock->Release();
@@ -853,12 +854,12 @@ void cashier(int myCounter){
 	cashierDesk[myCounter] = total;
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-	if(cashierDesk == -1){
+	if(cashierDesk[myCounter] == -1){
 		//signal the manager
 	}
 	else{
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
-		cashierStatus = NOT_BUSY;
+		cashierStatus[myCounter] = CASH_NOT_BUSY;
 	}
 	cashierLock[myCounter]->Release();
 	//done, just need to loop back and check for more customers
@@ -1014,8 +1015,8 @@ void Problem2(){
 				break;
 		case 2:
 				cashierNumber = 1;
-				custnumber = 1;
-				testCustomerCheckoutWithMoney();
+				custNumber = 1;
+				testCustomerCheckOutWithMoney();
 				break;
 		//add cases here for your test
 		default: break;
