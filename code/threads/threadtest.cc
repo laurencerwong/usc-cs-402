@@ -495,6 +495,8 @@ int custNumber = 20;
 //array of ints representing the item a customer has handed to a cashier
 int* cashierDesk;
 
+//temporary global variable
+int customerCash;
 //Manager data
 int* cashierFlags; //will be set to a customer ID in the slot corresponding to the
 					//index of the cashier who sets the flag.
@@ -545,6 +547,7 @@ void initCustomerCashier(){
 	privilegedLineCount = new int[cashierNumber];
 	unprivilegedLineCount = new int[cashierNumber];
 	cashierDesk = new int[cashierNumber];
+	cashierFlags = new int[cashierNumber];
 	for(int i = 0; i < cashierNumber; i++){
 		name = new char [20];
 		sprintf(name,"priv cashier line CV %d",i);
@@ -569,9 +572,16 @@ void initCustomerCashier(){
 			cashierStatus[i] = CASH_NOT_BUSY;
 			privilegedLineCount[i] = 0;
 			unprivilegedLineCount[i] = 0;
+			cashierFlags[i] = -1;
+			cashierDesk[i] = -2;
 	}
 
-
+	name = new char[20];
+	name = "manager lock";
+	managerLock = new Lock(name);
+	name = new char[20];
+	name = "manager CV";
+	managerCV = new Condition(name);
 }
 
 
@@ -696,7 +706,7 @@ void customer(int myID){
 	int privileged = 0;
 	int myCashier; //ID of cashier I speak to
 	char* type = new char[20];
-	int myCash = 10000000;
+	int myCash = customerCash;
 	int *itemsInCart;
 	int *qtyItemsInCart;
 	int numItemsToBuy = 3;
@@ -842,12 +852,6 @@ int scan(int item){
 
 void manager(){
 	int totalRevenue = 0; //will track the total sales of the day
-	char* name = new char[20];
-	name = "manager lock";
-	managerLock = new Lock(name);
-	name = new char[20];
-	name = "manager CV";
-	managerCV = new Condition(name);
 	while(true){
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
@@ -1101,14 +1105,33 @@ void testCustomerCheckOutWithMoney(){
 
 }
 
-void testCustomerCheckOutWithMoney(){
+void testCustomerCheckOutWithoutMoney(){
 	initCustomerCashier();
+	char* name;
+	Thread* t;
+	name = new char [20];
+	for(int i = 0; i < cashierNumber; i++){
+		sprintf(name, "cashier%d", i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)cashier, i);
+	}
+	for(int i = 0; i < custNumber; i++){
+		name = new char [20];
+		sprintf(name,"cust%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)customer, i);
+	}
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
 }
 
 void Problem2(){
 		cout << "Menu:" << endl;
 		cout << "1. Test customer choosing from cashier lines" << endl;
 		cout << "2. Test customer-cashier interaction" << endl;
+		cout << "3. Test customer without enough money" << endl;
 		// put your necessary menu options here
 		cout << "Please input the number option you wish to take: " << endl;
 		int choice;
@@ -1120,7 +1143,7 @@ void Problem2(){
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
-			else if(choice > 2 || choice < 2){ //change this if you add more options
+			else if(choice > 3 || choice < 1){ //change this if you add more options
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
@@ -1128,16 +1151,21 @@ void Problem2(){
 		}
 		switch (choice){
 		case 1:
+				customerCash = 100000;
 				cashierNumber = 5;
 				custNumber = 6;
 				testCustomerGettingInLine();
 				break;
 		case 2:
+				customerCash = 100000;
 				cashierNumber = 4;
 				custNumber = 30;
 				testCustomerCheckOutWithMoney();
 				break;
 		case 3:
+				customerCash = 0;
+				cashierNumber = 1;
+				custNumber = 1;
 				testCustomerCheckOutWithoutMoney();
 				break;
 		//add cases here for your test
