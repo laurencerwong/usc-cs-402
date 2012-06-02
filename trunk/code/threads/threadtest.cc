@@ -1101,6 +1101,10 @@ void testCustomerCheckOutWithMoney(){
 
 }
 
+void testCustomerCheckOutWithMoney(){
+	initCustomerCashier();
+}
+
 void Problem2(){
 		cout << "Menu:" << endl;
 		cout << "1. Test customer choosing from cashier lines" << endl;
