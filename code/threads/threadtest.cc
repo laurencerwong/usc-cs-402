@@ -440,7 +440,6 @@ WhomIWantToTalkTo currentlyTalkingTo[MAX_SALESMEN];
 WhomIWantToTalkTo loaderCurrentlyTalkingTo[MAX_LOADERS];
 
 int salesCustNumber[MAX_SALESMEN]; //The array of customer indicies that the customers update
-int custNumberForSales[MAX_SALESMEN]; //Array that the salesman copies the salesCustNumber to to keep a local copy
 
 int salesDesk[MAX_SALESMEN];
 
@@ -672,7 +671,7 @@ void Customer(int myIndex){
 	cout << "end cust list ---" << endl;
 
 	salesLock->Acquire();
-	int mySalesIndex = 0;
+	int mySalesIndex = -1;
 
 	//Selects a salesman
 	if(greetingCustWaitingLineCount > 0){	//there is a line
@@ -697,10 +696,23 @@ void Customer(int myIndex){
 				break;
 			}
 		}
+		if(mySalesIndex == -1) {	//no line, but all are busy
+			greetingCustWaitingLineCount++;
+			greetingCustCV->Wait(salesLock);
+
+			for(int i = 0; i < MAX_SALESMEN; i++){
+				if(currentSalesStatus[i] == SALES_READY_TO_TALK){
+					mySalesIndex = i;
+					currentSalesStatus[i] = SALES_BUSY;
+					currentlyTalkingTo[i] = GREETING;
+					break;
+				}
+			}
+		}
 	}
 
-	salesLock->Release();
 	individualSalesmanLock[mySalesIndex]->Acquire(); //Acquire the salesman's "desk" lock
+	salesLock->Release();
 	salesCustNumber[mySalesIndex] = myIndex; //Sets the customer number of the salesman to this customer's index
 	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
 	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
@@ -1213,17 +1225,18 @@ void Salesman (int myIndex){
 			//individualSalesmanLock[myIndex]->Acquire();
 			//salesLock->Release();
 			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust to walk up to me?
-			custNumberForSales[myIndex] = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
-			cout << "Customer " << custNumberForSales[myIndex] << " is being greeted" << endl;
+			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
+			cout << "Customer " << myCustNumber << " is being greeted" << endl;
+
 		}
 		else if(currentlyTalkingTo[myIndex] == COMPLAINING) {
 			//individualSalesmanLock[myIndex]->Acquire();
 			//salesLock->Release();
 			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust to walk up to me?
-			custNumberForSales[myIndex] = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
+			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
 			int itemOutOfStock = salesDesk[myIndex];
 
-			cout << "Customer " << custNumberForSales[myIndex] << " is complaining that item " <<
+			cout << "Customer " << myCustNumber << " is complaining that item " <<
 					itemOutOfStock << " is out of stock"<< endl;
 
 			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);	//tell cust to wait
