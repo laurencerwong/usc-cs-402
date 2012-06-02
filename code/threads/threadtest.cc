@@ -1133,6 +1133,9 @@ void Problem2(){
 				custNumber = 30;
 				testCustomerCheckOutWithMoney();
 				break;
+		case 3:
+				testCustomerCheckOutWithoutMoney();
+				break;
 		//add cases here for your test
 		default: break;
 		}
