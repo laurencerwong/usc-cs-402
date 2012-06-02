@@ -426,7 +426,7 @@ void TestSuite() {
 
 #define MAX_SALESMEN 3
 #define MAX_LOADERS 10
-#define MAX_CUSTOMERS 60
+#define MAX_CUSTOMERS 30
 #define NUM_ITEMS 10
 
 
@@ -558,7 +558,6 @@ void initSalesmen(){
 		individualSalesmanLock[i] = new Lock(("Salesman Lock"));
 		salesmanCV[i] = new Condition(("Salesman Control Variable"));
 		salesCustNumber[i] = 0;
-		custNumberForSales[i] = 0;
 	}
 }
 
@@ -673,6 +672,8 @@ void Customer(int myIndex){
 	salesLock->Acquire();
 	int mySalesIndex = -1;
 
+	//printf("about to select salesman, greeting line is: %d\n", greetingCustWaitingLineCount);
+
 	//Selects a salesman
 	if(greetingCustWaitingLineCount > 0){	//there is a line
 		greetingCustWaitingLineCount++;
@@ -688,6 +689,7 @@ void Customer(int myIndex){
 		}
 	}
 	else {	//there is no line
+		//printf("There was no line for cust %d\n", myIndex);
 		for(int i = 0; i < MAX_SALESMEN; i++){
 			if(currentSalesStatus[i] == SALES_NOT_BUSY){
 				mySalesIndex = i;
@@ -697,6 +699,7 @@ void Customer(int myIndex){
 			}
 		}
 		if(mySalesIndex == -1) {	//no line, but all are busy
+			//printf("But all sales were busy... getting in line\n");
 			greetingCustWaitingLineCount++;
 			greetingCustCV->Wait(salesLock);
 
@@ -710,6 +713,8 @@ void Customer(int myIndex){
 			}
 		}
 	}
+
+	//printf("about to  get desk lock\n");
 
 	individualSalesmanLock[mySalesIndex]->Acquire(); //Acquire the salesman's "desk" lock
 	salesLock->Release();
@@ -775,6 +780,7 @@ void Customer(int myIndex){
 					cout << "Customer " << myIndex << " is asking for assistance "
 							"from DepartmentSalesman " << mySalesID << endl;
 					currentSalesStatus[mySalesID] = SALES_BUSY;
+					salesCustNumber[mySalesID] = myIndex;	//
 					salesLock->Release();
 
 					//now proceed with interaction to tell sales we are out
@@ -1227,7 +1233,8 @@ void Salesman (int myIndex){
 			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust to walk up to me?
 			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
 			cout << "Customer " << myCustNumber << " is being greeted" << endl;
-
+			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
+			cout << "just signalled on index: " << myIndex << endl;
 		}
 		else if(currentlyTalkingTo[myIndex] == COMPLAINING) {
 			//individualSalesmanLock[myIndex]->Acquire();
@@ -1327,7 +1334,7 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 	printf ("Initializing Variables for 'Greeting Customer Test'\n");
 
 	initSalesmen();
-
+	initShelvesWithQty(16);
 
 	printf ("Starting 'Greeting Customer Test'\n");
 
@@ -1346,7 +1353,7 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 		name = new char [20];
 		sprintf(name,"customer_thread_%d",i);
 		t = new Thread(name);
-		t->Fork((VoidFunctionPtr)Salesman,i);
+		t->Fork((VoidFunctionPtr)Customer,i);
 	}
 }
 
@@ -1471,7 +1478,8 @@ void Problem2(){
 		cout << "2. Test customer-cashier interaction" << endl;
 		cout << "3. Test customer without enough money" << endl;
 		cout << "4. Test cashiers going on break and coming off break" <<endl;
-		cout << "4. Test customers entering store and getting their items from shelves" << endl;
+		cout << "5. Test customers entering store and getting their items from shelves" << endl;
+		cout << "6. Test customers entering store and being greeted" << endl;
 		// put your necessary menu options here
 		cout << "Please input the number option you wish to take: " << endl;
 		int choice;
@@ -1483,7 +1491,7 @@ void Problem2(){
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
-			else if(choice > 5 || choice < 1){ //change this if you add more options
+			else if(choice > 6 || choice < 1){ //change this if you add more options
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
@@ -1517,6 +1525,9 @@ void Problem2(){
 		case 5:
 				custNumber = 12;
 				testCustomerEnteringStoreAndPickingUpItems();
+				break;
+		case 6:
+				TestGreetingCustomer(MAX_CUSTOMERS, MAX_SALESMEN);
 				break;
 		//add cases here for your test
 		default: break;
