@@ -505,6 +505,22 @@ Lock* managerLock; //will be the lock behind the manager CV
 Condition* managerCV; //will be the CV the manager and customer use to communicate
 int managerDesk; //will be place customer puts items to show to manager
 
+//Trolleys
+int trollyCount;
+
+//Lock controlling access to trollyCount;
+Lock* trollyLock;
+
+//CV for customers to wait on if no trollies are there
+//associated with trollyLock
+Condition* trollyCV;
+
+//Discarded trollies, waiting to be replaced by Goods Loader
+int displacedTrollyCount;
+
+//Lock controlling access to displaced trolly count
+Lock* displacedTrollyLock;
+
 
 void initShelves() {
 	for(int i = 0; i < NUM_ITEMS; i++) {
@@ -548,6 +564,18 @@ void initCustomerCashier(){
 	unprivilegedLineCount = new int[cashierNumber];
 	cashierDesk = new int[cashierNumber];
 	cashierFlags = new int[cashierNumber];
+	trollyCount = 5;
+	displacedTrollyCount = 0;
+	name = new char[20];
+	name = "trolly lock";
+	trollyLock = new Lock(name);
+	name = new char[20];
+	name = "trolly CV";
+	trollyCV = new Condition(name);
+	name = new char[20];
+	name = "displaced trolly lock";
+	displacedTrollyLock = new Lock(name);
+
 	for(int i = 0; i < cashierNumber; i++){
 		name = new char [20];
 		sprintf(name,"priv cashier line CV %d",i);
@@ -712,7 +740,6 @@ void customer(int myID){
 	int numItemsToBuy = 3;
 	itemsInCart = new int[numItemsToBuy];
 	qtyItemsInCart = new int[numItemsToBuy];
-
 	for(int i = 0; i < numItemsToBuy; i++) {
 		//TODO- Put a random item/qty picker here
 
@@ -846,6 +873,9 @@ void customer(int myID){
 	}
 
 	//TODO replace trolly and leave store
+	displacedTrollyLock->Acquire();
+	displacedTrollyCount++;
+	displacedTrollyLock->Release();
 }
 
 int scan(int item){
