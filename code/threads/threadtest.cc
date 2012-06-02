@@ -11,6 +11,7 @@
 
 #include "copyright.h"
 #include "system.h"
+#include "stdlib.h"
 #include <iostream>
 
 using namespace std;
@@ -495,6 +496,9 @@ int custNumber = 20;
 //array of ints representing the item a customer has handed to a cashier
 int* cashierDesk;
 
+//array representing money in each cash register
+int* cashRegister;
+
 //temporary global variable
 int customerCash;
 //Manager data
@@ -564,6 +568,7 @@ void initCustomerCashier(){
 	unprivilegedLineCount = new int[cashierNumber];
 	cashierDesk = new int[cashierNumber];
 	cashierFlags = new int[cashierNumber];
+	cashRegister = new int[cashierNumber];
 	trollyCount = 5;
 	displacedTrollyCount = 0;
 	name = new char[20];
@@ -602,6 +607,7 @@ void initCustomerCashier(){
 			unprivilegedLineCount[i] = 0;
 			cashierFlags[i] = -1;
 			cashierDesk[i] = -2;
+			cashRegister[i] = 0;
 	}
 
 	name = new char[20];
@@ -750,6 +756,7 @@ void customer(int myID){
 		type = "Privileged Customer";
 	}
 	else type = "Customer";
+	do{
 	cashierLinesLock->Acquire();
 	printf("%s %d is looking for the cashier.\n", type, myID );
 	for(int i = 0; i < cashierNumber; i++ ){
@@ -759,8 +766,6 @@ void customer(int myID){
 			cashierLock[i]->Acquire(); //get his lock before I wake him up
 			cashierStatus[i] = CASH_BUSY; //prevent others from thinking he's free
 			printf("%s %d chose Cashier %d who is free.\n", type, myID, myCashier);
-			cashierLinesLock->Release(); //allow other to view monitor vars since they can't
-										//affect my operations
 			break; //stop searching through lines
 		}
 		else if (i == cashierNumber - 1){
@@ -783,7 +788,7 @@ void customer(int myID){
 			minLineValue = linesIAmLookingAt[0]; //set a default min value
 			//find the minimum line value and remember the cashier associated with it
 			for(int j = 1; j < cashierNumber; j++){
-				if(linesIAmLookingAt[j] < minLineValue){
+				if(linesIAmLookingAt[j] < minLineValue && cashierStatus[j] != CASH_ON_BREAK){
 					//must also check if that cashier is on break
 					minLineValue = linesIAmLookingAt[j];
 					minCashierID = j;
@@ -798,11 +803,13 @@ void customer(int myID){
 			cashierStatus[myCashier] = CASH_BUSY;
 			cashierLock[minCashierID]->Acquire();
 			printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
-			cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
-						//my claim on this cashier
+
 			break;
 		}
 	}
+	}while(cashierStatus[myCashier] == CASH_NOT_BUSY);
+	cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
+							//my claim on this cashier
 	cashierDesk[myCashier] = myID;
 	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
@@ -854,7 +861,7 @@ void customer(int myID){
 		managerCV->Wait(managerLock);
 		//got receipt, I can now leave
 		managerLock->Release();
-		cout << type << " " << myID << " got receipt from Cashier " << myCashier << " and is now leaving." << endl;
+		cout << type << " " << myID << " got receipt from Manager and is now leaving." << endl;
 	}
 	//if I do have money, I just need to update my cash and leave
 	//the money there
@@ -866,7 +873,6 @@ void customer(int myID){
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 		//now I've received my receipt and should release the cashier
 		cout << type << " " << myID << " got receipt from Cashier " << myCashier << " and is now leaving." << endl;
-		cashierStatus[myCashier] = CASH_NOT_BUSY;
 		cashierLock[myCashier]->Release();
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
@@ -888,17 +894,61 @@ int scan(int item){
 	}
 }
 
-void manager(int bs){
+void manager(){
 	int totalRevenue = 0; //will track the total sales of the day
+	int counter = 0;
+	List* cashiersOnBreak = new List;
+	int numCashiersOnBreak = 0;
 	while(true){
+		counter ++;
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
 		//I will get around to it
+		if(counter > 100000){
+			counter = 0;
+			cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
+		}
+
+		for(int j = 1; j < 2; j++){
+					currentThread->Yield();
+		}
+		cashierLinesLock->Acquire();
+		int sumCustomers = 0;
+		for (int i = 0; i < cashierNumber; i++){
+			sumCustomers += unprivilegedLineCount[i];
+			sumCustomers += privilegedLineCount[i];
+		}
+
+		if (sumCustomers  < (cashierNumber -  numCashiersOnBreak) ){
+			int* r = new int;
+			do{
+				*(r) = rand() % cashierNumber;
+			} while(cashierStatus[*r] == CASH_ON_BREAK);
+			cashierStatus[*r] = CASH_ON_BREAK;
+			cout << "Manager sends Cashier " << *r << " on break." << endl;
+			cashiersOnBreak->Append((void *)r);
+			numCashiersOnBreak++;
+
+		}
+		if(sumCustomers > (cashierNumber - numCashiersOnBreak) * 4 && !cashiersOnBreak->IsEmpty()){
+			int wakeCashier = *(int *)(cashiersOnBreak->Remove());
+			cashierStatus[wakeCashier] = CASH_NOT_BUSY;
+			cout << "Manager brings back Cashier " << wakeCashier << " from break." << endl;
+			cashierStatus[wakeCashier] = CASH_NOT_BUSY;
+			cashierToCustCV[wakeCashier]->Signal(cashierLock[wakeCashier]);
+			numCashiersOnBreak--;
+
+		}
+		cashierLinesLock->Release();
 		for(int i = 0; i < cashierNumber; i++){
-			for(int j = 0; j < 40; j++){
-			currentThread->Yield();
-			}
+
 			cashierLock[i]->Acquire();
+			if(cashRegister[i] > 0){
+				totalRevenue += cashRegister[i];
+				cout << "Manager emptied Counter " << i << " drawer." << endl;
+				cashRegister[i] = 0;
+				cout << "Manager has total sale of $" << totalRevenue << "." << endl;
+			}
 			if(cashierFlags[i] != -1){
 				cout <<"Manager got a call from Cashier " << i << "." << endl;
 				int customerID = cashierFlags[i];
@@ -963,7 +1013,13 @@ void cashier(int myCounter){
 	char* custType = new char[20];
 	cashierLinesLock->Acquire();
 	//check my status to see if I've already been set to busy by a customer
-	if(cashierStatus[myCounter] == CASH_BUSY);
+	if(cashierStatus[myCounter] == CASH_ON_BREAK){
+
+		cashierLock[myCounter]->Acquire();
+		cashierLinesLock->Release();
+		cashierToCustCV[myCounter]->Broadcast(cashierLock[myCounter]);
+		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+	}
 	//check if my lines have anyone in it
 	else if(privilegedLineCount[myCounter]){
 		cashierStatus[myCounter] = CASH_BUSY;
@@ -1038,6 +1094,8 @@ void cashier(int myCounter){
 		//next customer
 	}
 	else{
+		//add value to cash register
+		cashRegister[myCounter] += cashierDesk[myCounter];
 		//giving the customer a receipt
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		//wait for customer to acknowledge getting receipt and release lock
@@ -1154,6 +1212,10 @@ void testCustomerCheckOutWithMoney(){
 	initCustomerCashier();
 	char* name;
 	Thread* t;
+	name = new char [20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
 	for(int i = 0; i < cashierNumber; i++){
 		name = new char [20];
 		sprintf(name, "cashier%d", i);
@@ -1193,11 +1255,37 @@ void testCustomerCheckOutWithoutMoney(){
 
 }
 
+void testMakeCashiersBreak(){
+	initCustomerCashier();
+	char* name;
+	Thread* t;
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
+	for(int i = 0; i < cashierNumber; i++){
+		name = new char[20];
+		sprintf(name, "cashier%d", i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)cashier, i);
+	}
+	t->Fork((VoidFunctionPtr)customer, 0);
+	for(int i = 0; i < 1000; i++){
+		currentThread->Yield();
+	}
+	for(int i = 1; i < custNumber; i++){
+		name = new char[20];
+		sprintf(name, "cust%d", i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)cashier, i);
+	}
+}
 void Problem2(){
 		cout << "Menu:" << endl;
 		cout << "1. Test customer choosing from cashier lines" << endl;
 		cout << "2. Test customer-cashier interaction" << endl;
 		cout << "3. Test customer without enough money" << endl;
+		cout << "4. Test cashiers going on break and coming off break" <<endl;
 		// put your necessary menu options here
 		cout << "Please input the number option you wish to take: " << endl;
 		int choice;
@@ -1209,7 +1297,7 @@ void Problem2(){
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
-			else if(choice > 3 || choice < 1){ //change this if you add more options
+			else if(choice > 4 || choice < 1){ //change this if you add more options
 				cout << "Not a valid menu option. Please try again: ";
 				continue;
 			}
@@ -1233,6 +1321,12 @@ void Problem2(){
 				cashierNumber = 4;
 				custNumber = 10;
 				testCustomerCheckOutWithoutMoney();
+				break;
+		case 4:
+				customerCash = 0;
+				cashierNumber = 3;
+				custNumber = 20;
+				testMakeCashiersBreak();
 				break;
 		//add cases here for your test
 		default: break;
