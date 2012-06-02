@@ -495,6 +495,14 @@ int custNumber = 20;
 //array of ints representing the item a customer has handed to a cashier
 int* cashierDesk;
 
+//Manager data
+int* cashierFlags; //will be set to a customer ID in the slot corresponding to the
+					//index of the cashier who sets the flag.
+
+Lock* managerLock; //will be the lock behind the manager CV
+Condition* managerCV; //will be the CV the manager and customer use to communicate
+int managerDesk; //will be place customer puts items to show to manager
+
 
 void initShelves() {
 	for(int i = 0; i < NUM_ITEMS; i++) {
@@ -779,6 +787,29 @@ void customer(int myID){
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 		//TODO manager-customer interaction
+		managerLock->Acquire();
+		for(int i = 0; i < numItemsToBuy; i++){
+			for(int j = 0; j < numItemsToBuy; j++){
+				managerDesk = itemsInCart[i]; //tells the manager what type of item
+				managerCV->Signal(managerLock);
+				managerCV->Wait(managerLock);
+				//check what the total is at before continuing
+				if(managerDesk < myCash){
+					numItemsToBuy = 0; //this gets me out of both for loops
+				}
+			}
+		}
+		managerDesk = -1; //notifies the manager I'm done
+		managerCV->Signal(managerLock);
+		managerCV->Wait(managerLock);
+		int amountOwed = managerDesk;
+		myCash -= amountOwed; //updating my cash amount because I am paying manager
+		managerDesk = amountOwed; //technically redundant, but represents me paying money
+		//need receipt
+		managerCV->Signal(managerLock);
+		managerCV->Wait(managerLock);
+		//got receipt, I can now leave
+		managerLock->Release();
 	}
 	//if I do have money, I just need to update my cash and leave
 	//the money there
@@ -799,8 +830,6 @@ void customer(int myID){
 	//TODO replace trolly and leave store
 }
 
-
-
 int scan(int item){
 	switch(item){
 	case 0: return 5;
@@ -811,20 +840,85 @@ int scan(int item){
 	}
 }
 
+void manager(){
+	int totalRevenue = 0; //will track the total sales of the day
+	char* name = new char[20];
+	name = "manager lock";
+	managerLock = new Lock(name);
+	name = new char[20];
+	name = "manager CV";
+	managerCV = new Condition(name);
+	while(true){
+		//I don't need to acquire a lock because I never go to sleep
+		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
+		//I will get around to it
+		for(int i = 0; i < cashierNumber; i++){
+			if(cashierFlags[i] != -1){
+				cout <<"Manager got a call from Cashier " << i << "." << endl;
+				int customerID = cashierFlags[i];
+				int cashierID = i;
+				cashierFlags[i] = -1; //reset cashierFlags
+				managerLock->Acquire();
+				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up customer, who also waits first in this interaction
+				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up cashier
+				managerCV->Wait(managerLock);
+				int amountOwed = cashierFlags[i];
+				int custTypeID = managerDesk;
+				char* custType = new char[20];
+				if(custTypeID){
+					custType = "Customer";
+				}
+				else{
+					custType = "Privileged Customer";
+				}
+				while(managerDesk != -1 ){
+					amountOwed -= scan(managerDesk);
+					cout << "Manager removes " << managerDesk << " from the trolly of " << custType << " " << customerID << "."<<endl;
+					managerDesk = amountOwed; //giving customer new subtotal
+									//customer will put back -1 if out of items
+									// or if they can now afford
+					managerCV->Signal(managerLock);
+					managerCV->Wait(managerLock);
+				}
+				//now customer has reached end of items or has enough money
+				//I give him total
+				managerDesk = amountOwed;
+				managerCV->Signal(managerLock);
+				managerCV->Wait(managerLock); //wait for his response, i.e. paying money
+				totalRevenue += managerDesk;
+				//Now give the customer his receipt
+				cout << "Manager gives receipt to " << custType << " " << customerID << "." << endl;
+				managerDesk = -1;
+				managerCV->Signal(managerLock);
+				//release manager lock
+				managerLock->Release();
+
+
+			}
+		}
+	}
+}
+
+
+
+
 //cashier code
 
 void cashier(int myCounter){
 	while(true){cout<< "Beginning of customer loop" << endl;
+	char* custType = new char[20];
 	cashierLinesLock->Acquire();
 	//check if my lines have anyone in it
 	if(privilegedLineCount[myCounter]){
 		cashierStatus[myCounter] = CASH_BUSY;
 		privilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
+		custType = "Privileged Customer";
 	}
 	else if(unprivilegedLineCount[myCounter]){
 		cashierStatus[myCounter] = CASH_BUSY;
 		cout << "Signalling customer in line" << endl;
 		unprivilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
+		custType = "Customer";
 	}
 	else{
 		cashierStatus[myCounter] = CASH_NOT_BUSY;
@@ -846,7 +940,7 @@ void cashier(int myCounter){
 	int total = 0;
 	int custID = cashierDesk[myCounter];
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
-		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of Customer " << custID << endl;
+		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of " << custType << " " << custID << "." << endl;
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 		total += scan(cashierDesk[myCounter]);
@@ -855,23 +949,36 @@ void cashier(int myCounter){
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	}
 	//now I'm done scanning, so I tell the customer the total
-	cout << "Cashier " << myCounter << " tells Customer " << custID << " total cost is $" << total << endl;
+	cout << "Cashier " << myCounter << " tells " << custType << " " << custID << " total cost is $" << total << endl;
 	cashierDesk[myCounter] = total;
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	if(cashierDesk[myCounter] == -1){
-		//signal the manager
+		cashierFlags[myCounter] = custID;
+		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+		//Set the manager desk to 0 or 1 to tell the manager which type of
+		//customer he is dealing with
+		if(!strcmp(custType, "Privileged Customer")){
+			managerDesk = 0;
+		}
+		if(!strcmp(custType, "Customer")){
+			managerDesk = 1;
+		}
+		cashierFlags[myCounter] = total; //inform manager of the total the customer owes
+		managerCV->Signal(managerLock); //wake up manager, who was waiting for this information
+		//when I am woken up, the manager has taken over so I can free myself for my
+		//next customer
 	}
 	else{
 		//giving the customer a receipt
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		//wait for customer to acknowledge getting receipt and release lock
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-		cashierStatus[myCounter] = CASH_NOT_BUSY;
 	}
 	cashierLock[myCounter]->Release();
 	cashierDesk[myCounter] = 0;
 	//done, just need to loop back and check for more customers
+	delete custType;
 	}
 }
 
