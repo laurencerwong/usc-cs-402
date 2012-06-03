@@ -200,7 +200,7 @@ void Condition::Signal(Lock* conditionLock) {
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
 	if(queue->IsEmpty()) return;
 	if(waitingLock != conditionLock){
-		printf("Argument passed to Condition::Wait() was the incorrect lock, returning without performing wait\n");
+		printf("Argument passed to Condition::Signal() was the incorrect lock, returning without performing wait\n");
 		(void) interrupt->SetLevel(oldLevel);
 		return;
 	}
