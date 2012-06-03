@@ -13,6 +13,8 @@
 #include "system.h"
 #include "stdlib.h"
 #include <iostream>
+#include "time.h"
+#include <queue>
 
 using namespace std;
 
@@ -489,7 +491,7 @@ Lock** cashierLock;
 //customer use to communicate during checkout
 Condition** cashierToCustCV;
 
-enum CashierStatus {CASH_NOT_BUSY, CASH_BUSY, CASH_ON_BREAK, CASH_READY_TO_TALK};
+enum CashierStatus {CASH_NOT_BUSY, CASH_BUSY, CASH_ON_BREAK, CASH_GO_ON_BREAK, CASH_READY_TO_TALK};
 //array of current cashier statuses
 CashierStatus* cashierStatus;
 
@@ -634,7 +636,7 @@ void initCustomerCashier(){
 			cashierToCustCV[i] = new Condition(name);
 	}
 	for(int i = 0; i < cashierNumber; i++){
-			cashierStatus[i] = CASH_NOT_BUSY;
+			cashierStatus[i] = CASH_BUSY;
 			privilegedLineCount[i] = 0;
 			unprivilegedLineCount[i] = 0;
 			cashierFlags[i] = -1;
@@ -867,8 +869,9 @@ void customer(int myID){
 		type = "Privileged Customer";
 	}
 	else type = "Customer";
-	do{
 	cashierLinesLock->Acquire();
+	do{
+//	cashierLinesLock->Acquire();
 	printf("%s %d is looking for the cashier.\n", type, myID );
 	for(int i = 0; i < cashierNumber; i++ ){
 		//if I find a cashier who is free, I will:
@@ -896,10 +899,10 @@ void customer(int myID){
 				linesIAmLookingAtCV = unprivilegedCashierLineCV;
 			}
 
-			minLineValue = linesIAmLookingAt[0]; //set a default min value
+			minLineValue = custNumber; //set a default min value
 			//find the minimum line value and remember the cashier associated with it
-			for(int j = 1; j < cashierNumber; j++){
-				if(linesIAmLookingAt[j] < minLineValue && cashierStatus[j] != CASH_ON_BREAK){
+			for(int j = 0; j < cashierNumber; j++){
+				if(linesIAmLookingAt[j] < minLineValue && cashierStatus[j] != CASH_ON_BREAK && cashierStatus[j] != 	CASH_GO_ON_BREAK){
 					//must also check if that cashier is on break
 					minLineValue = linesIAmLookingAt[j];
 					minCashierID = j;
@@ -909,16 +912,23 @@ void customer(int myID){
 			printf("%s %d chose Cashier %d of line length %d.\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
 			linesIAmLookingAt[minCashierID]++;
 			linesIAmLookingAtCV[minCashierID]->Wait(cashierLinesLock); //wait in line
-			cout<< "Customer " << myID << " has gotten to the front of the line" << endl;
+			if(cashierStatus[myCashier] == CASH_ON_BREAK) {
+				//cout << "Customer " << myID << " is releasing cashierLinesLock" << endl;
+				cashierLinesLock->Release();
+			}
 			//code after this means I have been woken up after getting to the front of the line
-			cashierStatus[myCashier] = CASH_BUSY;
-			cashierLock[minCashierID]->Acquire();
-			printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
-
+			//cout << "Customer " << myID << " has woken up" << endl;
+			if(cashierStatus[myCashier] == CASH_ON_BREAK){
+				linesIAmLookingAt[myCashier]--;
+			}
 			break;
 		}
 	}
-	}while(cashierStatus[myCashier] == CASH_NOT_BUSY);
+	//cout << "My cashier status is " << cashierStatus[myCashier] << endl;
+	}while(cashierStatus[myCashier] == CASH_ON_BREAK);
+
+	cashierLock[myCashier]->Acquire();
+	printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
 	cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
 							//my claim on this cashier
 	cashierDesk[myCashier] = myID;
@@ -967,6 +977,7 @@ void customer(int myID){
 		int amountOwed = managerDesk;
 		myCash -= amountOwed; //updating my cash amount because I am paying manager
 		managerDesk = amountOwed; //technically redundant, but represents me paying money
+		printf("%s %d pays %d and is now waiting for receipt.\n", type, amountOwed, myID);
 		//need receipt
 		managerCV->Signal(managerLock);
 		managerCV->Wait(managerLock);
@@ -1008,7 +1019,7 @@ int scan(int item){
 void manager(){
 	int totalRevenue = 0; //will track the total sales of the day
 	int counter = 0;
-	List* cashiersOnBreak = new List;
+	queue<int> cashiersOnBreak;
 	int numCashiersOnBreak = 0;
 	while(true){
 		counter ++;
@@ -1020,37 +1031,51 @@ void manager(){
 			cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
 		}
 
-		for(int j = 1; j < 2; j++){
-					currentThread->Yield();
-		}
+		//for(int j = 1; j < 40; j++){
+			//		currentThread->Yield();
+		//}
 		cashierLinesLock->Acquire();
-		int sumCustomers = 0;
+
+		int numFullLines = 0;
+		int numAnyLines = 0;
 		for (int i = 0; i < cashierNumber; i++){
-			sumCustomers += unprivilegedLineCount[i];
-			sumCustomers += privilegedLineCount[i];
+			if(privilegedLineCount[i]) numAnyLines++;
+			if(unprivilegedLineCount[i]) numAnyLines++;
+			if(privilegedLineCount[i] > 3) numFullLines ++;
+			if(unprivilegedLineCount[i] > 3) numFullLines ++;
 		}
+		if(numFullLines > (cashierNumber - cashiersOnBreak.size()) && cashiersOnBreak.size()){
 
-		if (sumCustomers  < (cashierNumber -  numCashiersOnBreak) ){
-			int* r = new int;
-			do{
-				*(r) = rand() % cashierNumber;
-			} while(cashierStatus[*r] == CASH_ON_BREAK);
-			cashierStatus[*r] = CASH_ON_BREAK;
-			cout << "Manager sends Cashier " << *r << " on break." << endl;
-			cashiersOnBreak->Append((void *)r);
-			numCashiersOnBreak++;
-
-		}
-		if(sumCustomers > (cashierNumber - numCashiersOnBreak) * 4 && !cashiersOnBreak->IsEmpty()){
-			int wakeCashier = *(int *)(cashiersOnBreak->Remove());
-			cashierStatus[wakeCashier] = CASH_NOT_BUSY;
-			cout << "Manager brings back Cashier " << wakeCashier << " from break." << endl;
+			int wakeCashier = cashiersOnBreak.front();
+			if(cashierStatus[wakeCashier] == CASH_ON_BREAK && !unprivilegedLineCount[wakeCashier] && !privilegedLineCount[wakeCashier]){
+			if (numAnyLines)cout << "Manager brings back Cashier " << wakeCashier << " from break." << endl;
 			cashierStatus[wakeCashier] = CASH_NOT_BUSY;
 			cashierToCustCV[wakeCashier]->Signal(cashierLock[wakeCashier]);
 			numCashiersOnBreak--;
+			cashiersOnBreak.pop();
+			}
+			cashierLinesLock->Release();
 
 		}
-		cashierLinesLock->Release();
+		else cashierLinesLock->Release();
+		cashierLinesLock->Acquire();
+		srand(counter);
+		int chance = rand() % 5;
+		if( chance == 1  && cashiersOnBreak.size() < cashierNumber -2){ //.001% chance of sending cashier on break
+			//generate cashier index
+			int r = rand() % cashierNumber;
+			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
+				cashierStatus[r] = CASH_GO_ON_BREAK;
+				/*if(numAnyLines)*/cout << "Manager sends Cashier " << r << " on break." << endl;
+				cashiersOnBreak.push(r);
+				numCashiersOnBreak++;
+				cashierLinesLock->Release();
+
+			}
+		}
+
+
+
 		for(int i = 0; i < cashierNumber; i++){
 
 			cashierLock[i]->Acquire();
@@ -1059,8 +1084,10 @@ void manager(){
 				cout << "Manager emptied Counter " << i << " drawer." << endl;
 				cashRegister[i] = 0;
 				cout << "Manager has total sale of $" << totalRevenue << "." << endl;
+				cashierLock[i]->Release();
+				break;
 			}
-			if(cashierFlags[i] != -1){
+			else if(cashierFlags[i] != -1){
 				cout <<"Manager got a call from Cashier " << i << "." << endl;
 				int customerID = cashierFlags[i];
 				int cashierID = i;
@@ -1087,6 +1114,7 @@ void manager(){
 				managerCV->Wait(managerLock);
 				while(managerDesk != -1 ){
 					amountOwed -= scan(managerDesk);
+					cout << "new amount owed " << amountOwed << endl;
 					cout << "Manager removes " << managerDesk << " from the trolly of " << custType << " " << customerID << "."<<endl;
 					managerDesk = amountOwed; //giving customer new subtotal
 									//customer will put back -1 if out of items
@@ -1106,6 +1134,7 @@ void manager(){
 				managerCV->Signal(managerLock);
 				//release manager lock
 				managerLock->Release();
+				break;
 
 
 			}
@@ -1120,19 +1149,29 @@ void manager(){
 //cashier code
 
 void cashier(int myCounter){
-	while(true){cout<< "Beginning of customer loop" << endl;
+	while(true){
 	char* custType = new char[20];
 	cashierLinesLock->Acquire();
 	//check my status to see if I've already been set to busy by a customer
-	if(cashierStatus[myCounter] == CASH_ON_BREAK){
+	if(cashierStatus[myCounter] == CASH_GO_ON_BREAK){
+		cout << "Cashier " << myCounter << " acknowledges he will go on break" << endl;
 
+
+
+		unprivilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
+		privilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
+		cout << myCounter << " just broadcast! and my line had " << unprivilegedLineCount[myCounter] << " and " << privilegedLineCount[myCounter] << endl;
+
+		cashierStatus[myCounter] = CASH_ON_BREAK;
 		cashierLock[myCounter]->Acquire();
 		cashierLinesLock->Release();
-		cashierToCustCV[myCounter]->Broadcast(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+		cout << "Cashier " << myCounter << " is back from break" << endl;
+		continue;
 	}
 	//check if my lines have anyone in it
-	else if(privilegedLineCount[myCounter]){
+
+	if(privilegedLineCount[myCounter]){
 		cashierStatus[myCounter] = CASH_BUSY;
 		privilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 		custType = "Privileged Customer";
@@ -1154,13 +1193,6 @@ void cashier(int myCounter){
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	//the next time I'm woken up (assuming it is by a customer, not a manager
 	//I will be totaling items
-	if(cashierDesk[myCounter] == -1){ //case where manager wants me to take a break
-		//Be sure to double check race conditions for this
-		//make sure manager has set my status to on break
-		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-		//to come back from break, manager doesn't have to signal me... it will be like i
-		//had no line when checking and went to sleep
-	}
 	//when I get here, there will be an item to scan
 	int total = 0;
 	int custID = cashierDesk[myCounter];
@@ -1173,12 +1205,11 @@ void cashier(int myCounter){
 		custType = "Customer";
 	}
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
-		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of " << custType << " " << custID << "." << endl;
-		total += scan(cashierDesk[myCounter]);
+
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-
-
+		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of " << custType << " " << custID << "." << endl;
+						total += scan(cashierDesk[myCounter]);
 	}
 	//now I'm done scanning, so I tell the customer the total
 	cout << "Cashier " << myCounter << " tells " << custType << " " << custID << " total cost is $" << total << endl;
@@ -1188,7 +1219,7 @@ void cashier(int myCounter){
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	if(cashierDesk[myCounter] == -1){
 		cashierFlags[myCounter] = custID;
-		cout << "cashier is goign to sleep" << endl;
+		//cout << "cashier is goign to sleep" << endl;
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 		//Set the manager desk to 0 or 1 to tell the manager which type of
 		//customer he is dealing with
@@ -1212,8 +1243,9 @@ void cashier(int myCounter){
 		//wait for customer to acknowledge getting receipt and release lock
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	}
-	cashierLock[myCounter]->Release();
 	cashierDesk[myCounter] = 0;
+	cashierLock[myCounter]->Release();
+
 	//done, just need to loop back and check for more customers
 	delete custType;
 	}
@@ -1493,7 +1525,6 @@ void testCustomerCheckOutWithMoney(){
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)customer, i);
 	}
-
 }
 
 void testCustomerCheckOutWithoutMoney(){
@@ -1535,15 +1566,19 @@ void testMakeCashiersBreak(){
 		t->Fork((VoidFunctionPtr)cashier, i);
 	}
 	t->Fork((VoidFunctionPtr)customer, 0);
-	for(int i = 0; i < 1000; i++){
+	cout << "before yield" << endl;
+	for(int i = 0; i < 3; i++){
 		currentThread->Yield();
 	}
+	cout << "after yield" << endl;
 	for(int i = 1; i < custNumber; i++){
+		cout << "making cust" << endl;
 		name = new char[20];
 		sprintf(name, "cust%d", i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
 	}
+	while(true);
 }
 void Problem2(){
 		cout << "Menu:" << endl;
@@ -1593,6 +1628,10 @@ void Problem2(){
 				customerCash = 0;
 				cashierNumber = 3;
 				custNumber = 20;
+				char* name = new char[20];
+				name = "blah";
+				Thread* thread = new Thread(name);
+				//thread->Fork((VoidFunctionPtr)testMakeCashiersBreak, 0);
 				testMakeCashiersBreak();
 				break;
 		case 5:
