@@ -539,6 +539,7 @@ int displacedTrollyCount;
 //Lock controlling access to displaced trolly count
 Lock* displacedTrollyLock;
 
+int customersDone;
 
 void initShelves() {
 	for(int i = 0; i < NUM_ITEMS; i++) {
@@ -592,6 +593,7 @@ void initCustomerCashier(){
 	char* name;
 	name = new char[20];
 	name = "cashier line lock";
+	customersDone =0;
 	cashierLinesLock = new Lock(name);
 	privilegedCashierLineCV = new Condition*[cashierNumber];
 	unprivilegedCashierLineCV = new Condition*[cashierNumber];
@@ -1006,6 +1008,8 @@ void customer(int myID){
 	displacedTrollyLock->Acquire();
 	displacedTrollyCount++;
 	displacedTrollyLock->Release();
+
+	customersDone++;
 }
 
 int scan(int item){
@@ -1021,9 +1025,20 @@ int scan(int item){
 void manager(){
 	int totalRevenue = 0; //will track the total sales of the day
 	int counter = 0;
+	int *cashierTotals = new int[cashierNumber];
+	for(int i = 0; i < cashierNumber; i++){
+		cashierTotals[i] = 0;
+	}
 	queue<int> cashiersOnBreak;
 	int numCashiersOnBreak = 0;
 	while(true){
+		if(customersDone == custNumber){
+			for(int i = 0; i < cashierNumber; i++){
+				cout << "Total Sale from Counter " << i << " is $" << cashierTotals[i] << "." << endl;
+			}
+			cout << "Total Sale of the entire store is $" << totalRevenue << "." << endl;
+			break;
+		}
 		counter ++;
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
@@ -1033,9 +1048,6 @@ void manager(){
 			cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
 		}
 
-		//for(int j = 1; j < 40; j++){
-			//		currentThread->Yield();
-		//}
 		cashierLinesLock->Acquire();
 
 		int numFullLines = 0;
@@ -1083,6 +1095,7 @@ void manager(){
 			cashierLock[i]->Acquire();
 			if(cashRegister[i] > 0){
 				totalRevenue += cashRegister[i];
+				cashierTotals[i] += cashRegister[i];
 				cout << "Manager emptied Counter " << i << " drawer." << endl;
 				cashRegister[i] = 0;
 				cout << "Manager has total sale of $" << totalRevenue << "." << endl;
@@ -1097,7 +1110,7 @@ void manager(){
 				managerLock->Acquire();
 				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up customer, who also waits first in this interaction
 				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up cashier
-				cout <<"manager has signallled cusstomer and cashier" << endl;
+				//cout <<"manager has signallled cusstomer and cashier" << endl;
 				cashierLock[i]->Release();
 				managerCV->Wait(managerLock);
 				int amountOwed = cashierFlags[i];
@@ -1130,6 +1143,7 @@ void manager(){
 				managerCV->Signal(managerLock);
 				managerCV->Wait(managerLock); //wait for his response, i.e. paying money
 				totalRevenue += managerDesk;
+
 				//Now give the customer his receipt
 				cout << "Manager gives receipt to " << custType << " " << customerID << "." << endl;
 				managerDesk = -1;
@@ -1156,19 +1170,19 @@ void cashier(int myCounter){
 	cashierLinesLock->Acquire();
 	//check my status to see if I've already been set to busy by a customer
 	if(cashierStatus[myCounter] == CASH_GO_ON_BREAK){
-		cout << "Cashier " << myCounter << " acknowledges he will go on break" << endl;
+		//cout << "Cashier " << myCounter << " acknowledges he will go on break" << endl;
 
 
 
 		unprivilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
 		privilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
-		cout << myCounter << " just broadcast! and my line had " << unprivilegedLineCount[myCounter] << " and " << privilegedLineCount[myCounter] << endl;
-
+		//cout << myCounter << " just broadcast! and my line had " << unprivilegedLineCount[myCounter] << " and " << privilegedLineCount[myCounter] << endl;
+		cout << "Cashier " << myCounter << " is going on break." << endl;
 		cashierStatus[myCounter] = CASH_ON_BREAK;
 		cashierLock[myCounter]->Acquire();
 		cashierLinesLock->Release();
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-		cout << "Cashier " << myCounter << " is back from break" << endl;
+		cout << "Cashier " << myCounter << " was called from break by Manager to work." << endl;
 		continue;
 	}
 	//check if my lines have anyone in it
@@ -1180,7 +1194,7 @@ void cashier(int myCounter){
 	}
 	else if(unprivilegedLineCount[myCounter]){
 		cashierStatus[myCounter] = CASH_BUSY;
-		cout << "Signalling customer in line" << endl;
+		//cout << "Signalling customer in line" << endl;
 		unprivilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 		custType = "Customer";
 	}
@@ -1191,7 +1205,7 @@ void cashier(int myCounter){
 	cashierLock[myCounter]->Acquire();
 	cashierLinesLock->Release();
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
-	cout << "Cashier falling asleep" << endl;
+	//cout << "Cashier falling asleep" << endl;
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	//the next time I'm woken up (assuming it is by a customer, not a manager
 	//I will be totaling items
@@ -1211,7 +1225,7 @@ void cashier(int myCounter){
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of " << custType << " " << custID << "." << endl;
-						total += scan(cashierDesk[myCounter]);
+		total += scan(cashierDesk[myCounter]);
 	}
 	//now I'm done scanning, so I tell the customer the total
 	cout << "Cashier " << myCounter << " tells " << custType << " " << custID << " total cost is $" << total << endl;
@@ -1220,6 +1234,8 @@ void cashier(int myCounter){
 
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	if(cashierDesk[myCounter] == -1){
+		cout << "Cashier " << myCounter << " asks " << custType << " " << custID << " to wait for Manager." << endl;
+		cout << "Cashier " << myCounter << " informs the Manager that " << custType << " " << custID << " does not have enough money." << endl;
 		cashierFlags[myCounter] = custID;
 		//cout << "cashier is goign to sleep" << endl;
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
@@ -1240,7 +1256,9 @@ void cashier(int myCounter){
 	else{
 		//add value to cash register
 		cashRegister[myCounter] += cashierDesk[myCounter];
+		cout << "Cashier " << myCounter << " got money $" << cashierDesk[myCounter] << " from " << custType << " " << custID << "." << endl;
 		//giving the customer a receipt
+		cout << "Cashier " << myCounter << " gave the receipt to " << custType << " and tells him to leave" << endl;
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		//wait for customer to acknowledge getting receipt and release lock
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
