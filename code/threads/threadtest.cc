@@ -1220,12 +1220,15 @@ void cashier(int myCounter){
 	else{
 		custType = "Customer";
 	}
+	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
+	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
 
-		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
-		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+
 		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of " << custType << " " << custID << "." << endl;
 		total += scan(cashierDesk[myCounter]);
+		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
+		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	}
 	//now I'm done scanning, so I tell the customer the total
 	cout << "Cashier " << myCounter << " tells " << custType << " " << custID << " total cost is $" << total << endl;
