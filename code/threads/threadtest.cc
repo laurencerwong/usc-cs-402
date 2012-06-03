@@ -880,7 +880,6 @@ void Customer(int myID){
 
 	cout << "Customer "<< myID <<" enters the SuperMarket" << endl;
 	cout << "Customer " << myID << " wants to buy " << numItemsToBuy << " items" << endl;
-	cout << "there are: " << trollyCount << " trollies" << endl;
 
 	/*
 	cout << "Customer " << myIndex << " has grocery list:" << endl;
@@ -893,6 +892,7 @@ void Customer(int myID){
 	*/
 
 	trollyLock->Acquire();
+	cout << "there are: " << trollyCount << " trollies" << endl;
 	while(trollyCount == 0) {
 		trollyCV->Wait(trollyLock);
 	}
@@ -957,7 +957,9 @@ void Customer(int myID){
 	}
 
 	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
+	cout << "cust " << myID << " waiting for response from sales " << mySalesIndex << endl;
 	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
+	cout << "cust " << myID << " starts shopping!" << endl;
 	individualSalesmanLock[mySalesIndex]->Release();
 
 	//BEGINS SHOPPING
@@ -1480,6 +1482,7 @@ void manager(){
 			cout << "Total Sale of the entire store is $" << totalRevenue << "." << endl;
 			break;
 		}
+		inactiveLoaderCV->Signal(inactiveLoaderLock);
 		counter ++;
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
@@ -1868,10 +1871,12 @@ void GoodsLoader(int myID) {
 			}
 			displacedTrollyLock->Release();
 
-			trollyLock->Acquire();
-			trollyCount += restoreTrollies;
-			trollyCV->Broadcast(trollyLock);
-			trollyLock->Release();
+			if(restoreTrollies != 0) {
+				trollyLock->Acquire();
+				trollyCount += restoreTrollies;
+				trollyCV->Broadcast(trollyLock);
+				trollyLock->Release();
+			}
 		}
 		else{
 
