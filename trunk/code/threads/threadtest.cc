@@ -553,7 +553,7 @@ void initShelvesWithQty(int q) {
 
 void initSalesmen(){
 	for(int i = 0; i < MAX_SALESMEN; i++){
-		currentSalesStatus[i] = SALES_NOT_BUSY;
+		currentSalesStatus[i] = SALES_BUSY;
 		currentlyTalkingTo[i] = UNKNOWN;
 		individualSalesmanLock[i] = new Lock(("Salesman Lock"));
 		salesmanCV[i] = new Condition(("Salesman Control Variable"));
