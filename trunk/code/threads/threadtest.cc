@@ -424,6 +424,8 @@ void TestSuite() {
  *
  */
 
+#define MAX_SHELF_QTY 20
+#define MAX_TROLLY 40
 #define MAX_SALESMEN 3
 #define MAX_LOADERS 10
 #define MAX_CUSTOMERS 30
@@ -463,6 +465,7 @@ Condition *inactiveLoaderCV = new Condition("CV for loaders waiting to be called
 
 Lock *shelfLock[NUM_ITEMS];
 Condition *shelfCV[NUM_ITEMS];
+Lock *stockRoomLock = new Lock("Stock room lock");
 
 int shelfInventory[NUM_ITEMS];
 
@@ -519,7 +522,7 @@ Condition* managerCV; //will be the CV the manager and customer use to communica
 int managerDesk; //will be place customer puts items to show to manager
 
 //Trolleys
-int trollyCount;
+int trollyCount = MAX_TROLLY;
 
 //Lock controlling access to trollyCount;
 Lock* trollyLock;
@@ -567,6 +570,21 @@ void initLoaders() {
 	}
 }
 
+void initTrolly() {
+	char* name;
+
+	trollyCount = MAX_TROLLY;
+	displacedTrollyCount = 0;
+	name = new char[20];
+	name = "trolly lock";
+	trollyLock = new Lock(name);
+	name = new char[20];
+	name = "trolly CV";
+	trollyCV = new Condition(name);
+	name = new char[20];
+	name = "displaced trolly lock";
+	displacedTrollyLock = new Lock(name);
+}
 
 void initCustomerCashier(){
 	char* name;
@@ -661,6 +679,7 @@ void Customer(int myIndex){
 	cout << "Customer "<< myIndex <<" enters the SuperMarket" << endl;
 	cout << "Customer " << myIndex << " wants to buy " << numItemsToBuy << " items" << endl;
 
+	/*
 	cout << "Customer " << myIndex << " has grocery list:" << endl;
 	cout << "Wanted  qty     Has  qty" << endl;
 	for(int k = 0; k < numItemsToBuy; k++) {
@@ -668,6 +687,14 @@ void Customer(int myIndex){
 				itemsInCart[k] << "    " << qtyItemsInCart[k] << endl;
 	}
 	cout << "end cust list ---" << endl;
+	*/
+
+	trollyLock->Acquire();
+	if(trollyCount == 0) {
+		trollyCV->Wait(trollyLock);
+	}
+	trollyCount--;
+	trollyLock->Release();
 
 	salesLock->Acquire();
 	int mySalesIndex = -1;
@@ -792,6 +819,7 @@ void Customer(int myIndex){
 					individualSalesmanLock[mySalesID]->Release();
 					//now i go wait on the shelf
 
+					shelfLock[shelfNum]->Acquire();
 					shelfCV[shelfNum]->Wait(shelfLock[shelfNum]);
 					//now restocked, continue looping until I have all of what I need
 					cout << "Customer " << myIndex << " has received assistance about restocking of item " <<
@@ -1234,7 +1262,7 @@ void Salesman (int myIndex){
 			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
 			cout << "Customer " << myCustNumber << " is being greeted" << endl;
 			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
-			cout << "just signalled on index: " << myIndex << endl;
+			//cout << "just signalled on index: " << myIndex << endl;
 		}
 		else if(currentlyTalkingTo[myIndex] == COMPLAINING) {
 			//individualSalesmanLock[myIndex]->Acquire();
@@ -1316,8 +1344,51 @@ void GoodsLoader(int myID) {
 		}
 
 		//restock
+		int qtyInHands = 0;
+		for(int i = 0; i < MAX_SHELF_QTY; i++) {
+			for(int j = 0; j < 25; j++) {
+				currentThread->Yield();
+			}
+
+			//Simulates a store room like the spec says
+			stockRoomLock->Acquire();
+			qtyInHands++;
+			stockRoomLock->Release();
+
+			shelfLock[shelf]->Acquire();
+			shelfInventory[shelf] += qtyInHands;
+			qtyInHands = 0;
+			shelfLock[shelf]->Release();
+		}
 
 		//wait in line/inform sales
+		salesLock->Acquire();
+		mySalesID = -1;
+		for(int i = 0; i < MAX_SALESMEN; i++) {
+			if(currentSalesStatus[i] == SALES_NOT_BUSY) {
+				mySalesID = i;
+				break;
+			}
+		}
+		if(mySalesID == -1) {
+			loaderWaitingLineCount++;
+			loaderCV->Wait(salesLock);
+			for(int i = 0; i < MAX_SALESMEN; i++) {
+				if(currentSalesStatus[i] == SALES_READY_TO_TALK) {
+					mySalesID = i;
+					break;
+				}
+			}
+		}
+
+		//Ready to go talk to
+		individualSalesmanLock[mySalesID]->Acquire();
+		currentlyTalkingTo[mySalesID] = GOODSLOADER;
+		currentSalesStatus[mySalesID] = SALES_BUSY;
+		salesLock->Release();
+		salesDesk[mySalesID] = shelf;
+		salesmanCV[mySalesID]->Signal(individualSalesmanLock[mySalesID]);
+		individualSalesmanLock[mySalesID]->Release();
 	}
 }
 
@@ -1333,6 +1404,7 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 
 	printf ("Initializing Variables for 'Greeting Customer Test'\n");
 
+	initTrolly();
 	initSalesmen();
 	initShelvesWithQty(16);
 
@@ -1358,25 +1430,26 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 }
 
 void testCustomerEnteringStoreAndPickingUpItems() {
+	initTrolly();
 	initSalesmen();
-	initShelvesWithQty(10);
+	initShelvesWithQty(10000);
 	initLoaders();
 
 	char* name;
 
 	Thread * t;
-	for(int i = 0; i < custNumber; i++){
-		name = new char [20];
-		sprintf(name,"cust%d",i);
-		t = new Thread(name);
-		t->Fork((VoidFunctionPtr)Customer, i);
-		delete name;
-	}
 	for(int i = 0; i < MAX_SALESMEN; i++){
 		name = new char [20];
 		sprintf(name,"sales%d",i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)Salesman, i);
+		delete name;
+	}
+	for(int i = 0; i < custNumber; i++){
+		name = new char [20];
+		sprintf(name,"cust%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Customer, i);
 		delete name;
 	}
 }
