@@ -439,6 +439,7 @@ int numTrollies = 40;
 int numSalesmen = 3;
 int numLoaders = 10;
 int numItems = 10;
+int numDepartments = 3;
 
 // Enums for the salesmen status
 
@@ -655,6 +656,9 @@ void initCustomerCashier(){
 	managerCV = new Condition(name);
 }
 
+int getDepartmentFromItem(int itemNum) {
+	return itemNum % numDepartments;
+}
 
 void CustomerP1(int myIndex) {
 
@@ -1461,6 +1465,8 @@ int scan(int item){
 	default: return 0;
 	}
 }
+
+
 
 void manager(){
 	int totalRevenue = 0; //will track the total sales of the day
