@@ -862,13 +862,14 @@ void Customer(int myIndex){
 //customer method with cashier
 //---------------------------------------------------
 void customer(int myID){
-	int privileged = 0;
+
 	int myCashier; //ID of cashier I speak to
 	char* type = new char[20];
 	int myCash = customerCash;
 	int *itemsInCart;
 	int *qtyItemsInCart;
 	int numItemsToBuy = 3;
+	int privileged;
 	itemsInCart = new int[numItemsToBuy];
 	qtyItemsInCart = new int[numItemsToBuy];
 	for(int i = 0; i < numItemsToBuy; i++) {
@@ -877,14 +878,29 @@ void customer(int myID){
 		itemsInCart[i] = i;
 		qtyItemsInCart[i] = 3 - i;
 	}
+
+	//---------Randomly generate whether this customer is privileged--------------
+	srand(myID + time(NULL));
+	int r = rand() % 10; //random value to set Customer either as privileged or unprivileged
+	if(r < 2){//30% chance customer is privileged
+		privileged = 1;
+	}
+	else privileged = 0; //70% chance this customer is unprivileged
+
+	//set char array for I/O purposes
 	if(privileged){
 		type = "Privileged Customer";
 	}
 	else type = "Customer";
-	cashierLinesLock->Acquire();
+	privileged = 0;
+	//--------------End of privileged/unprivileged decion--------------------------
+
+	//--------------Begin looking for a cashier-------------------------------------
+	cashierLinesLock->Acquire(); //acquire locks to view line counts and cashier statuses
 	do{
-//	cashierLinesLock->Acquire();
 	printf("%s %d is looking for the cashier.\n", type, myID );
+
+	//Find if a cashier is free (if one is, customer doesn't need to wait in line)
 	for(int i = 0; i < cashierNumber; i++ ){
 		//if I find a cashier who is free, I will:
 		if(cashierStatus[i] == CASH_NOT_BUSY){
@@ -894,6 +910,8 @@ void customer(int myID){
 			printf("%s %d chose Cashier %d who is free.\n", type, myID, myCashier);
 			break; //stop searching through lines
 		}
+
+		//---------------Find shortest line---------------------------
 		else if (i == cashierNumber - 1){
 			int minLineValue;
 			int minCashierID = 0;
@@ -911,6 +929,10 @@ void customer(int myID){
 				linesIAmLookingAtCV = unprivilegedCashierLineCV;
 			}
 
+			//from here on, privilegedCustomers and unprivileged customers execute same code because
+			//of the temporary variables linesIAmLookingAt (which is unprivilegedLineCount or privilegedLineCount)
+			//and linesIAmLookingAtCV (which is un/privilegedCashierLineCV)
+
 			minLineValue = custNumber; //set a default min value
 			//find the minimum line value and remember the cashier associated with it
 			for(int j = 0; j < cashierNumber; j++){
@@ -924,42 +946,50 @@ void customer(int myID){
 			printf("%s %d chose Cashier %d of line length %d.\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
 			linesIAmLookingAt[minCashierID]++;
 			linesIAmLookingAtCV[minCashierID]->Wait(cashierLinesLock); //wait in line
-			if(cashierStatus[myCashier] == CASH_ON_BREAK) {
-				//cout << "Customer " << myID << " is releasing cashierLinesLock" << endl;
-				cashierLinesLock->Release();
-			}
-			//code after this means I have been woken up after getting to the front of the line
-			//cout << "Customer " << myID << " has woken up" << endl;
-			if(cashierStatus[myCashier] == CASH_ON_BREAK){
-				linesIAmLookingAt[myCashier]--;
-			}
-			break;
-		}
-	}
-	//cout << "My cashier status is " << cashierStatus[myCashier] << endl;
-	}while(cashierStatus[myCashier] == CASH_ON_BREAK);
+			linesIAmLookingAt[myCashier]--;
 
-	cashierLock[myCashier]->Acquire();
+
+			//when customer is woken up, there are two cases: 1. I am at front of the line, or 2., my cashier is going on break
+			//this decremented line count if the second case
+
+
+		}
+		//-------------End find shortest line----------------------
+
+	}
+	}while(cashierStatus[myCashier] == CASH_ON_BREAK); //customer will repeat finding a cashier algorithm if he was woken up because the cashier is going on break
+
+	//----------------End looking for cashier--------------------------------------------
+
+
+	//code after this means I have been woken up after getting to the front of the line
+	cashierLock[myCashier]->Acquire(); //disallow others from getting access to my cashier
 	printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
 	cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
 							//my claim on this cashier
-	cashierDesk[myCashier] = myID;
-	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
-	cashierDesk[myCashier] = privileged;
-	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
-	//cycle through all items in my inventory, handing one item to cashier ata time
-	for(int i = 0; i < numItemsToBuy; i++){
-		for(int j = 0; j < qtyItemsInCart[i]; j++){
+	cashierDesk[myCashier] = myID; //tell cashier who I am
+	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]); //signal cashier I am at his desk
+	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]); //wait for his acknowlegdment
+	cashierDesk[myCashier] = privileged; //now tell him that whether or not I am privileged
+	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]); //signal cashier I've passed this information
+	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]); //wait for his acknowledgment
+
+	//When I get here, the cashier is ready for items
+	//---------------------------Begin passing items to cashier---------------------------
+	//cycle through all items in my inventory, handing one item to cashier at a time
+	for(int i = 0; i < numItemsToBuy; i++){ //cycle through all types of items
+		for(int j = 0; j < qtyItemsInCart[i]; j++){ //be sure we report how many of each type
 			cashierDesk[myCashier] = itemsInCart[i]; //tells the cashier what type of item
-			cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-			cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
+			cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]); //signal cashier item is on his desk
+			cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]); //wait for his acknowledgement
 		}
 	}
-	cashierDesk[myCashier] = -1;
-	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
+	cashierDesk[myCashier] = -1; //Tells cashier that I have reached the last item in my inventory
+	cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]); //tell cashier
+	cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]); //wait for him to put the amount on desk
+	//------------------------End passing items to cashier--------------------------------
+
+
 	//when I get here, the cashier has loaded my total
 	//If I don't have enough money, leave the error flag -1 on the cashier's desk
 	if(cashierDesk[myCashier] > myCash){
@@ -970,13 +1000,15 @@ void customer(int myID){
 		managerLock->Acquire();
 		cashierLock[myCashier]->Release();
 		managerCV->Wait(managerLock);
+
+		//-----------------------Begin passing items to manager---------------------
 		for(int i = 0; i < numItemsToBuy; i++){
 			while(qtyItemsInCart[i] > 0){
 				cout << "manager desk " << managerDesk << endl;
-				/**if(managerDesk < myCash){
+				if(managerDesk < myCash){
 
 					break;
-				}*/
+				}
 				qtyItemsInCart[i] --;
 				managerDesk = itemsInCart[i];
 				managerCV->Signal(managerLock);
@@ -986,7 +1018,9 @@ void customer(int myID){
 		managerDesk = -1; //notifies the manager I'm done
 		managerCV->Signal(managerLock);
 		managerCV->Wait(managerLock);
-		int amountOwed = managerDesk;
+		//--------------------End of passing items to manager---------------
+
+		int amountOwed = managerDesk; //if I still can't afford anything, amountOwed will be 0
 		myCash -= amountOwed; //updating my cash amount because I am paying manager
 		managerDesk = amountOwed; //technically redundant, but represents me paying money
 		printf("%s %d pays %d and is now waiting for receipt.\n", type, myID, amountOwed);
@@ -1012,10 +1046,12 @@ void customer(int myID){
 		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
 	}
 
-	//TODO replace trolly and leave store
+	//------------------------------Begin replace trolly--------------
+	//no need for CV since sequencing doesn't matter
 	displacedTrollyLock->Acquire();
 	displacedTrollyCount++;
 	displacedTrollyLock->Release();
+	//-----------------------------End replace trolly----------------------
 
 	customersDone++;
 }
@@ -1133,6 +1169,7 @@ void manager(){
 				else{
 					custType = "Privileged Customer";
 				}
+				managerDesk = amountOwed;
 				managerCV->Signal(managerLock);
 				managerCV->Wait(managerLock);
 				while(managerDesk != -1 ){
@@ -1693,7 +1730,7 @@ void Problem2(){
 				testCustomerCheckOutWithMoney();
 				break;
 		case 3:
-				customerCash = 0;
+				customerCash = 6;
 				cashierNumber = 4;
 				custNumber = 10;
 				testCustomerCheckOutWithoutMoney();
