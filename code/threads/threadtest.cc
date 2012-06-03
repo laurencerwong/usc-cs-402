@@ -568,7 +568,7 @@ void initSalesmen(){
 
 void initLoaders() {
 	for(int i = 0; i < MAX_LOADERS; i++){
-
+		loaderStatus[i] = LOAD_NOT_BUSY;
 	}
 }
 
@@ -796,7 +796,7 @@ void Customer(int myIndex){
 						complainingCustCV->Wait(salesLock);
 
 						//find the salesman who just signalled me
-						salesLock->Acquire();
+
 						for(int k = 0; k < MAX_SALESMEN; k++) {
 							if(currentSalesStatus[k] == SALES_READY_TO_TALK) {
 								mySalesID = k;
@@ -820,6 +820,8 @@ void Customer(int myIndex){
 					salesmanCV[mySalesID]->Wait(individualSalesmanLock[mySalesID]);
 					individualSalesmanLock[mySalesID]->Release();
 					//now i go wait on the shelf
+					cout << "Customer " << myIndex << " is now waiting for item " <<
+							shelfNum << " to be restocked" << endl;
 
 					shelfLock[shelfNum]->Acquire();
 					shelfCV[shelfNum]->Wait(shelfLock[shelfNum]);
@@ -1262,23 +1264,28 @@ void Salesman (int myIndex){
 		//Check if there is someone in line
 		//and wake them up
 
-		if(loaderWaitingLineCount > 0) {
-			currentSalesStatus[myIndex] = SALES_READY_TO_TALK;
-			loaderCV->Signal(salesLock);
-			loaderWaitingLineCount--;
-		}
-		else if(greetingCustWaitingLineCount > 0){
+		if(greetingCustWaitingLineCount > 0){
+			//cout << "Salesman going to greet cust" << endl;
 			currentSalesStatus[myIndex] = SALES_READY_TO_TALK;
 			greetingCustCV->Signal(salesLock);
 			greetingCustWaitingLineCount--;
 			//currentlyTalkingTo[myIndex] = GREETING;
 		}
+		else if(loaderWaitingLineCount > 0) {
+					currentSalesStatus[myIndex] = SALES_READY_TO_TALK;
+					//cout << "Signalling loader waiting" << endl;
+					loaderCV->Signal(salesLock);
+					loaderWaitingLineCount--;
+				}
 		else if(complainingCustWaitingLineCount > 0) {
+			//cout << "Salesman going to help a complaing cust" << endl;
 			currentSalesStatus[myIndex] = SALES_READY_TO_TALK;
 			complainingCustCV->Signal(salesLock);
 			complainingCustWaitingLineCount--;
 		}
+
 		else{
+			//cout << "not busy" << endl;
 			currentlyTalkingTo[myIndex] = UNKNOWN;
 			currentSalesStatus[myIndex] = SALES_NOT_BUSY;
 		}
@@ -1311,20 +1318,32 @@ void Salesman (int myIndex){
 			//TODO tell goods loader
 			salesLock->Acquire();
 			currentSalesStatus[myIndex] = SALES_SIGNALLING_LOADER;
-			salesLock->Release();
 			salesDesk[myIndex] = itemOutOfStock;	//Might not be necessary, because we never really took it off the desk
-			inactiveLoaderCV->Signal(inactiveLoaderLock);	//call a loader over
+			salesLock->Release();
 			individualSalesmanLock[myIndex]->Acquire();
+			//cout << "signalling a loader" << endl;
+			inactiveLoaderCV->Signal(inactiveLoaderLock);	//call a loader over?
 			salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);
-			int myLoaderID;
+			individualSalesmanLock[myIndex]->Release();	//???
+			int myLoaderID = -1;
+
+			inactiveLoaderLock->Acquire();
+
+			for(int i = 0; i < MAX_LOADERS; i++) {
+				cout << "Load status: " << loaderStatus[i] << endl;
+			}
 
 			for(int i = 0; i < MAX_LOADERS; i++) {
 				if(loaderStatus[i] == LOAD_HAS_BEEN_SIGNALLED) {
 					myLoaderID = i;
+					loaderStatus[i] = LOAD_STOCKING;
 					break;
 				}
 			}
+			inactiveLoaderLock->Release();
 
+			cout << "Loader " << myLoaderID << " has arrived at salesman " << myIndex << "!" << endl;
+			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
 
 		}
 		else if(currentlyTalkingTo[myIndex] == GOODSLOADER) {
@@ -1333,7 +1352,6 @@ void Salesman (int myIndex){
 			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust/loader to walk up to me?
 
 			int itemRestocked = salesDesk[myIndex];
-
 
 			shelfCV[itemRestocked]->Broadcast(shelfLock[itemRestocked]);
 		}
@@ -1346,48 +1364,54 @@ void GoodsLoader(int myID) {
 		inactiveLoaderLock->Acquire();
 		loaderStatus[myID] = LOAD_NOT_BUSY;
 		inactiveLoaderCV->Wait(inactiveLoaderLock);
-
+		cout << "Loader " << myID << " has been summoned" << endl;
 
 		loaderStatus[myID] = LOAD_HAS_BEEN_SIGNALLED;
 		int shelf = -1;
 		int mySalesID = -1;
+		inactiveLoaderLock->Release();
 
 		salesLock->Acquire();
 		for(int i = 0; i < MAX_SALESMEN; i++) {
 			if(currentSalesStatus[i] == SALES_SIGNALLING_LOADER) {
 				mySalesID = i;
+				currentSalesStatus[mySalesID] = SALES_BUSY;
 				break;
 			}
 		}
-		shelf = salesDesk[mySalesID];
-		cout << "Goodsloader " << myID << " has been signalled by salesman" << mySalesID <<
-				"to restock item number " << shelf << endl;
 
+		shelf = salesDesk[mySalesID];
+		cout << "Goodsloader " << myID << " has been signalled by salesman " << mySalesID <<
+				" to restock item number " << shelf << endl;
+		//inactiveLoaderLock->Acquire();
+		//inactiveLoaderLock->Release();
+
+		individualSalesmanLock[mySalesID]->Acquire();
 		salesLock->Release();
-		salesmanCV[mySalesID]->Signal(individualSalesmanLock[mySalesID]);
-		individualSalesmanLock[mySalesID]->Acquire();	//maybe should go before sales lock is released?
+		salesmanCV[mySalesID]->Signal(individualSalesmanLock[mySalesID]);	//tell him i'm here
 		salesmanCV[mySalesID]->Wait(individualSalesmanLock[mySalesID]);
 		individualSalesmanLock[mySalesID]->Release();
 
 
-		if(loaderCurrentlyTalkingTo[myID] == SALESMAN) {
-			//get shelf that needs to be restocked
-
-		}
-
 		//restock
 		int qtyInHands = 0;
 		for(int i = 0; i < MAX_SHELF_QTY; i++) {
-			for(int j = 0; j < 25; j++) {
-				currentThread->Yield();
-			}
 
 			//Simulates a store room like the spec says
 			stockRoomLock->Acquire();
 			qtyInHands++;
 			stockRoomLock->Release();
+			//cout << "about to yield" << endl;
+			/*for(int j = 0; j < 5; j++) {
+				currentThread->Yield();
+			}*/
 
 			shelfLock[shelf]->Acquire();
+			if(shelfInventory[shelf] == MAX_SHELF_QTY) {
+				shelfLock[shelf]->Release();
+				qtyInHands = 0;
+				break;
+			}
 			shelfInventory[shelf] += qtyInHands;
 			qtyInHands = 0;
 			shelfLock[shelf]->Release();
@@ -1395,16 +1419,20 @@ void GoodsLoader(int myID) {
 
 		//wait in line/inform sales
 		salesLock->Acquire();
+		//cout << " I have acquired saleslock and am awaiting to notify a salesman" << endl;
 		mySalesID = -1;
 		for(int i = 0; i < MAX_SALESMEN; i++) {
 			if(currentSalesStatus[i] == SALES_NOT_BUSY) {
+				//cout << " a salesman wasn't busy" << endl;
 				mySalesID = i;
 				break;
 			}
 		}
 		if(mySalesID == -1) {
 			loaderWaitingLineCount++;
+			//cout << "about to wait" << endl;
 			loaderCV->Wait(salesLock);
+			//cout << " i was woken up " << endl;
 			for(int i = 0; i < MAX_SALESMEN; i++) {
 				if(currentSalesStatus[i] == SALES_READY_TO_TALK) {
 					mySalesID = i;
@@ -1413,8 +1441,11 @@ void GoodsLoader(int myID) {
 			}
 		}
 
-		//Ready to go talk to
+		printf("I am loader %d, and I want to talk to sales %d\n", myID, mySalesID);
+
+		//Ready to go talk to sales
 		individualSalesmanLock[mySalesID]->Acquire();
+		//cout << "Goods loader has acquired individualSalesmanLock" << endl;
 		currentlyTalkingTo[mySalesID] = GOODSLOADER;
 		currentSalesStatus[mySalesID] = SALES_BUSY;
 		salesLock->Release();
@@ -1458,6 +1489,13 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 		sprintf(name,"customer_thread_%d",i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)Customer,i);
+	}
+
+	for(int i = 0; i < MAX_LOADERS; i++) {
+		name = new char [20];
+		sprintf(name,"loader_thread_%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)GoodsLoader,i);
 	}
 }
 
