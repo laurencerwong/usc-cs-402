@@ -425,51 +425,58 @@ void TestSuite() {
  *  Supermarket Code
  *
  */
-
+/*
 #define MAX_SHELF_QTY 20
 #define MAX_TROLLY 40
 #define MAX_SALESMEN 3
 #define MAX_LOADERS 10
 #define MAX_CUSTOMERS 30
 #define NUM_ITEMS 10
+*/
 
+int maxShelfQty = 20;
+int numTrollies = 40;
+int numSalesmen = 3;
+int numLoaders = 10;
+int numItems = 10;
 
 // Enums for the salesmen status
 
 enum SalesmanStatus {SALES_NOT_BUSY, SALES_BUSY, SALES_ON_BREAK, SALES_READY_TO_TALK, SALES_SIGNALLING_LOADER};
-SalesmanStatus currentSalesStatus[MAX_SALESMEN];
+SalesmanStatus *currentSalesStatus = new SalesmanStatus[numSalesmen];
 
 enum WhomIWantToTalkTo {GREETING, COMPLAINING, GOODSLOADER, SALESMAN, MANAGER, UNKNOWN};
-WhomIWantToTalkTo currentlyTalkingTo[MAX_SALESMEN];
-WhomIWantToTalkTo loaderCurrentlyTalkingTo[MAX_LOADERS];
+WhomIWantToTalkTo *currentlyTalkingTo = new WhomIWantToTalkTo[numSalesmen];
+WhomIWantToTalkTo *loaderCurrentlyTalkingTo = new WhomIWantToTalkTo[numLoaders];
 
-int salesCustNumber[MAX_SALESMEN]; //The array of customer indicies that the customers update
-
-int salesDesk[MAX_SALESMEN];
+int *salesCustNumber = new int[numSalesmen]; //The array of customer indicies that the customers update
+int *salesDesk = new int[numSalesmen];
+int *salesBreakBoard = new int[numSalesmen];
+Condition **salesBreakCV = new Condition*[numSalesmen];
 
 int greetingCustWaitingLineCount = 0; //How many customers need to be greeted
 int complainingCustWaitingLineCount = 0; //How many customers need to be helped with empty shelves
 int loaderWaitingLineCount = 0;	//How many loaders are waiting on salesmen
 
-Lock *individualSalesmanLock[MAX_SALESMEN]; //The lock that each salesman uses for his own "desk"
+Lock **individualSalesmanLock = new Lock*[numSalesmen]; //The lock that each salesman uses for his own "desk"
 Lock *salesLock = new Lock("Overall sales lock"); //The lock that protects the salesmen statuses and the line for all three
 
-Condition *salesmanCV[MAX_SALESMEN]; //The condition variable for one on one interactions with the Salesman
+Condition **salesmanCV = new Condition*[numSalesmen]; //The condition variable for one on one interactions with the Salesman
 Condition *greetingCustCV = new Condition ("Greeting Customer Condition Variable"); //The condition var that represents the line all the greeters stay in
 Condition *complainingCustCV = new Condition("Complaining Customer Condition Variable"); //Represents the line that the complainers stay in
 Condition *loaderCV = new Condition("GoodsLoader Condition Variable");	//Represents the line that loaders wait in
 
 enum LoaderStatus {LOAD_NOT_BUSY, LOAD_STOCKING, LOAD_HAS_BEEN_SIGNALLED};
-LoaderStatus loaderStatus[MAX_LOADERS];
+LoaderStatus *loaderStatus = new LoaderStatus[numLoaders];
 
 Lock *inactiveLoaderLock = new Lock("Lock for loaders waiting to be called on");
 Condition *inactiveLoaderCV = new Condition("CV for loaders waiting to be called on");
 
-Lock *shelfLock[NUM_ITEMS];
-Condition *shelfCV[NUM_ITEMS];
+Lock **shelfLock = new Lock*[numItems];
+Condition **shelfCV = new Condition*[numItems];
 Lock *stockRoomLock = new Lock("Stock room lock");
 
-int shelfInventory[NUM_ITEMS];
+int *shelfInventory = new int[numItems];
 
 
 //will be grabbed when a privileged customer checks line lengths/cashier status
@@ -524,7 +531,7 @@ Condition* managerCV; //will be the CV the manager and customer use to communica
 int managerDesk; //will be place customer puts items to show to manager
 
 //Trolleys
-int trollyCount = MAX_TROLLY;
+int trollyCount = numTrollies;
 
 //Lock controlling access to trollyCount;
 Lock* trollyLock;
@@ -542,7 +549,7 @@ Lock* displacedTrollyLock;
 int customersDone;
 
 void initShelves() {
-	for(int i = 0; i < NUM_ITEMS; i++) {
+	for(int i = 0; i < numItems; i++) {
 		shelfLock[i] = new Lock("shelfLock");
 		shelfCV[i] = new Condition("shelfCV");
 		shelfInventory[i] = 0;
@@ -550,7 +557,7 @@ void initShelves() {
 }
 
 void initShelvesWithQty(int q) {
-	for(int i = 0; i < NUM_ITEMS; i++) {
+	for(int i = 0; i < numItems; i++) {
 		shelfLock[i] = new Lock("shelfLock");
 		shelfCV[i] = new Condition("shelfCV");
 		shelfInventory[i] = q;
@@ -558,9 +565,10 @@ void initShelvesWithQty(int q) {
 }
 
 void initSalesmen(){
-	for(int i = 0; i < MAX_SALESMEN; i++){
+	for(int i = 0; i < numSalesmen; i++){
 		currentSalesStatus[i] = SALES_BUSY;
 		currentlyTalkingTo[i] = UNKNOWN;
+		salesBreakBoard[i] = 0;
 		individualSalesmanLock[i] = new Lock(("Salesman Lock"));
 		salesmanCV[i] = new Condition(("Salesman Control Variable"));
 		salesCustNumber[i] = 0;
@@ -568,7 +576,7 @@ void initSalesmen(){
 }
 
 void initLoaders() {
-	for(int i = 0; i < MAX_LOADERS; i++){
+	for(int i = 0; i < numLoaders; i++){
 		loaderStatus[i] = LOAD_NOT_BUSY;
 	}
 }
@@ -576,7 +584,7 @@ void initLoaders() {
 void initTrolly() {
 	char* name;
 
-	trollyCount = MAX_TROLLY;
+	trollyCount = numTrollies;
 	displacedTrollyCount = 0;
 	name = new char[20];
 	name = "trolly lock";
@@ -710,7 +718,7 @@ void Customer(int myIndex){
 		greetingCustWaitingLineCount++;
 		greetingCustCV->Wait(salesLock);
 
-		for(int i = 0; i < MAX_SALESMEN; i++){
+		for(int i = 0; i < numSalesmen; i++){
 			if(currentSalesStatus[i] == SALES_READY_TO_TALK){
 				mySalesIndex = i;
 				currentSalesStatus[i] = SALES_BUSY;
@@ -721,7 +729,7 @@ void Customer(int myIndex){
 	}
 	else {	//there is no line
 		//printf("There was no line for cust %d\n", myIndex);
-		for(int i = 0; i < MAX_SALESMEN; i++){
+		for(int i = 0; i < numSalesmen; i++){
 			if(currentSalesStatus[i] == SALES_NOT_BUSY){
 				mySalesIndex = i;
 				currentSalesStatus[i] = SALES_BUSY;
@@ -734,7 +742,7 @@ void Customer(int myIndex){
 			greetingCustWaitingLineCount++;
 			greetingCustCV->Wait(salesLock);
 
-			for(int i = 0; i < MAX_SALESMEN; i++){
+			for(int i = 0; i < numSalesmen; i++){
 				if(currentSalesStatus[i] == SALES_READY_TO_TALK){
 					mySalesIndex = i;
 					currentSalesStatus[i] = SALES_BUSY;
@@ -757,7 +765,7 @@ void Customer(int myIndex){
 	//BEGINS SHOPPING
 
 	for(int i = 0; i < numItemsToBuy; i++) {	//goes through everything on our grocery list
-		for(int shelfNum = 0; shelfNum < NUM_ITEMS; shelfNum++) {
+		for(int shelfNum = 0; shelfNum < numItems; shelfNum++) {
 			if(shelfNum != itemsToBuy[i]) {
 				continue;
 			}
@@ -784,7 +792,7 @@ void Customer(int myIndex){
 
 					int mySalesID = -1;
 
-					for(int j = 0; j < MAX_SALESMEN; j++) {
+					for(int j = 0; j < numSalesmen; j++) {
 						//nobody waiting, sales free
 						if(complainingCustWaitingLineCount == 0 && currentSalesStatus[j] == SALES_NOT_BUSY) {
 							mySalesID = j;
@@ -799,7 +807,7 @@ void Customer(int myIndex){
 
 						//find the salesman who just signalled me
 
-						for(int k = 0; k < MAX_SALESMEN; k++) {
+						for(int k = 0; k < numSalesmen; k++) {
 							if(currentSalesStatus[k] == SALES_READY_TO_TALK) {
 								mySalesID = k;
 								break;
@@ -1285,6 +1293,13 @@ void Salesman (int myIndex){
 		//Check if there is someone in line
 		//and wake them up
 
+		if(salesBreakBoard[myIndex] == 1) {	//go on break... should it be more complex than this?
+			SalesmanStatus prev = currentSalesStatus[myIndex];
+			currentSalesStatus[myIndex] = SALES_ON_BREAK;
+			salesBreakCV[myIndex]->Wait(salesLock);
+			currentSalesStatus[myIndex] = prev;
+		}
+
 		if(greetingCustWaitingLineCount > 0){
 			//cout << "Salesman going to greet cust" << endl;
 			currentSalesStatus[myIndex] = SALES_READY_TO_TALK;
@@ -1350,11 +1365,11 @@ void Salesman (int myIndex){
 
 			inactiveLoaderLock->Acquire();
 
-			for(int i = 0; i < MAX_LOADERS; i++) {
+			for(int i = 0; i < numLoaders; i++) {
 				cout << "Load status: " << loaderStatus[i] << endl;
 			}
 
-			for(int i = 0; i < MAX_LOADERS; i++) {
+			for(int i = 0; i < numLoaders; i++) {
 				if(loaderStatus[i] == LOAD_HAS_BEEN_SIGNALLED) {
 					myLoaderID = i;
 					loaderStatus[i] = LOAD_STOCKING;
@@ -1393,7 +1408,7 @@ void GoodsLoader(int myID) {
 		inactiveLoaderLock->Release();
 
 		salesLock->Acquire();
-		for(int i = 0; i < MAX_SALESMEN; i++) {
+		for(int i = 0; i < numSalesmen; i++) {
 			if(currentSalesStatus[i] == SALES_SIGNALLING_LOADER) {
 				mySalesID = i;
 				currentSalesStatus[mySalesID] = SALES_BUSY;
@@ -1416,7 +1431,7 @@ void GoodsLoader(int myID) {
 
 		//restock
 		int qtyInHands = 0;
-		for(int i = 0; i < MAX_SHELF_QTY; i++) {
+		for(int i = 0; i < maxShelfQty; i++) {
 
 			//Simulates a store room like the spec says
 			stockRoomLock->Acquire();
@@ -1428,7 +1443,7 @@ void GoodsLoader(int myID) {
 			}*/
 
 			shelfLock[shelf]->Acquire();
-			if(shelfInventory[shelf] == MAX_SHELF_QTY) {
+			if(shelfInventory[shelf] == maxShelfQty) {
 				shelfLock[shelf]->Release();
 				qtyInHands = 0;
 				break;
@@ -1442,7 +1457,7 @@ void GoodsLoader(int myID) {
 		salesLock->Acquire();
 		//cout << " I have acquired saleslock and am awaiting to notify a salesman" << endl;
 		mySalesID = -1;
-		for(int i = 0; i < MAX_SALESMEN; i++) {
+		for(int i = 0; i < numSalesmen; i++) {
 			if(currentSalesStatus[i] == SALES_NOT_BUSY) {
 				//cout << " a salesman wasn't busy" << endl;
 				mySalesID = i;
@@ -1454,7 +1469,7 @@ void GoodsLoader(int myID) {
 			//cout << "about to wait" << endl;
 			loaderCV->Wait(salesLock);
 			//cout << " i was woken up " << endl;
-			for(int i = 0; i < MAX_SALESMEN; i++) {
+			for(int i = 0; i < numSalesmen; i++) {
 				if(currentSalesStatus[i] == SALES_READY_TO_TALK) {
 					mySalesID = i;
 					break;
@@ -1512,7 +1527,7 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 		t->Fork((VoidFunctionPtr)Customer,i);
 	}
 
-	for(int i = 0; i < MAX_LOADERS; i++) {
+	for(int i = 0; i < numLoaders; i++) {
 		name = new char [20];
 		sprintf(name,"loader_thread_%d",i);
 		t = new Thread(name);
@@ -1529,7 +1544,7 @@ void testCustomerEnteringStoreAndPickingUpItems() {
 	char* name;
 
 	Thread * t;
-	for(int i = 0; i < MAX_SALESMEN; i++){
+	for(int i = 0; i < numSalesmen; i++){
 		name = new char [20];
 		sprintf(name,"sales%d",i);
 		t = new Thread(name);
@@ -1698,7 +1713,7 @@ void Problem2(){
 				testCustomerEnteringStoreAndPickingUpItems();
 				break;
 		case 6:
-				TestGreetingCustomer(MAX_CUSTOMERS, MAX_SALESMEN);
+				TestGreetingCustomer(custNumber, numSalesmen);
 				break;
 		//add cases here for your test
 		default: break;
