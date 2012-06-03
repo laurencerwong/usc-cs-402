@@ -213,7 +213,10 @@ void Condition::Signal(Lock* conditionLock) {
 	Thread *thread;
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts so this opertion is atomic
 														//(can't be switch out
-	if(queue->IsEmpty()) return; //don't need to worry if an extraneous call to signal, just return
+	if(queue->IsEmpty()){
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		return; //don't need to worry if an extraneous call to signal, just return
+	}
 	if(waitingLock != conditionLock){ //check that it is the proper lock, otherwise the thread woken up will try
 										//to acquire a lock that may not be free and be blocked as a result
 		printf("Argument passed to Condition::Signal() was the incorrect lock, returning without performing wait\n");
