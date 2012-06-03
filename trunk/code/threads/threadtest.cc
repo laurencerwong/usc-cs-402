@@ -989,7 +989,7 @@ void customer(int myID){
 		int amountOwed = managerDesk;
 		myCash -= amountOwed; //updating my cash amount because I am paying manager
 		managerDesk = amountOwed; //technically redundant, but represents me paying money
-		printf("%s %d pays %d and is now waiting for receipt.\n", type, amountOwed, myID);
+		printf("%s %d pays %d and is now waiting for receipt.\n", type, myID, amountOwed);
 		//need receipt
 		managerCV->Signal(managerLock);
 		managerCV->Wait(managerLock);
