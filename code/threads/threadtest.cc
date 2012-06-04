@@ -440,6 +440,7 @@ int numSalesmen = 3;
 int numLoaders = 10;
 int numItems = 10;
 int numDepartments = 3;
+int maxCustomers = 100;
 
 // Enums for the salesmen status
 
@@ -551,6 +552,15 @@ Lock* displacedTrollyLock;
 queue<int> managerItems;
 //lock to protect managerItems;
 Lock* managerItemsLock;
+
+//which goodsloader is currently in the stockroom
+int currentLoaderInStock = -1;
+
+//Lock for currentLockInStock
+Lock *currentLoaderInStockLock = new Lock("cur loader in stock lock");
+
+//Which customers are privileged or not
+int *privCustomers = new int[maxCustomers];
 int customersDone;
 
 void initShelves() {
@@ -606,6 +616,9 @@ void initTrolly() {
 }
 
 void initCustomerCashier(){
+	for(int i = 0; i < maxCustomers; i++){
+		privCustomers[i] = 0; //sets all the customers to unprivileged
+	}
 	char* name;
 	name = new char[20];
 	name = "cashier line lock";
@@ -893,6 +906,25 @@ void Customer(int myID){
 	itemsInCart = new int[numItemsToBuy];
 	qtyItemsInCart = new int[numItemsToBuy];
 
+	//---------Randomly generate whether this customer is privileged--------------
+	char* type = new char[20];
+	int privileged;
+	srand(myID + time(NULL));
+	int r = rand() % 10; //random value to set Customer either as privileged or unprivileged
+	if(r < 2){//30% chance customer is privileged
+		privileged = 1;
+	}
+	else privileged = 0; //70% chance this customer is unprivileged
+
+	//set char array for I/O purposes
+	if(privileged){
+		type = "Privileged Customer";
+	}
+	else type = "Customer";
+	privileged = 0;
+	//--------------End of privileged/unprivileged decion--------------------------
+
+
 	for(int i = 0; i < numItemsToBuy; i++) {
 		//TODO- Put a random item/qty picker here
 		itemsToBuy[i] = i;
@@ -903,25 +935,27 @@ void Customer(int myID){
 
 	//ENTERS STORE
 
-	cout << "Customer "<< myID <<" enters the SuperMarket" << endl;
-	cout << "Customer " << myID << " wants to buy " << numItemsToBuy << " items" << endl;
+	cout << type << " [" << myID << "] enters the SuperMarket" << endl;
+	cout << type << " [" << myID << "] wants to buy [" << numItemsToBuy << "] no.of items" << endl;
 
 	/*
 	cout << "Customer " << myIndex << " has grocery list:" << endl;
 	cout << "Wanted  qty     Has  qty" << endl;
 	for(int k = 0; k < numItemsToBuy; k++) {
-		cout << itemsToBuy[k] << "       " << qtyItemsToBuy[k] << "       " <<
+		cout << itemosToBuy[k] << "       " << qtyItemsToBuy[k] << "       " <<
 				itemsInCart[k] << "    " << qtyItemsInCart[k] << endl;
 	}
 	cout << "end cust list ---" << endl;
 	*/
 
 	trollyLock->Acquire();
-	cout << "there are: " << trollyCount << " trollies" << endl;
+	//cout << "there are: " << trollyCount << " trollies" << endl;
 	while(trollyCount == 0) {
+		cout << type << " [" << myID << "] gets in line for a trolly" << endl;
 		trollyCV->Wait(trollyLock);
 	}
 	trollyCount--;
+	cout << type << " [" << myID << "] has a trolly for shopping" << endl;
 	trollyLock->Release();
 
 	salesLock->Acquire();
@@ -932,6 +966,7 @@ void Customer(int myID){
 	//Selects a salesman
 	if(greetingCustWaitingLineCount > 0){	//there is a line
 		greetingCustWaitingLineCount++;
+		cout << type << " [" << myID << "] gets in line for the Department [" << "dept#" << "]" << endl;
 		greetingCustCV->Wait(salesLock);
 
 		for(int i = 0; i < numSalesmen; i++){
@@ -969,22 +1004,19 @@ void Customer(int myID){
 		}
 	}
 
-//	cout << "cust " << myID << " about to get desk lock" << endl;
+	//cout << "cust " << myID << " about to get desk lock" << endl;
 
 	individualSalesmanLock[mySalesIndex]->Acquire(); //Acquire the salesman's "desk" lock
-//	cout << "cust " << myID << " got desk lock for sales " << mySalesIndex << endl;
+	cout << type << " [" << myID << "] is interacting with DepartmentSalesman[" << mySalesIndex << "] of Department[" << "dept#" << "]" << endl;
 	salesLock->Release();
 	salesCustNumber[mySalesIndex] = myID; //Sets the customer number of the salesman to this customer's index
-	//cout << "cust " << myID << " about to signal salesman " << mySalesIndex << endl;
 
-	for(int j = 0; j < numSalesmen; j++) {
+	/*for(int j = 0; j < numSalesmen; j++) {
 		cout << "sales status " << currentSalesStatus[j] << "  sales talk " << currentlyTalkingTo[j] << endl;
-	}
+	}*/
 
 	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
-	//cout << "cust " << myID << " waiting for response from sales " << mySalesIndex << endl;
 	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
-	//cout << "cust " << myID << " starts shopping!" << endl;
 	individualSalesmanLock[mySalesIndex]->Release();
 
 	//BEGINS SHOPPING
@@ -995,12 +1027,12 @@ void Customer(int myID){
 				continue;
 			}
 
-			cout << "Customer " << myID << " wants to buy " << qtyItemsToBuy[i] << " of item " << shelfNum << endl;
+			cout << type << " ["<< myID << "] wants to buy [" << shelfNum << "]-[" << qtyItemsToBuy[i] << "]." << endl;
 			while(qtyItemsInCart[i] < qtyItemsToBuy[i]) {
 				shelfLock[shelfNum]->Acquire();
 				if(shelfInventory[shelfNum] > qtyItemsToBuy[i]) {
-					cout << "Customer " << myID << " has found item "
-						 << shelfNum << " and placed " << qtyItemsToBuy[i] << " in the trolly" << endl;
+					cout << type << " ["<< myID << "] has found ["
+						 << shelfNum << "] and placed [" << qtyItemsToBuy[i] << "] in the trolly" << endl;
 
 
 					shelfInventory[shelfNum] -= qtyItemsToBuy[i];
@@ -1010,7 +1042,7 @@ void Customer(int myID){
 					//cout << "Think I need: " << qtyItemsToBuy[i] << "  Got: " << qtyItemsInCart[i] << endl;
 				}
 				else {	//We are out of this item, go tell sales!
-					cout << "Customer " << myID << " was not able to find item " << shelfNum <<
+					cout << type << " [" << myID << "] was not able to find item " << shelfNum <<
 							" and is searching for department salesman " << "DEPT NUM" << endl;	//TODO dept num
 					shelfLock[shelfNum]->Release();
 					salesLock->Acquire();
@@ -1026,7 +1058,7 @@ void Customer(int myID){
 						}
 					}
 					if(mySalesID == -1) {	//no salesmen are free, I have to wait in line
-						cout << "Customer " << myID << " gets in line for a salesman in department " << "DNUM" << endl;
+//						cout << type << " ["<< myID << "] gets in line for a salesman in department " << "dept#" << endl;
 						complainingCustWaitingLineCount++;
 						complainingCustCV->Wait(salesLock);
 
@@ -1041,8 +1073,8 @@ void Customer(int myID){
 					}
 
 					individualSalesmanLock[mySalesID]->Acquire();
-					cout << "Customer " << myID << " is asking for assistance "
-							"from DepartmentSalesman " << mySalesID << endl;
+					cout << type << " [" << myID << "] is asking for assistance "
+							"from DepartmentSalesman [" << mySalesID << "]" << endl;
 					currentSalesStatus[mySalesID] = SALES_BUSY;
 					salesCustNumber[mySalesID] = myID;	//
 					salesLock->Release();
@@ -1055,35 +1087,34 @@ void Customer(int myID){
 					salesmanCV[mySalesID]->Wait(individualSalesmanLock[mySalesID]);
 					individualSalesmanLock[mySalesID]->Release();
 					//now i go wait on the shelf
-					cout << "Customer " << myID << " is now waiting for item " <<
-							shelfNum << " to be restocked" << endl;
-
+				/*	cout << type << " [" <<  myID << "] is now waiting for item [" <<
+							shelfNum << "] to be restocked" << endl;
+							*/
 					shelfLock[shelfNum]->Acquire();
 					shelfCV[shelfNum]->Wait(shelfLock[shelfNum]);
+					cout << "DepartmentSalesman [" << mySalesID << "] informs the " << type << " [" << myID << "] that [" << shelfNum << "] is restocked." << endl;
 					//now restocked, continue looping until I have all of what I need
-					cout << "Customer " << myID << " has received assistance about restocking of item " <<
-							shelfNum << " from DepartmentSalesman " << mySalesID << endl;
+					cout << type << " [" <<  myID << "] has received assistance about restocking of item [" <<
+							shelfNum << "] from DepartmentSalesman [" << mySalesID << "]" << endl;
 				}
 			}	//end while loop to get enough of a given item
 		}	//end looking through shelves
 	}	//end going through grocery list
 
-	cout << "Customer " << myID << " is done getting items:" << endl;
+	/*cout << type << " [" << myID << "] is done getting items:" << endl;
 	cout << "Wanted  qty     Has  qty" << endl;
 	for(int k = 0; k < numItemsToBuy; k++) {
 		cout << itemsToBuy[k] << "       " << qtyItemsToBuy[k] << "       " <<
 				itemsInCart[k] << "    " << qtyItemsInCart[k] << endl;
 	}
-	cout << "end cust list ---" << endl;
+	cout << "end cust list ---" << endl;*/
 
 	
 	//========================================================
 	
 	
 	int myCashier; //ID of cashier I speak to
-	char* type = new char[20];
 	int myCash = customerCash;
-	int privileged;
 	
 	//int *itemsInCart;
 	//int *qtyItemsInCart;
@@ -1095,26 +1126,10 @@ void Customer(int myID){
 		qtyItemsInCart[i] = 3 - i;
 	}*/
 
-	//---------Randomly generate whether this customer is privileged--------------
-	srand(myID + time(NULL));
-	int r = rand() % 10; //random value to set Customer either as privileged or unprivileged
-	if(r < 2){//30% chance customer is privileged
-		privileged = 1;
-	}
-	else privileged = 0; //70% chance this customer is unprivileged
-
-	//set char array for I/O purposes
-	if(privileged){
-		type = "Privileged Customer";
-	}
-	else type = "Customer";
-	privileged = 0;
-	//--------------End of privileged/unprivileged decion--------------------------
-
 	//--------------Begin looking for a cashier-------------------------------------
 	cashierLinesLock->Acquire(); //acquire locks to view line counts and cashier statuses
 	do{
-	printf("%s %d is looking for the cashier.\n", type, myID );
+	printf("%s [%d] is looking for the Cashier.\n", type, myID );
 
 	//Find if a cashier is free (if one is, customer doesn't need to wait in line)
 	for(int i = 0; i < cashierNumber; i++ ){
@@ -1123,7 +1138,7 @@ void Customer(int myID){
 			myCashier = i; //remember who he is
 			cashierLock[i]->Acquire(); //get his lock before I wake him up
 			cashierStatus[i] = CASH_BUSY; //prevent others from thinking he's free
-			printf("%s %d chose Cashier %d who is free.\n", type, myID, myCashier);
+			printf("%s [%d] chose Cashier [%d] with line of length [0].\n", type, myID, myCashier);
 			break; //stop searching through lines
 		}
 
@@ -1159,7 +1174,7 @@ void Customer(int myID){
 				}
 			}
 			myCashier = minCashierID;
-			printf("%s %d chose Cashier %d of line length %d.\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
+			printf("%s [%d] chose Cashier [%d] of line length [%d].\n", type, myID, myCashier, linesIAmLookingAt[minCashierID]);
 			linesIAmLookingAt[minCashierID]++;
 			linesIAmLookingAtCV[minCashierID]->Wait(cashierLinesLock); //wait in line
 			linesIAmLookingAt[myCashier]--; //i have been woken up, remove myself from line
@@ -1177,7 +1192,7 @@ void Customer(int myID){
 
 	//code after this means I have been woken up after getting to the front of the line
 	cashierLock[myCashier]->Acquire(); //disallow others from getting access to my cashier
-	printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
+	//printf("%s %d is now engaged with Cashier %d after waiting in line.\n", type, myID, myCashier);
 	cashierLinesLock->Release(); //allow others to view monitor variable now that I've staked
 							//my claim on this cashier
 	cashierDesk[myCashier] = myID; //tell cashier who I am
@@ -1206,24 +1221,27 @@ void Customer(int myID){
 	//when I get here, the cashier has loaded my total
 	//If I don't have enough money, leave the error flag -1 on the cashier's desk
 	if(cashierDesk[myCashier] > myCash){
+		printf("%s [%d] cannot pay [%d]\n", type, myID, cashierDesk[myCashier]);
 		cashierDesk[myCashier] = -1;
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 		//TODO manager-customer interaction
 		managerLock->Acquire();
 		cashierLock[myCashier]->Release();
+		printf("%s [%d] is waiting for Manager for negotiations\n", type, myID);
 		managerCV->Wait(managerLock);
 
 		//-----------------------Begin passing items to manager---------------------
 		for(int i = 0; i < numItemsToBuy; i++){
 			while(qtyItemsInCart[i] > 0){
-				cout << "manager desk " << managerDesk << endl;
+//				cout << "manager desk " << managerDesk << endl;
 				if(managerDesk < myCash){
 
 					break;
 				}
 				qtyItemsInCart[i] --;
 				managerDesk = itemsInCart[i];
+				printf("%s [%d] tells Manager to remove [%d] from trolly.\n", type, myID, itemsInCart[i]);
 				managerCV->Signal(managerLock);
 				managerCV->Wait(managerLock);
 			}
@@ -1236,13 +1254,13 @@ void Customer(int myID){
 		int amountOwed = managerDesk; //if I still can't afford anything, amountOwed will be 0
 		myCash -= amountOwed; //updating my cash amount because I am paying manager
 		managerDesk = amountOwed; //technically redundant, but represents me paying money
-		printf("%s %d pays %d and is now waiting for receipt.\n", type, myID, amountOwed);
+		printf("%s [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", type, myID, amountOwed);
 		//need receipt
 		managerCV->Signal(managerLock);
 		managerCV->Wait(managerLock);
 		//got receipt, I can now leave
 		managerLock->Release();
-		cout << type << " " << myID << " got receipt from Manager and is now leaving." << endl;
+		cout << "Customer [" << myID << "] got receipt from Manager and is now leaving." << endl;
 	}
 	//if I do have money, I just need to update my cash and leave
 	//the money there
@@ -1250,10 +1268,10 @@ void Customer(int myID){
 		myCash -= cashierDesk[myCashier];
 		//Now I wait for my receipt
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
-		printf("%s %d pays %d and is now waiting for receipt.\n", type, myID, cashierDesk[myCashier]);
+		printf("%s [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", type, myID, cashierDesk[myCashier], myCashier);
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 		//now I've received my receipt and should release the cashier
-		cout << type << " " << myID << " got receipt from Cashier " << myCashier << " and is now leaving." << endl;
+		cout << type << " [" << myID << "] got receipt from Cashier [" << myCashier << "] and is now leaving." << endl;
 		cashierLock[myCashier]->Release();
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
 		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
@@ -1521,9 +1539,9 @@ void manager(){
 				}
 			}
 			for(int i = 0; i < cashierNumber; i++){
-				cout << "Total Sale from Counter " << i << " is $" << cashierTotals[i] << "." << endl;
+				cout << "Total Sale from Counter [" << i << "] is $[" << cashierTotals[i] << "]." << endl;
 			}
-			cout << "Total Sale of the entire store is $" << totalRevenue << "." << endl;
+			cout << "Total Sale of the entire store is $[" << totalRevenue << "]." << endl;
 			break;
 		}
 		//------------------End check if all customers have left store------------
@@ -1581,7 +1599,7 @@ void manager(){
 			int r = rand() % cashierNumber;
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
 				cashierStatus[r] = CASH_GO_ON_BREAK;
-				/*if(numAnyLines)*/cout << "Manager sends Cashier " << r << " on break." << endl;
+				/*if(numAnyLines)*/cout << "Manager sends Cashier [" << r << "] on break." << endl;
 				cashiersOnBreak.push(r);
 				numCashiersOnBreak++;
 
@@ -1637,9 +1655,9 @@ void manager(){
 			if(cashRegister[i] > 0){
 				totalRevenue += cashRegister[i];
 				cashierTotals[i] += cashRegister[i];
-				cout << "Manager emptied Counter " << i << " drawer." << endl;
+				cout << "Manager emptied Counter [" << i << "] drawer." << endl;
 				cashRegister[i] = 0;
-				cout << "Manager has total sale of $" << totalRevenue << "." << endl;
+				cout << "Manager has total sale of $[" << totalRevenue << "]." << endl;
 				cashierLock[i]->Release();
 				break;
 			}
@@ -1647,7 +1665,7 @@ void manager(){
 
 			//------------------------------Start deal with broke customers-------------------------
 			else if(cashierFlags[i] != -1){
-				cout <<"Manager got a call from Cashier " << i << "." << endl;
+				cout <<"Manager got a call from Cashier [" << i << "]." << endl;
 				int customerID = cashierFlags[i];
 				int cashierID = i;
 
@@ -1678,13 +1696,14 @@ void manager(){
 					managerItems.push(managerDesk);
 					managerItemsLock->Release();
 					cout << "new amount owed " << amountOwed << endl;
-					cout << "Manager removes " << managerDesk << " from the trolly of " << custType << " " << customerID << "."<<endl;
+					cout << "Manager removes [" << managerDesk << "] from the trolly of " << custType << " [" << customerID << "]."<<endl;
 					managerDesk = amountOwed; //giving customer new subtotal
 									//customer will put back -1 if out of items
 									// or if they can now afford
 					managerCV->Signal(managerLock);
 					managerCV->Wait(managerLock);
 				}
+				inactiveLoaderCV->Signal(inactiveLoaderLock);
 				//now customer has reached end of items or has enough money
 				//I give him total
 				managerDesk = amountOwed;
@@ -1693,7 +1712,7 @@ void manager(){
 				totalRevenue += managerDesk;
 
 				//Now give the customer his receipt
-				cout << "Manager gives receipt to " << custType << " " << customerID << "." << endl;
+				cout << "Manager gives receipt to " << custType << " [" << customerID << "]." << endl;
 				managerDesk = -1;
 				managerCV->Signal(managerLock);
 				//release manager lock
@@ -1719,19 +1738,19 @@ void cashier(int myCounter){
 		cashierLinesLock->Acquire();
 		//check my status to see if I've already been set to busy by a customer
 		if(cashierStatus[myCounter] == CASH_GO_ON_BREAK){
-			//cout << "Cashier " << myCounter << " acknowledges he will go on break" << endl;
+			//cout << "Cashier [" << myCounter << " acknowledges he will go on break" << endl;
 
 
 
 		unprivilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
 		privilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
 		//cout << myCounter << " just broadcast! and my line had " << unprivilegedLineCount[myCounter] << " and " << privilegedLineCount[myCounter] << endl;
-		cout << "Cashier " << myCounter << " is going on break." << endl;
+		cout << "Cashier [" << myCounter << "] is going on break." << endl;
 		cashierStatus[myCounter] = CASH_ON_BREAK;
 		cashierLock[myCounter]->Acquire();
 		cashierLinesLock->Release();
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-		cout << "Cashier " << myCounter << " was called from break by Manager to work." << endl;
+		cout << "Cashier [" << myCounter << "] was called from break by Manager to work." << endl;
 		continue;
 	}
 	//check if my lines have anyone in it
@@ -1764,7 +1783,7 @@ void cashier(int myCounter){
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	if(cashierDesk[myCounter] == 1){
-		custType = "Privileged Customer";
+		custType = "PrivilegedCustomer";
 	}
 	else{
 		custType = "Customer";
@@ -1774,20 +1793,20 @@ void cashier(int myCounter){
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
 
 
-		cout << "Cashier " << myCounter << " got " << cashierDesk[myCounter] << " from the trolly of " << custType << " " << custID << "." << endl;
+		cout << "Cashier [" << myCounter << "] got [" << cashierDesk[myCounter] << "] from trolly of " << custType << " [" << custID << "]." << endl;
 		total += scan(cashierDesk[myCounter]);
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	}
 	//now I'm done scanning, so I tell the customer the total
-	cout << "Cashier " << myCounter << " tells " << custType << " " << custID << " total cost is $" << total << endl;
+	cout << "Cashier [" << myCounter << "] tells " << custType << " [" << custID << "] total cost is $[" << total << "]." << endl;
 	cashierDesk[myCounter] = total;
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	if(cashierDesk[myCounter] == -1){
-		cout << "Cashier " << myCounter << " asks " << custType << " " << custID << " to wait for Manager." << endl;
-		cout << "Cashier " << myCounter << " informs the Manager that " << custType << " " << custID << " does not have enough money." << endl;
+		cout << "Cashier [" << myCounter << "] asks " << custType << " [" << custID << "] to wait for Manager." << endl;
+		cout << "Cashier [" << myCounter << "] informs the Manager that " << custType << " [" << custID << "] does not have enough money." << endl;
 		cashierFlags[myCounter] = custID;
 		//cout << "cashier is goign to sleep" << endl;
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
@@ -1808,9 +1827,9 @@ void cashier(int myCounter){
 	else{
 		//add value to cash register
 		cashRegister[myCounter] += cashierDesk[myCounter];
-		cout << "Cashier " << myCounter << " got money $" << cashierDesk[myCounter] << " from " << custType << " " << custID << "." << endl;
+		cout << "Cashier [" << myCounter << "] got money $[" << cashierDesk[myCounter] << "] from " << custType << " [" << custID << "]." << endl;
 		//giving the customer a receipt
-		cout << "Cashier " << myCounter << " gave the receipt to " << custType << " and tells him to leave" << endl;
+		cout << "Cashier [" << myCounter << "] gave the receipt to " << custType << " [" << custID << "] and tells him to leave" << endl;
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		//wait for customer to acknowledge getting receipt and release lock
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
@@ -1872,20 +1891,20 @@ void Salesman (int myIndex){
 
 		individualSalesmanLock[myIndex]->Acquire();
 		salesLock->Release();
-		//cout << "sales " << myIndex << " waiting for someone to come up to me" << endl;
-
-		for(int j = 0; j < numSalesmen; j++) {
-			cout << currentSalesStatus[j] << " status   " << currentlyTalkingTo[j] << " talker" << endl;
-		}
-		salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust/loader to walk up to me?	STUCK HERE
-		cout << "Someone " << currentlyTalkingTo[myIndex] << " came up to salesman " << myIndex << endl;
+		salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust/loader to walk up to me?
+		//cout << "Someone " << currentlyTalkingTo[myIndex] << " came up to salesman " << myIndex << endl;
 
 		if(currentlyTalkingTo[myIndex] == GREETING) {
 			//individualSalesmanLock[myIndex]->Acquire();
 			//salesLock->Release();
 			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust to walk up to me?
 			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
-			cout << "Customer " << myCustNumber << " is being greeted" << endl;
+			if(privCustomers[myCustNumber] == 1){
+				cout << "DepartmentSalesman [" << myIndex << "] welcomes PrivilegeCustomer [" << myCustNumber << "] to Department [" << "dept#" << "]." << endl;
+			}
+			else{
+				cout << "DepartmentSalesman [" << myIndex << "] welcomes Customer [" << myCustNumber << "] to Department [" << "dept#" << "]." << endl;
+			}
 			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
 			individualSalesmanLock[myIndex]->Release();
 			//cout << "just signalled on index: " << myIndex << endl;
@@ -1897,9 +1916,12 @@ void Salesman (int myIndex){
 			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
 			int itemOutOfStock = salesDesk[myIndex];
 
-			cout << "Customer " << myCustNumber << " is complaining that item " <<
-					itemOutOfStock << " is out of stock"<< endl;
-
+			if(privCustomers[myCustNumber] == 1){
+				cout << "DepartmentSalesman [" << myIndex << "] is informed by PrivilegeCustomer [" << myCustNumber << "] that [" << itemOutOfStock << "] is out of stock." << endl;
+			}
+			else{
+				cout << "DepartmentSalesman [" << myIndex << "] is informed by Customer [" << myCustNumber << "] that [" << itemOutOfStock << "] is out of stock." << endl;
+			}
 			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);	//tell cust to wait
 
 			//TODO tell goods loader
@@ -1915,7 +1937,7 @@ void Salesman (int myIndex){
 			individualSalesmanLock[myIndex]->Release();	//???
 			int myLoaderID = -1;
 
-
+			/*
 			/*for(int i = 0; i < numLoaders; i++) {
 				cout << "Load status: " << loaderStatus[i] << endl;
 			}*/
@@ -1927,10 +1949,11 @@ void Salesman (int myIndex){
 					break;
 				}
 			}
-			cout << "Salesman " << myIndex << " is waiting for loader " << myLoaderID << endl;
+			//cout << "Salesman " << myIndex << " is waiting for loader " << myLoaderID << endl;
 			inactiveLoaderLock->Release();
 
-			cout << "Loader " << myLoaderID << " has arrived at salesman " << myIndex << "!" << endl;
+			//cout << "Loader " << myLoaderID << " has arrived at salesman " << myIndex << "!" << endl;
+			cout << "DepartmentSalesman [" << myIndex << "] informs the GoodsLoader [" << myLoaderID << "] that [" << itemOutOfStock << "] is out of stock." << endl;
 			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
 
 		}
@@ -1940,8 +1963,13 @@ void Salesman (int myIndex){
 			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust/loader to walk up to me?
 
 			int itemRestocked = salesDesk[myIndex];
-
+			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
+//			salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);
+//			int loaderNumber = salesDesk[myIndex];
+//			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
+			cout << "DepartmentSalesman [" << myIndex << "] is informed by the GoodsLoader [" << "loaderNumber" << "] that [" << itemRestocked << "] is restocked." << endl;
 			shelfCV[itemRestocked]->Broadcast(shelfLock[itemRestocked]);
+			//DepartmentSalesman [identifier] informs the Customer/PrivilegeCustomer [identifier] that [item] is restocked.
 		}
 		else{
 			individualSalesmanLock[myIndex]->Release();
@@ -1950,16 +1978,21 @@ void Salesman (int myIndex){
 }
 
 //Goods loader code			__LOADER__
+//Goods loader code			__LOADER__
 void GoodsLoader(int myID) {
+	int mySalesID = -1;
 	while(true) {
 		inactiveLoaderLock->Acquire();
 		loaderStatus[myID] = LOAD_NOT_BUSY;
+		if(mySalesID != -1){
+			cout << "GoodsLoader [" << myID << "] is waiting for orders to restock." << endl;
+		}
 		inactiveLoaderCV->Wait(inactiveLoaderLock);
-		//cout << "Loader " << myID << " has been summoned" << endl;
+//		cout << "Loader " << myID << " has been summoned" << endl;
 
 		loaderStatus[myID] = LOAD_HAS_BEEN_SIGNALLED;
 		int shelf = -1;
-		int mySalesID = -1;
+		mySalesID = -1;
 		inactiveLoaderLock->Release();
 
 		salesLock->Acquire();
@@ -1973,6 +2006,17 @@ void GoodsLoader(int myID) {
 
 		if(mySalesID == -1){ //if the loader was signaled by the manager to get trollys
 			salesLock->Release();
+			managerItemsLock->Acquire();
+			int inHands = 0;
+			while(!managerItems.empty()){
+				//simulates the manager putting the items in the stockroom
+				inHands = managerItems.front();
+				managerItems.pop(); //remove the item from the manager's item list
+				stockRoomLock->Acquire();
+				inHands = 0;
+				stockRoomLock->Release();
+			}
+			managerItemsLock->Release();
 			displacedTrollyLock->Acquire();
 			int restoreTrollies = 0;
 			if(displacedTrollyCount > 0){
@@ -1988,10 +2032,9 @@ void GoodsLoader(int myID) {
 			}
 		}
 		else{
-
 			shelf = salesDesk[mySalesID];
-			cout << "Goodsloader " << myID << " has been signalled by salesman " << mySalesID <<
-					" to restock item number " << shelf << endl;
+			cout << "GoodsLoader [" << myID << "] is informed by DepartmentSalesman [" << mySalesID <<
+					"] of Department [" << "dept#" << "] to restock [" << shelf << "]." << endl;
 			//inactiveLoaderLock->Acquire();
 			//inactiveLoaderLock->Release();
 
@@ -2005,18 +2048,33 @@ void GoodsLoader(int myID) {
 			//restock
 			int qtyInHands = 0;
 			for(int i = 0; i < maxShelfQty; i++) {
-
+				//currentLoaderInStockLock->Acquire();
+				//if(currentLoaderInStock == -1){
+				//	currentLoaderInStock = myID;
+					//cout << "GoodsLoader [" << myID << "] is setting the currentLoaderInLock" << endl;
+				//}
+				//else{
+					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
+				//}
 				//Simulates a store room like the spec says
 				stockRoomLock->Acquire();
+				//currentLoaderInStockLock->Release();
+				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]." << endl;
 				qtyInHands++;
+				//currentLoaderInStockLock->Acquire();
+				//currentLoaderInStock = -1; //lets other goodsloaders change it
 				stockRoomLock->Release();
+				//currentLoaderInStockLock->Release();
+				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
+
 				//cout << "about to yield" << endl;
-				/*for(int j = 0; j < 5; j++) {
-				currentThread->Yield();
-			}*/
+					for(int j = 0; j < 5; j++) {
+					currentThread->Yield();
+				}
 
 				shelfLock[shelf]->Acquire();
 				if(shelfInventory[shelf] == maxShelfQty) {
+					cout << "GoodsLoader [" << myID << "] has restocked [" << shelf << "] in Department [" << "dept#" << "]." << endl;
 					shelfLock[shelf]->Release();
 					qtyInHands = 0;
 					break;
@@ -2050,15 +2108,18 @@ void GoodsLoader(int myID) {
 				}
 			}
 
-			printf("I am loader %d, and I want to talk to sales %d\n", myID, mySalesID);
+			//printf("I am loader %d, and I want to talk to sales %d\n", myID, mySalesID);
 
 			//Ready to go talk to sales
 			individualSalesmanLock[mySalesID]->Acquire();
-			//cout << "Goods loader has acquired individualSalesmanLock" << endl;
+			cout << "Goods loader has acquired individualSalesmanLock" << endl;
 			currentlyTalkingTo[mySalesID] = GOODSLOADER;
 			currentSalesStatus[mySalesID] = SALES_BUSY;
 			salesLock->Release();
 			salesDesk[mySalesID] = shelf;
+//			salesmanCV[mySalesID]->Signal(individualSalesmanLock[mySalesID]);
+//			salesmanCV[mySalesID]->Wait(individualSalesmanLock[mySalesID]);
+//			salesDesk[mySalesID] = myID;
 			salesmanCV[mySalesID]->Signal(individualSalesmanLock[mySalesID]);
 			individualSalesmanLock[mySalesID]->Release();
 		}
@@ -2111,7 +2172,7 @@ void TestGreetingCustomer(int NUM_CUSTOMERS, int NUM_SALESMEN){
 
 void testCustomerEnteringStoreAndPickingUpItems() {
 	initSalesmen();
-	initShelvesWithQty(10000);
+	initShelvesWithQty(10);
 	initLoaders();
 	initCustomerCashier();
 	initTrolly();
