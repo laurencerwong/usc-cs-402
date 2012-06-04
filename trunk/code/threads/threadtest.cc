@@ -443,7 +443,7 @@ int numDepartments = 3;
 
 // Enums for the salesmen status
 
-enum SalesmanStatus {SALES_NOT_BUSY, SALES_BUSY, SALES_ON_BREAK, SALES_READY_TO_TALK, SALES_SIGNALLING_LOADER, LOAD_GET_ITEMS_FROM_MANAGER};
+enum SalesmanStatus {SALES_NOT_BUSY, SALES_BUSY, SALES_GO_ON_BREAK, SALES_ON_BREAK, SALES_READY_TO_TALK, SALES_SIGNALLING_LOADER, LOAD_GET_ITEMS_FROM_MANAGER};
 SalesmanStatus *currentSalesStatus = new SalesmanStatus[numSalesmen];
 
 enum WhomIWantToTalkTo {GREETING, COMPLAINING, GOODSLOADER, SALESMAN, MANAGER, UNKNOWN};
@@ -577,6 +577,9 @@ void initSalesmen(){
 		individualSalesmanLock[i] = new Lock(("Salesman Lock"));
 		salesmanCV[i] = new Condition(("Salesman Control Variable"));
 		salesCustNumber[i] = 0;
+		char* name = new char[20];
+		sprintf(name, "Sales break CV %d", i);
+		salesBreakCV[i] = new Condition(name);
 	}
 }
 
@@ -623,7 +626,7 @@ void initCustomerCashier(){
 	cashierDesk = new int[cashierNumber];
 	cashierFlags = new int[cashierNumber];
 	cashRegister = new int[cashierNumber];
-	numTrollies = 5;
+
 	displacedTrollyCount = 0;
 	name = new char[20];
 	name = "trolly lock";
@@ -924,7 +927,7 @@ void Customer(int myID){
 	salesLock->Acquire();
 	int mySalesIndex = -1;
 
-	printf("cust %d is about to select salesman, greeting line is: %d\n", myID,  greetingCustWaitingLineCount);
+	//printf("cust %d is about to select salesman, greeting line is: %d\n", myID,  greetingCustWaitingLineCount);
 
 	//Selects a salesman
 	if(greetingCustWaitingLineCount > 0){	//there is a line
@@ -941,7 +944,7 @@ void Customer(int myID){
 		}
 	}
 	else {	//there is no line
-		printf("There was no line for cust %d\n", myID);
+		//printf("There was no line for cust %d\n", myID);
 		for(int i = 0; i < numSalesmen; i++){
 			if(currentSalesStatus[i] == SALES_NOT_BUSY){
 				mySalesIndex = i;
@@ -951,7 +954,7 @@ void Customer(int myID){
 			}
 		}
 		if(mySalesIndex == -1) {	//no line, but all are busy
-			printf("But all sales were busy... getting in line\n");
+			//printf("But all sales were busy... getting in line\n");
 			greetingCustWaitingLineCount++;
 			greetingCustCV->Wait(salesLock);
 
@@ -966,22 +969,22 @@ void Customer(int myID){
 		}
 	}
 
-	cout << "cust " << myID << " about to get desk lock" << endl;
+//	cout << "cust " << myID << " about to get desk lock" << endl;
 
 	individualSalesmanLock[mySalesIndex]->Acquire(); //Acquire the salesman's "desk" lock
-	cout << "cust " << myID << " got desk lock for sales " << mySalesIndex << endl;
+//	cout << "cust " << myID << " got desk lock for sales " << mySalesIndex << endl;
 	salesLock->Release();
 	salesCustNumber[mySalesIndex] = myID; //Sets the customer number of the salesman to this customer's index
-	cout << "cust " << myID << " about to signal salesman " << mySalesIndex << endl;
+	//cout << "cust " << myID << " about to signal salesman " << mySalesIndex << endl;
 
 	for(int j = 0; j < numSalesmen; j++) {
 		cout << "sales status " << currentSalesStatus[j] << "  sales talk " << currentlyTalkingTo[j] << endl;
 	}
 
 	salesmanCV[mySalesIndex]->Signal(individualSalesmanLock[mySalesIndex]);
-	cout << "cust " << myID << " waiting for response from sales " << mySalesIndex << endl;
+	//cout << "cust " << myID << " waiting for response from sales " << mySalesIndex << endl;
 	salesmanCV[mySalesIndex]->Wait (individualSalesmanLock[mySalesIndex]);
-	cout << "cust " << myID << " starts shopping!" << endl;
+	//cout << "cust " << myID << " starts shopping!" << endl;
 	individualSalesmanLock[mySalesIndex]->Release();
 
 	//BEGINS SHOPPING
@@ -1522,7 +1525,7 @@ void manager(){
 		//if(counter > 10){
 		//	counter = 0;
 		//	cout << customersDone << endl;
-			cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
+			//cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
 		//}
 
 		cashierLinesLock->Acquire(); //going to be checking line counts and statuses, so need this lock
@@ -1577,29 +1580,39 @@ void manager(){
 		cashierLinesLock->Release();
 
 		//-----------------------------Begin bringing salesmen back from break-------------
-		/*
+
 		salesLock->Acquire();
-		if((greetingCustWaitingLineCount + complainingCustWaitingLineCount) > 5 && salesmenOnBreak.size()){
+		if((greetingCustWaitingLineCount + complainingCustWaitingLineCount + loaderWaitingLineCount) > 0 && salesmenOnBreak.size()){
 			int wakeSalesman = cashiersOnBreak.front();
-			salesBreakBoard[wakeSalesman] = 0;
-			currentSalesStatus[wakeSalesman] = SALES_BUSY;
-			salesBreakCV[wakeSalesman]->Signal(salesLock);
-			numSalesmenOnBreak--;
-			salesmenOnBreak.pop();
+			if(currentSalesStatus[wakeSalesman] == SALES_ON_BREAK){
+				salesBreakBoard[wakeSalesman] = 0;
+				cout << "Manager brings back Cashier " << wakeSalesman << " from break." << endl;
+				salesBreakCV[wakeSalesman]->Signal(salesLock);
+				numSalesmenOnBreak--;
+				salesmenOnBreak.pop();
+			}
 		}
+		salesLock->Release();
 		//------------------------------end bringing salesmen back from break--------------
 
 		//------------------------------Begin putting salesmen on break------------------
-		if (chance == 2 && salesmenOnBreak.size() < cashierNumber -  2) {
+		salesLock->Acquire();
+		if (chance == 1 && numSalesmenOnBreak < numSalesmen -1) {
 			int r = rand() % numSalesmen;
-			if(!salesBreakBoard[r]) {
+			if(!salesBreakBoard[r] && currentSalesStatus[r] != SALES_ON_BREAK && currentSalesStatus[r] != SALES_GO_ON_BREAK) {
 				salesBreakBoard[r] = 1;
-				currentSalesStatus[r] = SALES_ON_BREAK;
+				cout << "Manager sends Salesman " << r << " on break." << endl;
+				individualSalesmanLock[r]->Acquire();
+				if(currentlyTalkingTo[r] == UNKNOWN){
+					salesmanCV[r]->Signal(individualSalesmanLock[r]);
+					currentSalesStatus[r] = SALES_ON_BREAK;
+				}
+				individualSalesmanLock[r]->Release();
 				salesmenOnBreak.push(r);
 				numSalesmenOnBreak++;
 			}
 		}
-		salesLock->Release();*/
+		salesLock->Release();
 		//-----------------------------End send salesmen on break
 
 
@@ -1811,10 +1824,11 @@ void Salesman (int myIndex){
 
 		if(salesBreakBoard[myIndex] == 1) {	//go on break
 			cout << "Sales " << myIndex << " going on break" << endl;
-			SalesmanStatus prev = currentSalesStatus[myIndex];
 			currentSalesStatus[myIndex] = SALES_ON_BREAK;
+
 			salesBreakCV[myIndex]->Wait(salesLock);
-			currentSalesStatus[myIndex] = prev;
+			salesBreakBoard[myIndex] = 0;
+			currentSalesStatus[myIndex] = SALES_NOT_BUSY;
 			cout << "Sales " << myIndex << " back from break" << endl;
 		}
 
@@ -1846,7 +1860,7 @@ void Salesman (int myIndex){
 
 		individualSalesmanLock[myIndex]->Acquire();
 		salesLock->Release();
-		cout << "sales " << myIndex << " waiting for someone to come up to me" << endl;
+		//cout << "sales " << myIndex << " waiting for someone to come up to me" << endl;
 
 		for(int j = 0; j < numSalesmen; j++) {
 			cout << currentSalesStatus[j] << " status   " << currentlyTalkingTo[j] << " talker" << endl;
@@ -1861,6 +1875,7 @@ void Salesman (int myIndex){
 			int myCustNumber = salesCustNumber[myIndex]; //not sure if custNumberForSales needs to be an array
 			cout << "Customer " << myCustNumber << " is being greeted" << endl;
 			salesmanCV[myIndex]->Signal(individualSalesmanLock[myIndex]);
+			individualSalesmanLock[myIndex]->Release();
 			//cout << "just signalled on index: " << myIndex << endl;
 		}
 		else if(currentlyTalkingTo[myIndex] == COMPLAINING) {
@@ -1889,9 +1904,9 @@ void Salesman (int myIndex){
 			int myLoaderID = -1;
 
 
-			for(int i = 0; i < numLoaders; i++) {
+			/*for(int i = 0; i < numLoaders; i++) {
 				cout << "Load status: " << loaderStatus[i] << endl;
-			}
+			}*/
 
 			for(int i = 0; i < numLoaders; i++) {
 				if(loaderStatus[i] == LOAD_HAS_BEEN_SIGNALLED) {
@@ -1916,6 +1931,9 @@ void Salesman (int myIndex){
 
 			shelfCV[itemRestocked]->Broadcast(shelfLock[itemRestocked]);
 		}
+		else{
+			individualSalesmanLock[myIndex]->Release();
+		}
 	}
 }
 
@@ -1925,7 +1943,7 @@ void GoodsLoader(int myID) {
 		inactiveLoaderLock->Acquire();
 		loaderStatus[myID] = LOAD_NOT_BUSY;
 		inactiveLoaderCV->Wait(inactiveLoaderLock);
-		cout << "Loader " << myID << " has been summoned" << endl;
+		//cout << "Loader " << myID << " has been summoned" << endl;
 
 		loaderStatus[myID] = LOAD_HAS_BEEN_SIGNALLED;
 		int shelf = -1;
@@ -1993,6 +2011,7 @@ void GoodsLoader(int myID) {
 				}
 				shelfInventory[shelf] += qtyInHands;
 				qtyInHands = 0;
+				shelfLock[shelf]->Release();
 			}
 
 			//wait in line/inform sales
@@ -2275,7 +2294,7 @@ void Problem2(){
 	case 5:
 		custNumber = 12;
 		customerCash = 25;
-		numTrollies = 5;
+		numTrollies = 40;
 		testCustomerEnteringStoreAndPickingUpItems();
 		break;
 	case 6:
