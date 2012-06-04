@@ -1509,6 +1509,18 @@ void manager(){
 		//ready thread
 		if(customersDone == custNumber){
 			for(int i = 0; i < cashierNumber; i++){
+				cashierLock[i]->Acquire();
+				//-----------------------------Start empty cashier drawers------------------------------------
+				if(cashRegister[i] > 0){
+					totalRevenue += cashRegister[i];
+					cashierTotals[i] += cashRegister[i];
+					cout << "Manager emptied Counter " << i << " drawer." << endl;
+					cashRegister[i] = 0;
+					cout << "Manager has total sale of $" << totalRevenue << "." << endl;
+					cashierLock[i]->Release();
+				}
+			}
+			for(int i = 0; i < cashierNumber; i++){
 				cout << "Total Sale from Counter " << i << " is $" << cashierTotals[i] << "." << endl;
 			}
 			cout << "Total Sale of the entire store is $" << totalRevenue << "." << endl;
