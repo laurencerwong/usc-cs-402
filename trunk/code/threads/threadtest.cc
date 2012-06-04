@@ -1534,11 +1534,11 @@ void manager(){
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
 		//I will get around to it
-		//if(counter > 10){
-		//	counter = 0;
+		if(counter > 10){
+			counter = 0;
 		//	cout << customersDone << endl;
-			//cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
-		//}
+			cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
+		}
 
 		cashierLinesLock->Acquire(); //going to be checking line counts and statuses, so need this lock
 
