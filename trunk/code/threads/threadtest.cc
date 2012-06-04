@@ -1258,6 +1258,7 @@ void Customer(int myID){
 					//now restocked, continue looping until I have all of what I need
 					cout << type << " [" <<  myID << "] has received assistance about restocking of item [" <<
 							shelfNum << "] from DepartmentSalesman [" << mySalesID << "]" << endl;
+					shelfLock[currentDepartment][shelfNum]->Release();
 				}
 			}	//end while loop to get enough of a given item
 		}	//end looking through shelves
@@ -2098,7 +2099,9 @@ void Salesman(int arg) {
 			salesLock[myDept]->Release();
 			individualSalesmanLock[myDept][myIndex]->Acquire();	//TODO check order of this and release prev/next line
 			//cout << "signalling a loader" << endl;
+			inactiveLoaderLock->Acquire();
 			inactiveLoaderCV->Signal(inactiveLoaderLock);	//call a loader over?
+			inactiveLoaderLock->Release();
 			salesmanCV[myDept][myIndex]->Wait(individualSalesmanLock[myDept][myIndex]);
 			inactiveLoaderLock->Acquire();	//STUCK HERE
 			individualSalesmanLock[myDept][myIndex]->Release();	//???
@@ -2135,6 +2138,7 @@ void Salesman(int arg) {
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);
 			cout << "DepartmentSalesman [" << myIndex << "] is informed by the GoodsLoader [" << loaderNumber << "] that [" << itemRestocked << "] is restocked." << endl;
 			shelfLock[myDept][itemRestocked]->Acquire();
+			cout << "DepartmentSalesman [" << myIndex << "] has acquired shelfLock for restocked iterm" << endl;
 			shelfCV[myDept][itemRestocked]->Broadcast(shelfLock[myDept][itemRestocked]);
 			shelfLock[myDept][itemRestocked]->Release();
 			individualSalesmanLock[myDept][myIndex]->Release();
@@ -2230,7 +2234,7 @@ void GoodsLoader(int myID) {
 			while(shelfInventory[currentDept][shelf] < maxShelfQty) {
 				shelfLock[currentDept][shelf]->Release();
 
-				currentLoaderInStockLock->Acquire();
+				//currentLoaderInStockLock->Acquire();
 				if(currentLoaderInStock == -1){
 					currentLoaderInStock = myID;
 					//cout << "GoodsLoader [" << myID << "] is setting the currentLoaderInLock" << endl;
@@ -2240,7 +2244,7 @@ void GoodsLoader(int myID) {
 				}
 				//Simulates a store room like the spec says
 				stockRoomLock->Acquire();
-				currentLoaderInStockLock->Release();
+				//currentLoaderInStockLock->Release();
 				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
 				qtyInHands++;
 				stockRoomLock->Release();
@@ -2269,7 +2273,7 @@ void GoodsLoader(int myID) {
 				qtyInHands = 0;
 				//shelfLock[currentDept][shelf]->Release();
 			}
-
+			shelfLock[currentDept][shelf]->Release();
 			//wait in line/inform sales
 			salesLock[currentDept]->Acquire();
 			//cout << " I have acquired saleslock and am awaiting to notify a salesman" << endl;
@@ -2282,7 +2286,7 @@ void GoodsLoader(int myID) {
 				}
 			}
 			if(mySalesID == -1) {
-				loaderWaitingLineCount++;
+				loaderWaitingLineCount[currentDept]++;
 				//cout << "about to wait" << endl;
 				loaderCV[currentDept]->Wait(salesLock[currentDept]);
 				//cout << " i was woken up " << endl;
@@ -2298,7 +2302,7 @@ void GoodsLoader(int myID) {
 
 			//Ready to go talk to sales
 			individualSalesmanLock[currentDept][mySalesID]->Acquire();
-			cout << "Goods loader has acquired individualSalesmanLock" << endl;
+			cout << "Goods loader " << myID << " has acquired individualSalesmanLock" << endl;
 			currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
 			currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
 			salesLock[currentDept]->Release();
