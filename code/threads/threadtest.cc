@@ -1247,12 +1247,12 @@ void Customer(int myID){
 
 					salesmanCV[currentDepartment][mySalesID]->Signal(individualSalesmanLock[currentDepartment][mySalesID]);
 					salesmanCV[currentDepartment][mySalesID]->Wait(individualSalesmanLock[currentDepartment][mySalesID]);
+					shelfLock[currentDepartment][shelfNum]->Acquire();
 					individualSalesmanLock[currentDepartment][mySalesID]->Release();
 					//now i go wait on the shelf
 				/*	cout << type << " [" <<  myID << "] is now waiting for item [" <<
 							shelfNum << "] to be restocked" << endl;
 							*/
-					shelfLock[currentDepartment][shelfNum]->Acquire();
 					shelfCV[currentDepartment][shelfNum]->Wait(shelfLock[currentDepartment][shelfNum]);
 					cout << "DepartmentSalesman [" << mySalesID << "] informs the " << type << " [" << myID << "] that [" << shelfNum << "] is restocked." << endl;
 					//now restocked, continue looping until I have all of what I need
@@ -2013,6 +2013,8 @@ void Salesman(int arg) {
 	while(true) {
 		salesLock[myDept]->Acquire();
 
+		cout << "running sales sched" << endl;
+
 		//Check if there is someone in line
 		//and wake them up
 
@@ -2052,6 +2054,7 @@ void Salesman(int arg) {
 		}
 
 		individualSalesmanLock[myDept][myIndex]->Acquire();
+		cout << "got my individual lock" << endl;
 		salesLock[myDept]->Release();
 		//cout << "sales " << myIndex << " waiting for someone to come up to me" << endl;
 
@@ -2084,7 +2087,7 @@ void Salesman(int arg) {
 				cout << "DepartmentSalesman [" << myIndex << "] is informed by PrivilegeCustomer [" << myCustNumber << "] that [" << itemOutOfStock << "] is out of stock." << endl;
 			}
 			else{
-				cout << "DepartmentSalesman [" << myIndex << "] is informed by Customer [" << myCustNumber << "] that [" << itemOutOfStock << "] is out of stock." << endl;
+				cout << "DepartmentSalesman [" << myIndex << "] by Customer [" << myCustNumber << "] that [" << itemOutOfStock << "] is out of stock." << endl;
 			}
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);	//tell cust to wait
 
@@ -2131,7 +2134,9 @@ void Salesman(int arg) {
 			int loaderNumber = salesDesk[myDept][myIndex];
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);
 			cout << "DepartmentSalesman [" << myIndex << "] is informed by the GoodsLoader [" << loaderNumber << "] that [" << itemRestocked << "] is restocked." << endl;
+			shelfLock[myDept][itemRestocked]->Acquire();
 			shelfCV[myDept][itemRestocked]->Broadcast(shelfLock[myDept][itemRestocked]);
+			shelfLock[myDept][itemRestocked]->Release();
 			individualSalesmanLock[myDept][myIndex]->Release();
 			//DepartmentSalesman [identifier] informs the Customer/PrivilegeCustomer [identifier] that [item] is restocked.
 		}
@@ -2205,13 +2210,13 @@ void GoodsLoader(int myID) {
 			}
 		}
 		else{
+			individualSalesmanLock[currentDept][mySalesID]->Acquire();
 			shelf = salesDesk[currentDept][mySalesID];
 			cout << "GoodsLoader [" << myID << "] is informed by DepartmentSalesman [" << mySalesID <<
 					"] of Department [" << currentDept << "] to restock [" << shelf << "]" << endl;
 			//inactiveLoaderLock->Acquire();
 			//inactiveLoaderLock->Release();
 
-			individualSalesmanLock[currentDept][mySalesID]->Acquire();
 			//salesLock[currentDept]->Release();	//not needed because it is handles in above for loop for depts
 			salesmanCV[currentDept][mySalesID]->Signal(individualSalesmanLock[currentDept][mySalesID]);	//tell him i'm here
 			salesmanCV[currentDept][mySalesID]->Wait(individualSalesmanLock[currentDept][mySalesID]);
@@ -2220,7 +2225,11 @@ void GoodsLoader(int myID) {
 
 			//restock
 			int qtyInHands = 0;
-			for(int i = 0; i < maxShelfQty; i++) {
+			//for(int i = 0; i < maxShelfQty; i++) {
+			shelfLock[currentDept][shelf]->Acquire();
+			while(shelfInventory[currentDept][shelf] < maxShelfQty) {
+				shelfLock[currentDept][shelf]->Release();
+
 				currentLoaderInStockLock->Acquire();
 				if(currentLoaderInStock == -1){
 					currentLoaderInStock = myID;
@@ -2245,7 +2254,7 @@ void GoodsLoader(int myID) {
 				currentLoaderInStockLock->Release();
 				 */
 				//cout << "about to yield" << endl;
-					for(int j = 0; j < 5; j++) {
+				for(int j = 0; j < 5; j++) {
 					currentThread->Yield();
 				}
 
@@ -2258,7 +2267,7 @@ void GoodsLoader(int myID) {
 				}
 				shelfInventory[currentDept][shelf] += qtyInHands;
 				qtyInHands = 0;
-				shelfLock[currentDept][shelf]->Release();
+				//shelfLock[currentDept][shelf]->Release();
 			}
 
 			//wait in line/inform sales
@@ -2573,13 +2582,13 @@ void Problem2(){
 		testMakeCashiersBreak();
 		break;
 	case 5:
-		custNumber = 30;
+		custNumber = 8;
 		customerCash = 25;
 		numTrollies = 20;
 		numSalesmen = 3;
 		numDepartments = 3;
 		cashierNumber = 3;
-		numLoaders = 3;
+		numLoaders = 4;
 		testCustomerEnteringStoreAndPickingUpItems();
 		break;
 	case 6:
