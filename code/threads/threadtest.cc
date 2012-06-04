@@ -955,6 +955,7 @@ void CustomerP1(int myIndex) {
 				else {	//We are out of this item, go tell sales!
 					cout << "Customer " << myIndex << " was not able to find item [" << shelfNum <<
 							"] and is searching for department salesman [" << currentDepartment << "]" << endl;	//TODO dept num
+					cout << "SEG CHK1" << endl;
 					shelfLock[currentDepartment][shelfNum]->Release();
 					salesLock[currentDepartment]->Acquire();
 
@@ -968,6 +969,7 @@ void CustomerP1(int myIndex) {
 							break;
 						}
 					}
+					cout << "SEG CHK2" << endl;
 					if(mySalesID == -1) {	//no salesmen are free, I have to wait in line
 						cout << "Customer " << myIndex << " gets in line for a salesman in department " << currentDepartment << endl;
 						complainingCustWaitingLineCount[currentDepartment]++;
@@ -2211,7 +2213,7 @@ void GoodsLoader(int myID) {
 			//inactiveLoaderLock->Release();
 
 			individualSalesmanLock[currentDept][mySalesID]->Acquire();
-			salesLock[currentDept]->Release();
+			//salesLock[currentDept]->Release();	//not needed because it is handles in above for loop for depts
 			salesmanCV[currentDept][mySalesID]->Signal(individualSalesmanLock[currentDept][mySalesID]);	//tell him i'm here
 			salesmanCV[currentDept][mySalesID]->Wait(individualSalesmanLock[currentDept][mySalesID]);
 			individualSalesmanLock[currentDept][mySalesID]->Release();
