@@ -2014,7 +2014,7 @@ void Salesman(int arg) {
 	while(true) {
 		salesLock[myDept]->Acquire();
 
-		cout << "running sales sched" << endl;
+		//cout << "running sales sched" << endl;
 
 		//Check if there is someone in line
 		//and wake them up
@@ -2055,7 +2055,7 @@ void Salesman(int arg) {
 		}
 
 		individualSalesmanLock[myDept][myIndex]->Acquire();
-		cout << "got my individual lock" << endl;
+		//cout << "got my individual lock" << endl;
 		salesLock[myDept]->Release();
 		//cout << "sales " << myIndex << " waiting for someone to come up to me" << endl;
 
