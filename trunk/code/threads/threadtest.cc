@@ -434,7 +434,7 @@ void TestSuite() {
 #define NUM_ITEMS 10
  */
 
-int maxShelfQty = 20;
+int maxShelfQty = 10;
 int numTrollies = 40;
 int numSalesmen = 3;
 int numLoaders = 10;
@@ -2026,7 +2026,7 @@ void Salesman(int arg) {
 		}
 
 		if(greetingCustWaitingLineCount[myDept] > 0){
-			//cout << "Salesman going to greet cust" << endl;
+			cout << "Salesman going to greet cust" << endl;
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK;
 			greetingCustCV[myDept]->Signal(salesLock[myDept]);
 			greetingCustWaitingLineCount[myDept]--;
@@ -2034,19 +2034,19 @@ void Salesman(int arg) {
 		}
 		else if(loaderWaitingLineCount[myDept] > 0) {
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK;
-			//cout << "Signalling loader waiting" << endl;
+			cout << "Signalling loader waiting" << endl;
 			loaderCV[myDept]->Signal(salesLock[myDept]);
 			loaderWaitingLineCount[myDept]--;
 		}
 		else if(complainingCustWaitingLineCount[myDept] > 0) {
-			//cout << "Salesman going to help a complaing cust" << endl;
+			cout << "Salesman going to help a complaing cust" << endl;
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK;
 			complainingCustCV[myDept]->Signal(salesLock[myDept]);
 			complainingCustWaitingLineCount[myDept]--;
 		}
 
 		else{
-			//cout << "not busy" << endl;
+			cout << "not busy" << endl;
 			currentlyTalkingTo[myDept][myIndex] = UNKNOWN;
 			currentSalesStatus[myDept][myIndex] = SALES_NOT_BUSY;
 		}
@@ -2093,11 +2093,11 @@ void Salesman(int arg) {
 			currentSalesStatus[myDept][myIndex] = SALES_SIGNALLING_LOADER;
 			salesDesk[myDept][myIndex] = itemOutOfStock;	//Might not be necessary, because we never really took it off the desk
 			salesLock[myDept]->Release();
-			individualSalesmanLock[myDept][myIndex]->Acquire();
+			individualSalesmanLock[myDept][myIndex]->Acquire();	//TODO check order of this and release prev/next line
 			//cout << "signalling a loader" << endl;
 			inactiveLoaderCV->Signal(inactiveLoaderLock);	//call a loader over?
 			salesmanCV[myDept][myIndex]->Wait(individualSalesmanLock[myDept][myIndex]);
-			inactiveLoaderLock->Acquire();
+			inactiveLoaderLock->Acquire();	//STUCK HERE
 			individualSalesmanLock[myDept][myIndex]->Release();	//???
 			int myLoaderID = -1;
 
@@ -2157,11 +2157,10 @@ void GoodsLoader(int myID) {
 			}
 			inactiveLoaderCV->Wait(inactiveLoaderLock);
 			//		cout << "Loader " << myID << " has been summoned" << endl;
-
-			loaderStatus[myID] = LOAD_HAS_BEEN_SIGNALLED;
-			mySalesID = -1;
-			inactiveLoaderLock->Release();
 		}
+		loaderStatus[myID] = LOAD_HAS_BEEN_SIGNALLED;
+		mySalesID = -1;
+		inactiveLoaderLock->Release();
 
 		for(int j = 0; j < numDepartments; j++) {
 			salesLock[j]->Acquire();
@@ -2237,6 +2236,9 @@ void GoodsLoader(int myID) {
 				qtyInHands++;
 				stockRoomLock->Release();
 				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
+				currentLoaderInStockLock->Acquire();
+				currentLoaderInStock = -1;
+				currentLoaderInStockLock->Release();
 				/*
 				 * 				currentLoaderInStockLock->Acquire();
 				currentLoaderInStock = -1; //lets other goodsloaders change it
@@ -2526,7 +2528,7 @@ void Problem2(){
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice;
-	while(true){
+	/*while(true){
 		cin >> choice;
 		if(cin.fail()){
 			cin.clear();
@@ -2539,7 +2541,8 @@ void Problem2(){
 			continue;
 		}
 		else break;
-	}
+	}*/
+	choice = 5;
 	switch (choice){
 	case 1:
 		customerCash = 100000;
@@ -2570,9 +2573,13 @@ void Problem2(){
 		testMakeCashiersBreak();
 		break;
 	case 5:
-		custNumber = 12;
+		custNumber = 30;
 		customerCash = 25;
-		numTrollies = 40;
+		numTrollies = 20;
+		numSalesmen = 3;
+		numDepartments = 3;
+		cashierNumber = 3;
+		numLoaders = 3;
 		testCustomerEnteringStoreAndPickingUpItems();
 		break;
 	case 6:
