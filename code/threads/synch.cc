@@ -198,6 +198,12 @@ void Condition::Wait(Lock* conditionLock) {
 	if(conditionLock != waitingLock){
 		printf("Argument passed to Condition::Wait() was the incorrect lock, returning without performing wait\n");
 		(void) interrupt->SetLevel(oldLevel);
+		return;
+	}
+	if(!waitingLock->isHeldByCurrentThread()){
+		printf("Thread %s calling Wait() on Condition %s does not have lock\n", currentThread->getName(), name);
+		(void) interrupt->SetLevel(oldLevel);
+		return;
 	}
 	//OK to wait
 
