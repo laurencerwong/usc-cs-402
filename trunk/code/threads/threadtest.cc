@@ -1357,8 +1357,10 @@ void manager(){
 		int dept = 0;
 
 		for(int i = 0; i < numDepartments; i++) {
-			salesLock[dept]->Acquire();
-			if((greetingCustWaitingLineCount[dept] + complainingCustWaitingLineCount[dept] + loaderWaitingLineCount[dept]) > 0 && numSalesmenOnBreak[dept]){
+			cout << "Manager about to check dept " << i << " to try and bring a sales back from break" << endl;
+			salesLock[i]->Acquire();
+			cout << "Manager got sales lock in dept " << i << " to try and bring a sales back from break" << endl;
+			if((greetingCustWaitingLineCount[i] + complainingCustWaitingLineCount[i] + loaderWaitingLineCount[i]) > 0 && numSalesmenOnBreak[i]){
 				int arg = salesmenOnBreak.front();
 				int targets[2];
 				deconstructSalesArg(arg, targets);
@@ -1367,30 +1369,32 @@ void manager(){
 
 				if(currentSalesStatus[dept][wakeSalesman] == SALES_ON_BREAK){
 					salesBreakBoard[dept][wakeSalesman] = 0;
-					cout << "Manager brings back Cashier " << wakeSalesman << " from break." << endl;
+					cout << "Manager brings back Salesman " << wakeSalesman << " from break." << endl;
 					salesBreakCV[dept][wakeSalesman]->Signal(salesLock[dept]);
 					numSalesmenOnBreak[dept]--;
 					salesmenOnBreak.pop();
 				}
 			}
-			salesLock[dept]->Release();
+			salesLock[i]->Release();
 		}
 		//------------------------------end bringing salesmen back from break--------------
 
 		//------------------------------Begin putting salesmen on break------------------
 		dept = rand() % numDepartments;
+		cout << "Manager about to check dept " << dept << " to try and send a sales on break" << endl;
 		salesLock[dept]->Acquire();
+		cout << "Manager got sales lock in dept " << dept << " to try and send a sales on break" << endl;
 		if (chance == 1 && numSalesmenOnBreak[dept] < numSalesmen -1) {
 			int r = rand() % numSalesmen;
 			if(!salesBreakBoard[dept][r] && currentSalesStatus[dept][r] != SALES_ON_BREAK && currentSalesStatus[dept][r] != SALES_GO_ON_BREAK) {
 				salesBreakBoard[dept][r] = 1;
-				cout << "Manager sends Salesman " << r << " on break." << endl;
-				individualSalesmanLock[dept][r]->Acquire();
+				cout << "Manager sends Salesman " << r << " of dept " << dept << " on break." << endl;
+				/*individualSalesmanLock[dept][r]->Acquire();
 				if(currentSalesStatus[dept][r] == SALES_NOT_BUSY) {
 					salesmanCV[dept][r]->Signal(individualSalesmanLock[dept][r]);
 					currentSalesStatus[dept][r] = SALES_ON_BREAK;
 				}
-				individualSalesmanLock[dept][r]->Release();
+				individualSalesmanLock[dept][r]->Release();*/
 				salesmenOnBreak.push(constructSalesArg(dept, r)); //function that uses bit operations to store dept and salesman index
 																//in one int so I can get it from my queue later when I take a Salesman off break
 				numSalesmenOnBreak[dept]++;
@@ -1822,7 +1826,6 @@ void GoodsLoader(int myID) {
 
 		loaderStatus[myID] = LOAD_HAS_BEEN_SIGNALLED;
 		mySalesID = -50;
-		inactiveLoaderLock->Release();
 
 		//look through all departments to find out who signalled me
 		for(int j = 0; j < numDepartments; j++) {
@@ -1841,6 +1844,7 @@ void GoodsLoader(int myID) {
 				break;
 			}
 		}
+		inactiveLoaderLock->Release();
 
 		if(mySalesID == -50){ //the loader was signaled by the manager to get trollys (signalled, but no salesmen are signalling for me)
 			managerItemsLock->Acquire();
@@ -1850,6 +1854,7 @@ void GoodsLoader(int myID) {
 				inHands = managerItems.front();
 				managerItems.pop(); //remove the item from the manager's item list
 				stockRoomLock->Acquire();
+				cout << "Goodsloader " << myID << " put item " << inHands << "back in the stock room from the manager" << endl;
 				inHands = 0;
 				stockRoomLock->Release();
 			}
@@ -2036,6 +2041,7 @@ void GoodsLoader(int myID) {
 		}
 
 		//Look at all depts
+		inactiveLoaderLock->Acquire();
 		for(int j = 0; j < numDepartments; j++) {
 			salesLock[j]->Acquire();
 			//cout << "checking dept " << j << endl;
@@ -2055,7 +2061,7 @@ void GoodsLoader(int myID) {
 
 		//MIGHT*** need an if statement or condition arond this relating to the found new order business
 		//int tempSalesID = -1;
-		inactiveLoaderLock->Acquire();
+		//inactiveLoaderLock->Acquire();
 		/*for(int j = 0; j < numDepartments; j++) {
 			salesLock[j]->Acquire();
 			for(int i = 0; i < numSalesmen; i++) {
@@ -2542,7 +2548,7 @@ void Problem2(){
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice;
-	while(true){
+	/*while(true){
 		cin >> choice;
 		if(cin.fail()){
 			cin.clear();
@@ -2555,7 +2561,7 @@ void Problem2(){
 			continue;
 		}
 		else break;
-	}
+	}*/
 	//cin >> choice;
 	choice = 12;
 	switch (choice){
@@ -2637,7 +2643,9 @@ void Problem2(){
 		break;
 
 	case 12:
+		testNumber = 12;
 		custNumber = 30;
+		customerCash = 5;
 		numTrollies = 20;
 		numDepartments = 3;
 		numSalesmen = 3;
