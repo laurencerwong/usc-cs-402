@@ -1004,8 +1004,8 @@ void Customer(int myID){
 				else {	//We are out of this item, go tell sales!
 					cout << type << " [" << myID << "] was not able to find item " << shelfNum <<
 							" and is searching for department salesman " << currentDepartment << endl;	//TODO dept num
-					salesLock[currentDepartment]->Acquire();
-					shelfLock[currentDepartment][shelfNum]->Release();
+					shelfLock[currentDepartment][shelfNum]->Release();		//BREAK THE SQUARE
+					salesLock[currentDepartment]->Acquire();	//BREAK THE SQUARE
 
 					int mySalesID = -1;
 
@@ -1043,7 +1043,7 @@ void Customer(int myID){
 					salesDesk[currentDepartment][mySalesID] = shelfNum;
 
 					salesmanCV[currentDepartment][mySalesID]->Signal(individualSalesmanLock[currentDepartment][mySalesID]);
-					salesmanCV[currentDepartment][mySalesID]->Wait(individualSalesmanLock[currentDepartment][mySalesID]);
+					salesmanCV[currentDepartment][mySalesID]->Wait(individualSalesmanLock[currentDepartment][mySalesID]);	//wait for sales to tell me to wait on shelf
 					shelfLock[currentDepartment][shelfNum]->Acquire();
 					individualSalesmanLock[currentDepartment][mySalesID]->Release();
 					//now i go wait on the shelf
@@ -2248,6 +2248,7 @@ void GoodsLoader(int myID) {
 
 
 			if(!foundNewOrder) {	//i have to get in line
+
 				if(mySalesID == -50) {
 					loaderWaitingLineCount[currentDept]++;
 					cout << "loader " << myID << " about to wait for a salesman in department " << currentDept << endl;
@@ -2261,6 +2262,20 @@ void GoodsLoader(int myID) {
 					for(int i = 0; i < numSalesmen; i++) {
 						if(currentSalesStatus[currentDept][i] == SALES_READY_TO_TALK_TO_LOADER /*|| currentSalesStatus[currentDept][i] == SALES_SIGNALLING_LOADER*/) {
 							mySalesID = i;
+
+							//Ready to go talk to sales
+							cout << "Goods loader " << myID << " has acquired individualSalesmanLock" << endl;
+							currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
+							currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
+							individualSalesmanLock[currentDept][mySalesID]->Acquire();
+							salesLock[currentDept]->Release();
+							salesDesk[currentDept][mySalesID] = shelf;
+							salesmanCV[currentDept][mySalesID]->Signal(individualSalesmanLock[currentDept][mySalesID]);
+							salesmanCV[currentDept][mySalesID]->Wait(individualSalesmanLock[currentDept][mySalesID]);
+							salesDesk[currentDept][mySalesID] = myID;
+							salesmanCV[currentDept][mySalesID]->Signal(individualSalesmanLock[currentDept][mySalesID]);
+							individualSalesmanLock[currentDept][mySalesID]->Release();
+
 							break;
 						}
 					}
@@ -2269,18 +2284,7 @@ void GoodsLoader(int myID) {
 
 				//printf("I am loader %d, and I want to talk to sales %d\n", myID, mySalesID);
 
-				//Ready to go talk to sales
-				individualSalesmanLock[currentDept][mySalesID]->Acquire();
-				cout << "Goods loader " << myID << " has acquired individualSalesmanLock" << endl;
-				currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
-				currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
-				salesLock[currentDept]->Release();
-				salesDesk[currentDept][mySalesID] = shelf;
-				salesmanCV[currentDept][mySalesID]->Signal(individualSalesmanLock[currentDept][mySalesID]);
-				salesmanCV[currentDept][mySalesID]->Wait(individualSalesmanLock[currentDept][mySalesID]);
-				salesDesk[currentDept][mySalesID] = myID;
-				salesmanCV[currentDept][mySalesID]->Signal(individualSalesmanLock[currentDept][mySalesID]);
-				individualSalesmanLock[currentDept][mySalesID]->Release();
+
 
 
 
