@@ -1883,11 +1883,10 @@ void GoodsLoader(int myID) {
 			}
 
 		}
-		else{
-			//moved up to before previous if statement
+		else{	//It was not the manager who signalled me
 			individualSalesmanLock[currentDept][mySalesID]->Acquire();
-			shelf = salesDesk[currentDept][mySalesID];
-			salesDesk[currentDept][mySalesID] = -1;
+			shelf = salesDesk[currentDept][mySalesID];	//read the shelf that needs stocking in from the desk
+			salesDesk[currentDept][mySalesID] = -1;		//write back that i was not on a previous job
 
 			cout << "GoodsLoader [" << myID << "] is informed by DepartmentSalesman [" << mySalesID <<
 					"] of Department [" << currentDept << "] to restock [" << shelf << "]" << endl;
@@ -1912,7 +1911,7 @@ void GoodsLoader(int myID) {
 				else{
 					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
 				}
-				//Simulates a store room like the spec says
+				//Simulates a store room
 				stockRoomLock->Acquire();
 				//currentLoaderInStockLock->Release();
 				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
@@ -1932,29 +1931,29 @@ void GoodsLoader(int myID) {
 					currentThread->Yield();
 				}
 
+				//check the shelf i am going to restock
 				shelfLock[currentDept][shelf]->Acquire();
 				if(shelfInventory[currentDept][shelf] == maxShelfQty) {
 					cout << "GoodsLoader [" << myID << "] has restocked [" << shelf << "] in Department [" << currentDept << "]." << endl;
-					//shelfLock[currentDept][shelf]->Release();
 					qtyInHands = 0;
 					break;
 				}
 				shelfInventory[currentDept][shelf] += qtyInHands;
 				qtyInHands = 0;
-				//shelfLock[currentDept][shelf]->Release();
 			}
 			shelfLock[currentDept][shelf]->Release();
 
 
-			//wait in line/inform sales
+			//We have finished restocking.  now wait in line/inform sales
 			salesLock[currentDept]->Acquire();
 			cout << "loader " << myID << " I have acquired saleslock and am awaiting to notify a salesman with info " << currentDept << " " << shelf << endl;
 			for(int j = 0; j < numSalesmen; j++) {
 				cout << "current sales status in department " << currentDept << " are: Sales #" << j << " is status " << currentSalesStatus[currentDept][j] << endl;
 			}
 			mySalesID = -50;
+			//first look for someone who is signalling for a loader, since we can multipurpose and take a new job, while also informing that we finished a previous one
 			for(int i = 0; i < numSalesmen; i++) {
-				if(currentSalesStatus[currentDept][i] == SALES_SIGNALLING_LOADER /*&& loaderWaitingLineCount[currentDept] == 0*/) {
+				if(currentSalesStatus[currentDept][i] == SALES_SIGNALLING_LOADER) {
 					//all salesmen are busy trying to get loaders, but the loaders are out and trying to tell them that a job was finished
 					mySalesID = i;
 					individualSalesmanLock[currentDept][mySalesID]->Acquire();
@@ -1984,6 +1983,7 @@ void GoodsLoader(int myID) {
 				}*/
 			}
 			if(mySalesID == -50) {
+				//no one was signalling, so look for free salesmen to go report to
 				for(int i = 0; i < numSalesmen; i++) {
 					if(currentSalesStatus[currentDept][i] == SALES_NOT_BUSY) {
 						cout << "salesman d-i " << currentDept << " " << i << "wasn't busy" << endl;
@@ -2006,9 +2006,9 @@ void GoodsLoader(int myID) {
 			}
 
 
-			if(!foundNewOrder) {	//i have to get in line
-
-				if(mySalesID == -50) {
+			if(!foundNewOrder) {	//i have to get in line, because i didn't find a new order from someone signalling
+									//(i would have given them my information when i took their order)
+				if(mySalesID == -50) {	//if i have STILL not found anyone, then i do need to get in line
 					loaderWaitingLineCount[currentDept]++;
 					cout << "loader " << myID << " about to wait for a salesman in department " << currentDept << endl;
 
@@ -2018,11 +2018,11 @@ void GoodsLoader(int myID) {
 						cout << "Salesman " << j << " status for dept: " << currentDept << " is: " << currentSalesStatus[currentDept][j] << "  loader " << myID << " was checking" << endl;
 					}
 
-					for(int i = 0; i < numSalesmen; i++) {
-						if(currentSalesStatus[currentDept][i] == SALES_READY_TO_TALK_TO_LOADER /*|| currentSalesStatus[currentDept][i] == SALES_SIGNALLING_LOADER*/) {
+					for(int i = 0; i < numSalesmen; i++) {	//find the salesman who signalled me out of line
+						if(currentSalesStatus[currentDept][i] == SALES_READY_TO_TALK_TO_LOADER) {
 							mySalesID = i;
 
-							//Ready to go talk to sales
+							//Ready to go talk to a salesman
 							cout << "Goods loader " << myID << " has acquired individualSalesmanLock" << endl;
 							currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
 							currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
@@ -2040,13 +2040,6 @@ void GoodsLoader(int myID) {
 					}
 					cout << "loader " << myID << " was woken up by sales d-i " << currentDept << " " << mySalesID << endl;
 				}
-
-				//printf("I am loader %d, and I want to talk to sales %d\n", myID, mySalesID);
-
-
-
-
-
 			}
 		}
 
@@ -2149,7 +2142,7 @@ void testCreatingSalesmenWithDepartments() {
 
 void testCustomerEnteringStoreAndPickingUpItems() {
 	initSalesmen();
-	initShelvesWithQty(10);
+	initShelvesWithQty(30);
 	initLoaders();
 	initCustomerCashier();
 	initTrolly();
@@ -2193,34 +2186,64 @@ void testCustomerEnteringStoreAndPickingUpItems() {
 }
 
 void testCustomerGettingInLine(){
+	testNumber = 1;
+	customerCash = 100000;
+	cashierNumber = 5;
+	custNumber = 10;
+	numSalesmen = 1;
+	numDepartments = 1;
+	numTrollies = 20;
+	numLoaders = 1;
 	initCustomerCashier();
 	char* name;
+	cout << "Test 1: please note that all cashier lines are set to be 5 except for cashier 4's line for unprivileged customers, which is set to 1 ";
+	cout << " and cashier 3's line for unprivileged customer, which is set to 3.";
+	cout << "\tThe privileged status of Customers is set randomly, so we will create enough ";
+	cout << "customer threads to likely fill up a line and start choosing other lines" << endl;
+	initShelves();
+	initShelvesWithQty(30);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
 	for(int i = 0; i < cashierNumber; i++){
 		cashierStatus[i] = CASH_BUSY;
 		privilegedLineCount[i] = 5;
 		unprivilegedLineCount[i] = 5;
 	}
 	unprivilegedLineCount[cashierNumber-1] = 1;
+	unprivilegedLineCount[cashierNumber-2] = 3;
 	Thread * t;
+	name = new char[20];
+	name = "sales0";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)Salesman, 0);
 	for(int i = 0; i < custNumber; i++){
 		name = new char [20];
 		sprintf(name,"cust%d",i);
 		t = new Thread(name);
-		t->Fork((VoidFunctionPtr)customer, i);
-		delete name;
+		t->Fork((VoidFunctionPtr)Customer, i);
 	}
 }
 
-void testCustomerCheckOutWithMoney(){
+void testCustLeavesAfterReceiptAndCashierHandlingOneAtATime(){
+	testNumber = 3;
+	customerCash = 10000;
+	cashierNumber = 5;
+	custNumber = 20;
+	numSalesmen = 5;
+	numDepartments = 1;
+	numTrollies = 20;
+	numLoaders = 1;
 	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(30);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
 	char* name;
 	Thread* t;
-	name = new char [20];
-	name = "manager thread";
-	t = new Thread(name);
-	t->Fork((VoidFunctionPtr)manager, 0);
 	for(int i = 0; i < cashierNumber; i++){
-		name = new char [20];
+		name = new char[20];
 		sprintf(name, "cashier%d", i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
@@ -2229,12 +2252,26 @@ void testCustomerCheckOutWithMoney(){
 		name = new char [20];
 		sprintf(name,"cust%d",i);
 		t = new Thread(name);
-		t->Fork((VoidFunctionPtr)customer, i);
+		t->Fork((VoidFunctionPtr)Customer, i);
 	}
+	createSalesmen(1, 5);
 }
 
 void testCustomerCheckOutWithoutMoney(){
+	testNumber = 2;
+	customerCash = 0;
+	cashierNumber = 5;
+	custNumber = 5;
+	numSalesmen = 5;
+	numDepartments = 1;
+	numTrollies = 20;
+	numLoaders = 1;
 	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(30);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
 	char* name;
 	Thread* t;
 	name = new char [20];
@@ -2251,14 +2288,55 @@ void testCustomerCheckOutWithoutMoney(){
 		name = new char [20];
 		sprintf(name,"cust%d",i);
 		t = new Thread(name);
-		t->Fork((VoidFunctionPtr)customer, i);
+		t->Fork((VoidFunctionPtr)Customer, i);
 	}
-	name = new char[20];
-
+	createSalesmen(1, 5);
 }
 
-void testMakeCashiersBreak(){
+void testCashiersScanUntilTrollyIsEmpty(){
+	testNumber = 4;
+	customerCash = 10000;
+	cashierNumber = 1;
+	custNumber = 1;
+	numSalesmen = 1;
+	numDepartments = 1;
+	numTrollies = 20;
+	numLoaders = 1;
 	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(30);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
+	char* name;
+	Thread* t;
+	name = new char[20];
+	sprintf(name, "cashier%d", 0);
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)cashier, 0);
+	name = new char [20];
+	sprintf(name,"cust%d",0);
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)Customer, 0);
+	createSalesmen(1, 1);
+}
+void testPutCashiersOnBreak(){
+	testNumber = 5;
+	initCustomerCashier();
+	customerCash = 10000;
+	cashierNumber = 5;
+	custNumber = 1;
+	numSalesmen = 1;
+	numDepartments = 1;
+	numTrollies = 20;
+	numLoaders = 1;
+	testNumber = 5;
+	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(30);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
 	char* name;
 	Thread* t;
 	name = new char[20];
@@ -2271,34 +2349,208 @@ void testMakeCashiersBreak(){
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
 	}
-	t->Fork((VoidFunctionPtr)customer, 0);
-	cout << "before yield" << endl;
-	for(int i = 0; i < 3; i++){
-		currentThread->Yield();
+}
+
+void testBringCashiersBackFromBreak(){
+	testNumber = 6;
+	customerCash = 10000;
+	cashierNumber = 5;
+	custNumber = 30;
+	numSalesmen = 5;
+	numDepartments = 1;
+	numTrollies = 20;
+	numLoaders = 1;
+	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(100);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
+	char* name;
+	Thread* t;
+	initCustomerCashier();
+	createSalesmen(numDepartments, numSalesmen);
+	for(int i = 0; i < custNumber; i++){
+		name = new char [20];
+		sprintf(name,"cust%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Customer, i);
 	}
-	cout << "after yield" << endl;
-	for(int i = 1; i < custNumber; i++){
-		cout << "making cust" << endl;
+	for(int i = 0; i < numLoaders; i++) {
+		name = new char [20];
+		sprintf(name,"loader%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)GoodsLoader, i);
+	}
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
+	for(int i = 0; i < cashierNumber; i++){
 		name = new char[20];
-		sprintf(name, "cust%d", i);
+		sprintf(name, "cashier%d", i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
 	}
-	while(true);
+
 }
+
+void testRevenueAlwaysTheSame(){
+	testNumber = 7;
+	testCustomerEnteringStoreAndPickingUpItems();
+}
+
+void testGoodsLoadersCustomersDontFightOverShelves(){
+	testNumber = 8;
+	maxShelfQty = 100;
+	customerCash = 10000;
+	cashierNumber = 5;
+	custNumber = 100;
+	numSalesmen = 1;
+	numDepartments = 1;
+	numTrollies = 30;
+	numLoaders = 1;
+	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(0);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
+	char* name;
+	Thread* t;
+	initCustomerCashier();
+	createSalesmen(numDepartments, numSalesmen);
+	for(int i = 0; i < custNumber; i++){
+		name = new char [20];
+		sprintf(name,"cust%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Customer, i);
+	}
+	for(int i = 0; i < numLoaders; i++) {
+		name = new char [20];
+		sprintf(name,"loader%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)GoodsLoader, i);
+	}
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
+	for(int i = 0; i < cashierNumber; i++){
+		name = new char[20];
+		sprintf(name, "cashier%d", i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)cashier, i);
+	}
+
+}
+
+void testOneLoaderInStockRoom(){
+	testNumber = 9;
+	maxShelfQty = 100;
+	customerCash = 10000;
+	cashierNumber = 5;
+	custNumber = 4;
+	numSalesmen = 4;
+	numDepartments = 1;
+	numTrollies = 30;
+	numLoaders = 5;
+	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(0);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
+	char* name;
+	Thread* t;
+	initCustomerCashier();
+	createSalesmen(numDepartments, numSalesmen);
+	for(int i = 0; i < custNumber; i++){
+		name = new char [20];
+		sprintf(name,"cust%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Customer, i);
+	}
+	for(int i = 0; i < numLoaders; i++) {
+		name = new char [20];
+		sprintf(name,"loader%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)GoodsLoader, i);
+	}
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
+	for(int i = 0; i < cashierNumber; i++){
+		name = new char[20];
+		sprintf(name, "cashier%d", i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)cashier, i);
+	}
+}
+
+void testCustWaitForRestock(){
+	testNumber = 10;
+	testNumber = 10;
+	maxShelfQty = 1;
+	customerCash = 10000;
+	cashierNumber = 5;
+	custNumber = 4;
+	numSalesmen = 4;
+	numDepartments = 1;
+	numTrollies = 30;
+	numLoaders = 1;
+	initCustomerCashier();
+	initShelves();
+	initShelvesWithQty(0);
+	initSalesmen();
+	initLoaders();
+	initTrolly();
+	char* name;
+	Thread* t;
+	initCustomerCashier();
+	createSalesmen(numDepartments, numSalesmen);
+	for(int i = 0; i < custNumber; i++){
+		name = new char [20];
+		sprintf(name,"cust%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)Customer, i);
+	}
+	for(int i = 0; i < numLoaders; i++) {
+		name = new char [20];
+		sprintf(name,"loader%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)GoodsLoader, i);
+	}
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
+	for(int i = 0; i < cashierNumber; i++){
+		name = new char[20];
+		sprintf(name, "cashier%d", i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)cashier, i);
+	}
+}
+
 void Problem2(){
 	cout << "Menu:" << endl;
 	cout << "1. Test customer choosing from cashier lines" << endl;
-	cout << "2. Test customer-cashier interaction" << endl;
-	cout << "3. Test customer without enough money" << endl;
-	cout << "4. Test cashiers going on break and coming off break" <<endl;
-	cout << "5. Test customers entering store and getting their items from shelves" << endl;
-	cout << "6. Test customers entering store and being greeted" << endl;
-	cout << "7. Test salesmen being created correctly with departments and IDs" << endl;
+	cout << "2. Test manager only interacting with one customer or cashier at a time." << endl;
+	cout << "3. Test cashier receipt reception and cashier waiting for cusotmer to leave" << endl;
+	cout << "4. Test cashiers scan all items" <<endl;
+	cout << "5. Test cashiers being sent on break" << endl;
+	cout << "6. Test cashiers being brough back from break" << endl;
+	cout << "7. Test sales never suffering a race condition" << endl;
+	cout << "8. Test Goods Loaders don't restock when a Customer is trying to get an item" << endl;
+	cout << "9. Test only one Goods Loader enters the stock room at a time" << endl;
+	cout << "10. Test Customrs wait for items to be restocked" << endl;
+	cout << "11. Run full simulation" << endl;
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice;
-	/*while(true){
+	while(true){
 		cin >> choice;
 		if(cin.fail()){
 			cin.clear();
@@ -2306,65 +2558,94 @@ void Problem2(){
 			cout << "Not a valid menu option. Please try again: ";
 			continue;
 		}
-		else if(choice > 7 || choice < 1){ //change this if you add more options
+		else if(choice > 11 || choice < 1){ //change this if you add more options
 			cout << "Not a valid menu option. Please try again: ";
 			continue;
 		}
 		else break;
-	}*/
-	choice = 5;
+	}
+	cin >> choice;
+	//choice = 6;
 	switch (choice){
 	case 1:
-		customerCash = 100000;
-		cashierNumber = 5;
-		custNumber = 6;
 		testCustomerGettingInLine();
 		break;
 	case 2:
+		testCustomerCheckOutWithoutMoney();
+		break;
+	case 3:
+
 		customerCash = 100000;
 		cashierNumber = 4;
 		custNumber = 30;
-		testCustomerCheckOutWithMoney();
-		break;
-	case 3:
-		customerCash = 6;
-		cashierNumber = 4;
-		custNumber = 10;
-		testCustomerCheckOutWithoutMoney();
+		testCustLeavesAfterReceiptAndCashierHandlingOneAtATime();
 		break;
 	case 4:
-		customerCash = 0;
-		cashierNumber = 3;
-		custNumber = 20;
-		char* name = new char[20];
-		name = "blah";
-		Thread* thread = new Thread(name);
-		//thread->Fork((VoidFunctionPtr)testMakeCashiersBreak, 0);
-		testMakeCashiersBreak();
+		testCashiersScanUntilTrollyIsEmpty();
 		break;
 	case 5:
-		custNumber = 30;
-		customerCash = 25;
-		numTrollies = 20;
-		numSalesmen = 3;
-		numDepartments = 3;
-		cashierNumber = 3;
-		numLoaders = 3;
-		testCustomerEnteringStoreAndPickingUpItems();
+		testPutCashiersOnBreak();
 		break;
 	case 6:
-		TestGreetingCustomer(custNumber, numSalesmen);
+		testBringCashiersBackFromBreak();
 		break;
 	case 7:
-		cout << "you picked test 7" << endl;
-		numDepartments = 4;
-		numSalesmen = 4;
-		testCreatingSalesmenWithDepartments();
+		testRevenueAlwaysTheSame();
+		break;
+	case 8:
+		testGoodsLoadersCustomersDontFightOverShelves();
+		break;
+	case 9:
+		testOneLoaderInStockRoom();
+		break;
+	case 10:
+		testCustWaitForRestock();
+		break;
+	case 11:
+		custNumber = 0;
+		customerCash = 0;
+		numTrollies = 0;
+		numSalesmen = 0;
+		numDepartments = 0;
+		cashierNumber = 0;
+		numLoaders = 0;
+
+		while (custNumber < 1){
+			cout << "Please input the number of customers you would like (at least 1)" <<endl;
+			cin >> custNumber;
+		}
+		while(numTrollies < 1){
+			cout << "Please input the number of trollies you would like (must be at least than 1)" << endl;
+			cin >> numTrollies;
+		}
+		while(numDepartments < 1 || numDepartments > 5){
+			cout << "Please input the number of departments you would like (between 1 and 5)" << endl;
+			cin >> numDepartments;
+		}
+		while(numSalesmen < 1 || numSalesmen > 3){
+			cout << "Please input the number of salesmen per department you would like (between 1 and 3)" << endl;
+			cin >> numSalesmen;
+		}
+		while(cashierNumber < 1 || cashierNumber > 5){
+			cout << "Please input the number of cashiers (between 1 and 5)" << endl;
+			cin >> cashierNumber;
+		}
+		while(numLoaders < 1 || numLoaders > 5){
+			cout << "Please input the number of GoodsLoaders (between 1 and 5" << endl;
+			cin >> numLoaders;
+		}
+
+		cout << custNumber << endl;
+		cout << numTrollies << endl;
+		cout << numDepartments << endl;
+		cout <<  numSalesmen << endl;
+		cout << cashierNumber << endl;
+		cout << numLoaders << endl;
+		testCustomerEnteringStoreAndPickingUpItems();
 		break;
 
 
-	//add cases here for your test
+		//add cases here for your test
 	default: break;
 	}
 }
-
