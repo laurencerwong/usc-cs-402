@@ -564,6 +564,7 @@ Lock *currentLoaderInStockLock = new Lock("cur loader in stock lock");
 int *privCustomers = new int[maxCustomers];
 int customersDone;
 
+int testNumber = -1;
 
 //Function prototypes if needed
 void Salesman(int);
@@ -844,13 +845,22 @@ void Customer(int myID){
 	int *qtyItemsToBuy;
 	int *itemsInCart;
 	int *qtyItemsInCart;
+	int myCash;
+
+	if(testNumber != -1 && testNumber !=4 ){
+		numItemsToBuy = 3;
+		myCash = customerCash;
+	}
+	else{
+		numItemsToBuy = rand() % numItems;
+		myCash = rand() % 200;
+	}
 	itemsToBuy = new int[numItemsToBuy];
 	qtyItemsToBuy = new int[numItemsToBuy];
 	itemsInCart = new int[numItemsToBuy];
 	qtyItemsInCart = new int[numItemsToBuy];
 
 	char* type = new char[20];
-	int myCash = customerCash;
 	int privileged;
 
 	//---------Randomly generate whether this customer is privileged--------------
@@ -866,16 +876,25 @@ void Customer(int myID){
 		type = "PrivilegedCustomer";
 	}
 	else type = "Customer";
-	privileged = 0;
+	//privileged = 0;
 	//--------------End of privileged/unprivileged decion--------------------------
 
 
-	for(int i = 0; i < numItemsToBuy; i++) {
-		//TODO- Put a random item/qty picker here
-		itemsToBuy[i] = i;
-		qtyItemsToBuy[i] = 2;
-		itemsInCart[i] = -1;
-		qtyItemsInCart[i] = 0;
+	if(testNumber != -1){
+		for(int i = 0; i < numItemsToBuy; i++) {
+			itemsToBuy[i] = i;
+			qtyItemsToBuy[i] = 2;
+			itemsInCart[i] = -1;
+			qtyItemsInCart[i] = 0;
+		}
+	}
+	else{
+		for (int i = 0; i < numItemsToBuy; i++){
+			itemsToBuy[i] = rand() % numItems;
+			qtyItemsToBuy[i] = rand()% numItems;
+			itemsInCart[i] = -1;
+			qtyItemsInCart[i] = 0;
+		}
 	}
 
 	//ENTERS STORE
@@ -946,17 +965,6 @@ void Customer(int myID){
 					}
 				}
 			}
-			/*Rob has removed this else {	//someone is free
-				//printf("There was no line for cust %d\n", myID);
-				for(int j = 0; j < numSalesmen; j++){
-					if(currentSalesStatus[targetDepartment][j] == SALES_NOT_BUSY){
-						mySalesIndex = j;
-						currentSalesStatus[targetDepartment][j] = SALES_BUSY;
-						currentlyTalkingTo[targetDepartment][j] = GREETING;
-						break;
-					}
-				}
-			}*/
 
 			//cout << "cust " << myID << " about to get desk lock" << endl;
 
