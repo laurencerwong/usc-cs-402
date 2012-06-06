@@ -1355,28 +1355,26 @@ void manager(){
 		//-----------------------------Begin bringing salesmen back from break-------------
 
 		int dept = 0;
-
-		for(int i = 0; i < numDepartments; i++) {
-			cout << "Manager about to check dept " << i << " to try and bring a sales back from break" << endl;
-			salesLock[i]->Acquire();
-			cout << "Manager got sales lock in dept " << i << " to try and bring a sales back from break" << endl;
-			if((greetingCustWaitingLineCount[i] + complainingCustWaitingLineCount[i] + loaderWaitingLineCount[i]) > 0 && numSalesmenOnBreak[i]){
-				int arg = salesmenOnBreak.front();
-				int targets[2];
-				deconstructSalesArg(arg, targets);
-				int wakeSalesman = targets[0];
-				dept = targets[1];
-
-				if(currentSalesStatus[dept][wakeSalesman] == SALES_ON_BREAK){
-					salesBreakBoard[dept][wakeSalesman] = 0;
-					cout << "Manager brings back Salesman " << wakeSalesman << " from break." << endl;
-					salesBreakCV[dept][wakeSalesman]->Signal(salesLock[dept]);
-					numSalesmenOnBreak[dept]--;
-					salesmenOnBreak.pop();
-				}
-			}
-			salesLock[i]->Release();
+		int arg = salesmenOnBreak.front();
+		int targets[2];
+		deconstructSalesArg(arg, targets);
+		int wakeSalesman = targets[0];
+		dept = targets[1];
+		salesmenOnBreak.pop();
+		cout << "Manager about to check dept " << dept << " to try and bring a sales back from break" << endl;
+		salesLock[dept]->Acquire();
+		cout << "Manager got sales lock in dept " << dept << " to try and bring a sales back from break" << endl;
+		if((greetingCustWaitingLineCount[dept] + complainingCustWaitingLineCount[dept] + loaderWaitingLineCount[dept]) > 0 && currentSalesStatus[dept][wakeSalesman] == SALES_ON_BREAK){
+			salesBreakBoard[dept][wakeSalesman] = 0;
+			cout << "Manager brings back Salesman " << wakeSalesman << " from break." << endl;
+			salesBreakCV[dept][wakeSalesman]->Signal(salesLock[dept]);
+			numSalesmenOnBreak[dept]--;
 		}
+		else{
+			salesmenOnBreak.push(arg);
+		}
+		salesLock[dept]->Release();
+
 		//------------------------------end bringing salesmen back from break--------------
 
 		//------------------------------Begin putting salesmen on break------------------
