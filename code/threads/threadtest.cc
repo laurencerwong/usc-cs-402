@@ -2564,8 +2564,8 @@ void Problem2(){
 		}
 		else break;
 	}
-	cin >> choice;
-	//choice = 6;
+	//cin >> choice;
+	choice = 12;
 	switch (choice){
 	case 1:
 		testCustomerGettingInLine();
@@ -2644,6 +2644,16 @@ void Problem2(){
 		testCustomerEnteringStoreAndPickingUpItems();
 		break;
 
+	case 12:
+		custNumber = 30;
+		numTrollies = 20;
+		numDepartments = 3;
+		numSalesmen = 3;
+		cashierNumber = 3;
+		numLoaders = 3;
+
+		testCustomerEnteringStoreAndPickingUpItems();
+		break;
 
 		//add cases here for your test
 	default: break;
