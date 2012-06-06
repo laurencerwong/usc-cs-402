@@ -555,10 +555,16 @@ queue<int> managerItems;
 Lock* managerItemsLock;
 
 //which goodsloader is currently in the stockroom
-int currentLoaderInStock = -1;
+int currentLoaderInStock;
 
 //Lock for currentLockInStock
-Lock *currentLoaderInStockLock = new Lock("cur loader in stock lock");
+Lock *currentLoaderInStockLock;
+
+//Control variable for current loader in stock
+Condition *currentLoaderInStockCV;
+
+//Number of goodsloaders waiting for the stockroom
+int waitingForStockRoomCount;
 
 //Which customers are privileged or not
 int *privCustomers = new int[maxCustomers];
@@ -680,6 +686,10 @@ void initLoaders() {
 	cout << "Initializing loaders..." << endl;
 	inactiveLoaderLock = new Lock("Lock for loaders waiting to be called on");
 	inactiveLoaderCV = new Condition("CV for loaders waiting to be called on");
+	currentLoaderInStock = -1;
+	currentLoaderInStockLock = new Lock("cur loader in stock lock");
+	currentLoaderInStockCV = new Condition("Current Loader in Stock CV");
+	waitingForStockRoomCount = 0;
 	loaderStatus = new LoaderStatus[numLoaders];
 
 	for(int i = 0; i < numLoaders; i++){
@@ -1556,20 +1566,20 @@ void cashier(int myCounter){
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
 
 
-		////cout << "Cashier [" << myCounter << "] got [" << cashierDesk[myCounter] << "] from trolly of " << custType << " [" << custID << "]." << endl;
+		cout << "Cashier [" << myCounter << "] got [" << cashierDesk[myCounter] << "] from trolly of " << custType << " [" << custID << "]." << endl;
 		total += scan(cashierDesk[myCounter]);
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	}
 	//now I'm done scanning, so I tell the customer the total
-	////cout << "Cashier [" << myCounter << "] tells " << custType << " [" << custID << "] total cost is $[" << total << "]." << endl;
+	cout << "Cashier [" << myCounter << "] tells " << custType << " [" << custID << "] total cost is $[" << total << "]." << endl;
 	cashierDesk[myCounter] = total;
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	if(cashierDesk[myCounter] == -1){
-		////cout << "Cashier [" << myCounter << "] asks " << custType << " [" << custID << "] to wait for Manager." << endl;
-		////cout << "Cashier [" << myCounter << "] informs the Manager that " << custType << " [" << custID << "] does not have enough money." << endl;
+		cout << "Cashier [" << myCounter << "] asks " << custType << " [" << custID << "] to wait for Manager." << endl;
+		cout << "Cashier [" << myCounter << "] informs the Manager that " << custType << " [" << custID << "] does not have enough money." << endl;
 		cashierFlags[myCounter] = custID;
 		//cout << "cashier is goign to sleep" << endl;
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
@@ -1581,7 +1591,7 @@ void cashier(int myCounter){
 		if(!strcmp(custType, "Customer")){
 			managerDesk = 0;
 		}
-		////cout << " total " << total << endl;
+		cout << " total " << total << endl;
 		cashierFlags[myCounter] = total; //inform manager of the total the customer owes
 		managerCV->Signal(managerLock); //wake up manager, who was waiting for this information
 		//when I am woken up, the manager has taken over so I can free myself for my
@@ -1590,9 +1600,9 @@ void cashier(int myCounter){
 	else{
 		//add value to cash register
 		cashRegister[myCounter] += cashierDesk[myCounter];
-		////cout << "Cashier [" << myCounter << "] got money $[" << cashierDesk[myCounter] << "] from " << custType << " [" << custID << "]." << endl;
+		cout << "Cashier [" << myCounter << "] got money $[" << cashierDesk[myCounter] << "] from " << custType << " [" << custID << "]." << endl;
 		//giving the customer a receipt
-		////cout << "Cashier [" << myCounter << "] gave the receipt to " << custType << " [" << custID << "] and tells him to leave" << endl;
+		cout << "Cashier [" << myCounter << "] gave the receipt to " << custType << " [" << custID << "] and tells him to leave" << endl;
 		cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 		//wait for customer to acknowledge getting receipt and release lock
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
@@ -1903,24 +1913,28 @@ void GoodsLoader(int myID) {
 			while(shelfInventory[currentDept][shelf] < maxShelfQty) {
 				shelfLock[currentDept][shelf]->Release();
 
-				//currentLoaderInStockLock->Acquire();
-				if(currentLoaderInStock == -1){
-					currentLoaderInStock = myID;
-					//cout << "GoodsLoader [" << myID << "] is setting the currentLoaderInLock" << endl;
-				}
-				else{
-					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
-				}
-				//Simulates a store room
-				stockRoomLock->Acquire();
-				//currentLoaderInStockLock->Release();
-				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
-				qtyInHands++;
-				stockRoomLock->Release();
-				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
+/*
 				currentLoaderInStockLock->Acquire();
+				if(currentLoaderInStock != -1 || waitingForStockRoomCount > 0){
+					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
+					waitingForStockRoomCount++;
+					currentLoaderInStockCV->Wait(currentLoaderInStockLock);
+				}
+				currentLoaderInStockLock->Release();
+				//Simulates a store room like the spec says
+				stockRoomLock->Acquire();
+				currentLoaderInStockLock->Acquire();
+				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
+				currentLoaderInStock = myID;
+				currentLoaderInStockLock->Release();
+				qtyInHands++;
+				currentLoaderInStockLock->Acquire();
+				currentLoaderInStockCV->Signal(currentLoaderInStockLock);
+				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
+				waitingForStockRoomCount--;
 				currentLoaderInStock = -1;
 				currentLoaderInStockLock->Release();
+				stockRoomLock->Release();*/
 				/*
 				 * 				currentLoaderInStockLock->Acquire();
 				currentLoaderInStock = -1; //lets other goodsloaders change it
@@ -2408,7 +2422,7 @@ void testRevenueAlwaysTheSame(){
 
 void testGoodsLoadersCustomersDontFightOverShelves(){
 	testNumber = 8;
-	maxShelfQty = 15;
+	maxShelfQty = 5;
 	customerCash = 10000;
 	cashierNumber = 5;
 	custNumber = 10;
@@ -2558,7 +2572,7 @@ void Problem2(){
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice = 12;
-	/*while(true){
+	while(true){
 		cin >> choice;
 		if(cin.fail()){
 			cin.clear();
@@ -2571,7 +2585,7 @@ void Problem2(){
 			continue;
 		}
 		else break;
-	}*/
+	}
 
 	switch (choice){
 	case 1:
