@@ -798,16 +798,19 @@ void initCustomerCashier(){
 	managerCV = new Condition(name);
 }
 
+//gets the department that a given item will be in
 int getDepartmentFromItem(int itemNum) {
 	return itemNum % numDepartments;
 }
 
+//constructs an argument (for a salesman) that combines 2 numbers into one, here for dept and id
 int constructSalesArg(int dept, int id) {	// 16 bit number: [15:8] are dept num and [7:0] are id num
 	int val = 0;
 	val = (dept << 8) | id;
 	return val;
 }
 
+//takes a value made by the constructSalesArg function and extracts the department and id from it, putting tem at the target location
 void deconstructSalesArg(int val, int target[2]) {
 	int dept = 0;
 	int id = 0;
@@ -819,6 +822,7 @@ void deconstructSalesArg(int val, int target[2]) {
 	target[1] = dept;
 }
 
+//Creates salesmen threads given the total number of departments in the store, and the number of salesmen per department
 void createSalesmen(int numDepts, int numSalesPerDept) {
 
 	cout << "starting to create salesmen" << endl;
@@ -832,7 +836,7 @@ void createSalesmen(int numDepts, int numSalesPerDept) {
 
 			cout << "preparing to construct... " << i << " " << j << endl;
 			salesID = j;
-			arg = constructSalesArg(i, salesID);
+			arg = constructSalesArg(i, salesID);	//used to get dept and id info into one number
 			name = new char [20];
 			sprintf(name,"sales%d",i);
 			t = new Thread(name);
@@ -853,12 +857,14 @@ void customer(int id) {
 void Customer(int myID){
 
 	//choose the items we want to buy
-	int numItemsToBuy = 3;	//TODO actually decide how many items and which to buy
+	int numItemsToBuy = 3;
 	int *itemsToBuy;
 	int *qtyItemsToBuy;
 	int *itemsInCart;
 	int *qtyItemsInCart;
 	int myCash;
+
+	//setup some initialization for specific tests
 	if(testNumber == 8 || testNumber ==10){
 		numItemsToBuy = 1;
 		myCash = customerCash;
@@ -871,6 +877,7 @@ void Customer(int myID){
 		numItemsToBuy = rand() % numItems;
 		myCash = rand() % 200;
 	}
+
 	itemsToBuy = new int[numItemsToBuy];
 	qtyItemsToBuy = new int[numItemsToBuy];
 	itemsInCart = new int[numItemsToBuy];
@@ -1763,20 +1770,13 @@ void Salesman(int arg) {
 			//cout << "Salesman " << myIndex << " is waiting for loader " << myLoaderID << endl;
 			inactiveLoaderLock->Release();
 
-
-
-
 			//cout << "Loader " << myLoaderID << " has arrived at salesman " << myIndex << "!" << endl;
 			cout << "DepartmentSalesman [" << myIndex << "] informs the GoodsLoader [" << myLoaderID << "] that [" << itemOutOfStock << "] is out of stock." << endl;
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);
 			individualSalesmanLock[myDept][myIndex]->Release();
 
 		}
-		else if(currentlyTalkingTo[myDept][myIndex] == GOODSLOADER) {
-			//individualSalesmanLock[myIndex]->Acquire();
-			//salesLock->Release();
-			//salesmanCV[myIndex]->Wait(individualSalesmanLock[myIndex]);	//Wait for cust/loader to walk up to me?
-
+		else if(currentlyTalkingTo[myDept][myIndex] == GOODSLOADER) {	//a loader came up to talk to me
 			int itemRestocked = salesDesk[myDept][myIndex];
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);
 			salesmanCV[myDept][myIndex]->Wait(individualSalesmanLock[myDept][myIndex]);
@@ -1785,7 +1785,7 @@ void Salesman(int arg) {
 			cout << "DepartmentSalesman [" << myIndex << "] is informed by the GoodsLoader [" << loaderNumber << "] that [" << itemRestocked << "] is restocked." << endl;
 			shelfLock[myDept][itemRestocked]->Acquire();
 			cout << "DepartmentSalesman [" << myIndex << "] has acquired shelfLock for restocked iterm" << endl;
-			shelfCV[myDept][itemRestocked]->Broadcast(shelfLock[myDept][itemRestocked]);
+			shelfCV[myDept][itemRestocked]->Broadcast(shelfLock[myDept][itemRestocked]);	//tell customers who were waiting on an item that it was restocked
 			shelfLock[myDept][itemRestocked]->Release();
 			individualSalesmanLock[myDept][myIndex]->Release();
 			//DepartmentSalesman [identifier] informs the Customer/PrivilegeCustomer [identifier] that [item] is restocked.
@@ -1854,7 +1854,7 @@ void GoodsLoader(int myID) {
 				inHands = managerItems.front();
 				managerItems.pop(); //remove the item from the manager's item list
 				stockRoomLock->Acquire();
-				cout << "Goodsloader " << myID << " put item " << inHands << "back in the stock room from the manager" << endl;
+				cout << "Goodsloader " << myID << " put item " << inHands << " back in the stock room from the manager" << endl;
 				inHands = 0;
 				stockRoomLock->Release();
 			}
