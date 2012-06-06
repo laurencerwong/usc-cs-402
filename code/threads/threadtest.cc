@@ -573,6 +573,7 @@ int customersDone;
 int testNumber = -1;
 queue<int> cashiersOnBreak; //allows manager to remember which cashiers he's sent on break
 int numCashiersOnBreak = 0;
+int* cashierBreakBoard;
 //Function prototypes if needed
 void Salesman(int);
 
@@ -745,7 +746,7 @@ void initCustomerCashier(){
 	cashierDesk = new int[cashierNumber];
 	cashierFlags = new int[cashierNumber];
 	cashRegister = new int[cashierNumber];
-
+	cashierBreakBoard = new int[cashierNumber];
 	displacedTrollyCount = 0;
 	name = new char[20];
 	name = "trolly lock";
@@ -786,6 +787,7 @@ void initCustomerCashier(){
 		cashierFlags[i] = -1;
 		cashierDesk[i] = -2;
 		cashRegister[i] = 0;
+		cashierBreakBoard[i] = 0;
 	}
 
 	name = new char[20];
@@ -1328,7 +1330,7 @@ void manager(){
 		}
 
 		//--------------------------Begin bring cashier back from break--------------------
-		if((unsigned int)numFullLines > (cashierNumber - cashiersOnBreak.size()) && cashiersOnBreak.size()){ //bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break
+		if((unsigned int)numFullLines > (cashierNumber - numCashiersOnBreak) && cashiersOnBreak.size()){ //bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break
 
 			int wakeCashier = cashiersOnBreak.front();
 			if(cashierStatus[wakeCashier] == CASH_ON_BREAK){
@@ -1896,33 +1898,33 @@ void GoodsLoader(int myID) {
 			while(shelfInventory[currentDept][shelf] < maxShelfQty) {
 				shelfLock[currentDept][shelf]->Release();
 
-/*
-				currentLoaderInStockLock->Acquire();
+
+				//currentLoaderInStockLock->Acquire();
 				if(currentLoaderInStock != -1 || waitingForStockRoomCount > 0){
 					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
 					waitingForStockRoomCount++;
-					currentLoaderInStockCV->Wait(currentLoaderInStockLock);
+				//	currentLoaderInStockCV->Wait(currentLoaderInStockLock);
 				}
-				currentLoaderInStockLock->Release();
+				//currentLoaderInStockLock->Release();
 				//Simulates a store room like the spec says
 				stockRoomLock->Acquire();
-				currentLoaderInStockLock->Acquire();
+				//currentLoaderInStockLock->Acquire();
 				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
 				currentLoaderInStock = myID;
-				currentLoaderInStockLock->Release();
+				//currentLoaderInStockLock->Release();
 				qtyInHands++;
-				currentLoaderInStockLock->Acquire();
+				//currentLoaderInStockLock->Acquire();
 				currentLoaderInStockCV->Signal(currentLoaderInStockLock);
 				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
 				waitingForStockRoomCount--;
 				currentLoaderInStock = -1;
-				currentLoaderInStockLock->Release();
-				stockRoomLock->Release();*/
-				/*
+				//currentLoaderInStockLock->Release();
+				stockRoomLock->Release();
+/*
 				 * 				currentLoaderInStockLock->Acquire();
 				currentLoaderInStock = -1; //lets other goodsloaders change it
 				currentLoaderInStockLock->Release();
-				 */
+*/
 				//cout << "about to yield" << endl;
 				for(int j = 0; j < 5; j++) {
 					currentThread->Yield();
@@ -2331,14 +2333,14 @@ void testPutCashiersOnBreak(){
 void testBringCashiersBackFromBreak(){
 	testNumber = 6;
 	customerCash = 10000;
-	cashierNumber = 5;
+	cashierNumber = 4;
 	custNumber = 30;
 	numSalesmen = 5;
 	numDepartments = 1;
 	numTrollies = 20;
 	numLoaders = 1;
-	initCustomerCashier();
-	initShelves();
+	//initCustomerCashier();
+	//initShelves();
 	initShelvesWithQty(100);
 	initSalesmen();
 	initLoaders();
@@ -2346,25 +2348,36 @@ void testBringCashiersBackFromBreak(){
 	char* name;
 	Thread* t;
 	initCustomerCashier();
-	createSalesmen(numDepartments, numSalesmen);
+	cashiersOnBreak.push(3);
+	cashiersOnBreak.push(2);
+	cashiersOnBreak.push(1);
+	cashiersOnBreak.push(0);
+	numCashiersOnBreak = 4;
+
+
+	cout << cashierNumber << " num cahsier s" << endl;
+
+	for(int i = 0; i < cashierNumber; i++){
+		//if(i != 1 || i != 3){
+			unprivilegedLineCount[i] = 3;
+			privilegedLineCount[i] = 3;
+			cashierBreakBoard[i] = 1;
+		//}
+		cashierStatus[i] = CASH_ON_BREAK;
+			cout << "setting cahiers to on break... " << i << endl;
+	}
+
+
 	name = new char[20];
 	name = "manager thread";
 	t = new Thread(name);
-
-	for(int i = 0; i < cashierNumber; i++){
-		if(i != 1 || i != 3){
-			unprivilegedLineCount[i] = 3;
-			privilegedLineCount[i] = 3;
-		}
-
-	}
 	t->Fork((VoidFunctionPtr)manager, 0);
-	/*for(int i = 0; i < cashierNumber; i++){
+	for(int i = 0; i < cashierNumber; i++){
 		name = new char[20];
 		sprintf(name, "cashier%d", i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
-	}*/
+	}
 
 
 }
@@ -2534,7 +2547,7 @@ void Problem2(){
 			cout << "Not a valid menu option. Please try again: ";
 			continue;
 		}
-		else if(choice > 11 || choice < 1){ //change this if you add more options
+		else if(choice > 12 || choice < 1){ //change this if you add more options
 			cout << "Not a valid menu option. Please try again: ";
 			continue;
 		}
