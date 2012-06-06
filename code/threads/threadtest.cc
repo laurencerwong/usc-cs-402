@@ -902,18 +902,7 @@ void Customer(int myID){
 	cout << type << " [" << myID << "] enters the SuperMarket" << endl;
 	cout << type << " [" << myID << "] wants to buy [" << numItemsToBuy << "] no.of items" << endl;
 
-	/*
-	cout << "Customer " << myIndex << " has grocery list:" << endl;
-	cout << "Wanted  qty     Has  qty" << endl;
-	for(int k = 0; k < numItemsToBuy; k++) {
-		cout << itemosToBuy[k] << "       " << qtyItemsToBuy[k] << "       " <<
-				itemsInCart[k] << "    " << qtyItemsInCart[k] << endl;
-	}
-	cout << "end cust list ---" << endl;
-	 */
-
 	trollyLock->Acquire();
-	//cout << "there are: " << trollyCount << " trollies" << endl;
 	while(trollyCount == 0) {
 		cout << type << " [" << myID << "] gets in line for a trolly" << endl;
 		trollyCV->Wait(trollyLock);
@@ -1397,13 +1386,13 @@ void manager(){
 				salesBreakBoard[dept][r] = 1;
 				cout << "Manager sends Salesman " << r << " on break." << endl;
 				individualSalesmanLock[dept][r]->Acquire();
-				//if(currentlyTalkingTo[dept][r] == UNKNOWN){
 				if(currentSalesStatus[dept][r] == SALES_NOT_BUSY) {
 					salesmanCV[dept][r]->Signal(individualSalesmanLock[dept][r]);
 					currentSalesStatus[dept][r] = SALES_ON_BREAK;
 				}
 				individualSalesmanLock[dept][r]->Release();
-				salesmenOnBreak.push(constructSalesArg(dept, r));
+				salesmenOnBreak.push(constructSalesArg(dept, r)); //function that uses bit operations to store dept and salesman index
+																//in one int so I can get it from my queue later when I take a Salesman off break
 				numSalesmenOnBreak[dept]++;
 			}
 		}
@@ -1415,11 +1404,12 @@ void manager(){
 
 		for(int i = 0; i < cashierNumber; i++){
 
-			cashierLock[i]->Acquire();
+			cashierLock[i]->Acquire(); //acquiring this lock prevents race conditions
+										//only manager and cashier i ever attempt to grab this lock
 			//-----------------------------Start empty cashier drawers------------------------------------
 			if(cashRegister[i] > 0){
 				totalRevenue += cashRegister[i];
-				cashierTotals[i] += cashRegister[i];
+				cashierTotals[i] += cashRegister[i]; //how we remember totals for each cashier
 				cout << "Manager emptied Counter [" << i << "] drawer." << endl;
 				cashRegister[i] = 0;
 				cout << "Manager has total sale of $[" << totalRevenue << "]." << endl;
@@ -1429,15 +1419,15 @@ void manager(){
 			//---------------------------end empty cashier drawers---------------------------------
 
 			//------------------------------Start deal with broke customers-------------------------
-			else if(cashierFlags[i] != -1){
+			else if(cashierFlags[i] != -1){ //cashier flags is [i] is change to the Customre at the i-th
+											//cashier desk so I know who to go to and deal with
 				cout <<"Manager got a call from Cashier [" << i << "]." << endl;
 				int customerID = cashierFlags[i];
 				int cashierID = i;
 
-				managerLock->Acquire();
+				managerLock->Acquire(); //manager lock protects the manager's interactions
 				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up customer, who also waits first in this interaction
 				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up cashier
-				//cout <<"manager has signallled cusstomer and cashier" << endl;
 				cashierLock[i]->Release();
 				managerCV->Wait(managerLock);
 				int amountOwed = cashierFlags[i];
