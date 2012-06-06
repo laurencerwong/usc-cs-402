@@ -824,7 +824,7 @@ void createSalesmen(int numDepts, int numSalesPerDept) {
 			sprintf(name,"sales%d",i);
 			t = new Thread(name);
 			t->Fork((VoidFunctionPtr)Salesman, arg);
-			delete name;
+			//delete name;
 
 			cout << "created sales with dept: " << i << " and ID: " << salesID << endl;
 			//salesID++;
@@ -1353,7 +1353,7 @@ void manager(){
 
 		//__SALES_BREAK__
 		//-----------------------------Begin bringing salesmen back from break-------------
-
+/*
 		int dept = 0;
 		if(salesmenOnBreak.size()) {
 		
@@ -1395,13 +1395,14 @@ void manager(){
 					salesmanCV[dept][r]->Signal(individualSalesmanLock[dept][r]);
 					currentSalesStatus[dept][r] = SALES_ON_BREAK;
 				}
-				individualSalesmanLock[dept][r]->Release();*/
+				individualSalesmanLock[dept][r]->Release();* /
 				salesmenOnBreak.push(constructSalesArg(dept, r)); //function that uses bit operations to store dept and salesman index
 																//in one int so I can get it from my queue later when I take a Salesman off break
 				numSalesmenOnBreak[dept]++;
 			}
 		}
 		salesLock[dept]->Release();
+		*/
 		//-----------------------------End send salesmen on break
 
 
