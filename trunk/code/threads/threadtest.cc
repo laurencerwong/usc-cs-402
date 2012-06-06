@@ -1000,8 +1000,8 @@ void Customer(int myID){
 				shelfLock[currentDepartment][shelfNum]->Acquire();
 				if(shelfInventory[currentDepartment][shelfNum] > qtyItemsToBuy[i]) {
 					cout << type << " ["<< myID << "] has found ["
-						 << shelfNum << "] and placed [" << qtyItemsToBuy[i] << "] in the trolly" << endl;
-
+							<< shelfNum << "] and placed [" << qtyItemsToBuy[i] << "] in the trolly" << endl;
+					if(testNumber == 8) cout << "There were " << shelfInventory[currentDepartment][shelfNum] << " before Customer " << myID << " took the item(s)." << endl;
 
 					shelfInventory[currentDepartment][shelfNum] -= qtyItemsToBuy[i];
 					itemsInCart[i] = shelfNum;
@@ -1068,14 +1068,6 @@ void Customer(int myID){
 			}	//end while loop to get enough of a given item
 		}	//end looking through shelves
 	}	//end going through grocery list
-
-	/*cout << type << " [" << myID << "] is done getting items:" << endl;
-	cout << "Wanted  qty     Has  qty" << endl;
-	for(int k = 0; k < numItemsToBuy; k++) {
-		cout << itemsToBuy[k] << "       " << qtyItemsToBuy[k] << "       " <<
-				itemsInCart[k] << "    " << qtyItemsInCart[k] << endl;
-	}
-	cout << "end cust list ---" << endl;*/
 
 
 	//========================================================
@@ -1280,7 +1272,7 @@ void manager(){
 	queue<int> salesmenOnBreak;
 	int* numSalesmenOnBreak = new int[numDepartments];
 
-
+	srand(time(NULL));
 	while(true){
 
 		//------------------Check if all customers have left store----------------
@@ -1309,14 +1301,13 @@ void manager(){
 
 		//-----------------Have loader check trolleys---------------------------
 		inactiveLoaderCV->Signal(inactiveLoaderLock); //wake up goods loader to do a regular check of trolley and manager items
-		counter ++;
+		if(counter != 100000000) counter ++;
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
 		//I will get around to it
-		if(counter > 10){
-			counter = 0;
-		//	cout << customersDone << endl;
-			cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
+		if(counter % 10 == 0){
+			//	cout << customersDone << endl;
+			if(testNumber != 5) cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;
 		}
 
 		cashierLinesLock->Acquire(); //going to be checking line counts and statuses, so need this lock
@@ -1361,6 +1352,7 @@ void manager(){
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
 				cashierStatus[r] = CASH_GO_ON_BREAK;
 				/*if(numAnyLines)*/cout << "Manager sends Cashier [" << r << "] on break." << endl;
+				if(testNumber == 5) cout << "Manager has iterated " << counter << " times at this point." << endl;
 				cashiersOnBreak.push(r);
 				numCashiersOnBreak++;
 
@@ -1941,6 +1933,8 @@ void GoodsLoader(int myID) {
 
 				//check the shelf i am going to restock
 				shelfLock[currentDept][shelf]->Acquire();
+				if(testNumber == 8) cout << "GoodsLoder [" << myID << "] is in the act of restocking shelf [" << shelf << "] in Department [" << currentDept << "]." << endl;
+				if(testNumber == 8) cout << "The shelf had " << shelfInventory[currentDept][shelf] << "  but GoodsLoader " << myID <<" has added one more." << endl;
 				if(shelfInventory[currentDept][shelf] == maxShelfQty) {
 					cout << "GoodsLoader [" << myID << "] has restocked [" << shelf << "] in Department [" << currentDept << "]." << endl;
 					qtyInHands = 0;
