@@ -1791,15 +1791,12 @@ void GoodsLoader(int myID) {
 	inactiveLoaderLock->Acquire();
 	//normal action loop
 	while(true) {
-		//if(!salesNeedsMoreLoaders) {
-
 		if(!foundNewOrder) {	//if i don't have a new order (from my last run) go to sleep
 			loaderStatus[myID] = LOAD_NOT_BUSY;
 			if(mySalesID != -1){
 				cout << "GoodsLoader [" << myID << "] is waiting for orders to restock." << endl;
 			}
 			inactiveLoaderCV->Wait(inactiveLoaderLock);
-			//cout << "Loader " << myID << " has been summoned" << endl;
 			//at this point, I have just been woken up from the inactive loaders waiting area
 		}
 		foundNewOrder = false;	//initialize that I have not found a new order for this run yet
@@ -1811,7 +1808,6 @@ void GoodsLoader(int myID) {
 		//look through all departments to find out who signalled me
 		for(int j = 0; j < numDepartments; j++) {
 			salesLock[j]->Acquire();
-			//cout << "checking dept " << j << endl;
 			for(int i = 0; i < numSalesmen; i++) {
 				if(currentSalesStatus[j][i] == SALES_SIGNALLING_LOADER) {	//i found a person who was signalling for a loader!
 					mySalesID = i;
@@ -1874,39 +1870,25 @@ void GoodsLoader(int myID) {
 
 			//Restock items
 			int qtyInHands = 0;
-			//for(int i = 0; i < maxShelfQty; i++) {
 			shelfLock[currentDept][shelf]->Acquire();
 			while(shelfInventory[currentDept][shelf] < maxShelfQty) {
 				shelfLock[currentDept][shelf]->Release();
 
-
-				//currentLoaderInStockLock->Acquire();
 				if(currentLoaderInStock != -1 || waitingForStockRoomCount > 0){
 					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
 					waitingForStockRoomCount++;
-				//	currentLoaderInStockCV->Wait(currentLoaderInStockLock);
 				}
-				//currentLoaderInStockLock->Release();
 				//Simulates a store room like the spec says
 				stockRoomLock->Acquire();
-				//currentLoaderInStockLock->Acquire();
 				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
 				currentLoaderInStock = myID;
-				//currentLoaderInStockLock->Release();
 				qtyInHands++;
-				//currentLoaderInStockLock->Acquire();
 				currentLoaderInStockCV->Signal(currentLoaderInStockLock);
 				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
 				waitingForStockRoomCount--;
 				currentLoaderInStock = -1;
-				//currentLoaderInStockLock->Release();
 				stockRoomLock->Release();
-/*
-				 * 				currentLoaderInStockLock->Acquire();
-				currentLoaderInStock = -1; //lets other goodsloaders change it
-				currentLoaderInStockLock->Release();
-*/
-				//cout << "about to yield" << endl;
+
 				for(int j = 0; j < 5; j++) {
 					currentThread->Yield();
 				}
@@ -1960,11 +1942,6 @@ void GoodsLoader(int myID) {
 					foundNewOrder = true;
 					break;
 				}
-				/*else if(currentSalesStatus[currentDept][i] == SALES_NOT_BUSY) {
-					cout << "salesman d-i " << currentDept << " " << i << "wasn't busy" << endl;
-					mySalesID = i;
-					break;
-				}*/
 			}
 			if(mySalesID == -50) {
 				//no one was signalling, so look for free salesmen to go report to
@@ -2033,9 +2010,7 @@ void GoodsLoader(int myID) {
 		inactiveLoaderLock->Acquire();
 		for(int j = 0; j < numDepartments; j++) {
 			salesLock[j]->Acquire();
-			//cout << "checking dept " << j << endl;
 			for(int i = 0; i < numSalesmen; i++) {
-				//cout << "i " << i << "  j " << j << endl;
 				if(currentSalesStatus[j][i] == SALES_SIGNALLING_LOADER) {
 					foundNewOrder = true;
 					break;
