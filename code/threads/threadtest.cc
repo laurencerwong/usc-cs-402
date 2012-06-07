@@ -1413,9 +1413,6 @@ void manager(){
 		salesLock[dept]->Release();
 		//-----------------------------End send salesmen on break
 
-
-
-
 		for(int i = 0; i < cashierNumber; i++){
 
 			cashierLock[i]->Acquire(); //acquiring this lock prevents race conditions
@@ -1671,11 +1668,8 @@ void Salesman(int arg) {
 		}
 
 		individualSalesmanLock[myDept][myIndex]->Acquire();
-		//cout << "got my individual lock" << endl;
 		salesLock[myDept]->Release();
-		//cout << "sales " << myIndex << " waiting for someone to come up to me" << endl;
 		salesmanCV[myDept][myIndex]->Wait(individualSalesmanLock[myDept][myIndex]);	//Wait for cust/loader to walk up to me
-		//cout << "Someone " << currentlyTalkingTo[myDept][myIndex] << " came up to salesman " << myIndex << endl;
 
 		if(currentlyTalkingTo[myDept][myIndex] == GREETING) {	//a greeting customer came up to me
 			int myCustNumber = salesCustNumber[myDept][myIndex];
@@ -1687,7 +1681,6 @@ void Salesman(int arg) {
 			}
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);
 			individualSalesmanLock[myDept][myIndex]->Release();
-			//cout << "just signalled on index: " << myIndex << endl;
 		}
 		else if(currentlyTalkingTo[myDept][myIndex] == COMPLAINING) {	//a complaining customer came up to me
 			int myCustNumber = salesCustNumber[myDept][myIndex];
@@ -1749,10 +1742,6 @@ void Salesman(int arg) {
 			inactiveLoaderLock->Acquire();
 			int myLoaderID = -1;
 
-			//for(int i = 0; i < numLoaders; i++) {	//debug
-			//	cout << "Load status: " << loaderStatus[i] << endl;
-			//}
-
 			for(int i = 0; i < numLoaders; i++) {	//find the loader who i just sent off to restock and change his status
 				if(loaderStatus[i] == LOAD_HAS_BEEN_SIGNALLED) {
 					myLoaderID = i;
@@ -1760,10 +1749,9 @@ void Salesman(int arg) {
 					break;
 				}
 			}
-			//cout << "Salesman " << myIndex << " is waiting for loader " << myLoaderID << endl;
+
 			inactiveLoaderLock->Release();
 
-			//cout << "Loader " << myLoaderID << " has arrived at salesman " << myIndex << "!" << endl;
 			cout << "DepartmentSalesman [" << myIndex << "] informs the GoodsLoader [" << myLoaderID << "] that [" << itemOutOfStock << "] is out of stock." << endl;
 			salesmanCV[myDept][myIndex]->Signal(individualSalesmanLock[myDept][myIndex]);
 			individualSalesmanLock[myDept][myIndex]->Release();
