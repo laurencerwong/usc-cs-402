@@ -579,6 +579,7 @@ void Salesman(int);
 
 
 void initShelves() {
+	char* name;
 	stockRoomLock = new Lock("Stock room lock");
 
 	shelfLock = new Lock**[numDepartments];
@@ -593,8 +594,12 @@ void initShelves() {
 
 	for(int i = 0; i < numDepartments; i++) {
 		for(int j = 0; j < numItems; j++) {
-			shelfLock[i][j] = new Lock("shelfLock");
-			shelfCV[i][j] = new Condition("shelfCV");
+			name = new char[20];
+			sprintf(name, "shelfLock dept%d item%d", i, j);
+			shelfLock[i][j] = new Lock("name");
+			name = new char[20];
+			sprintf(name, "shelCV dept%d item%d", i, j);
+			shelfCV[i][j] = new Condition("name");
 			shelfInventory[i][j] = 0;
 		}
 	}
@@ -1215,8 +1220,9 @@ void Customer(int myID){
 		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
 		//now I've received my receipt and should release the cashier
 		cout << type << " [" << myID << "] got receipt from Cashier [" << myCashier << "] and is now leaving." << endl;
-		cashierLock[myCashier]->Release();
+
 		cashierToCustCV[myCashier]->Signal(cashierLock[myCashier]);
+		cashierLock[myCashier]->Release();
 		myCashier = -1; //so I can't accidentally tamper with the cashier I chose anymore
 	}
 
@@ -1267,6 +1273,7 @@ void manager(){
 	int* numSalesmenOnBreak = new int[numDepartments];
 
 	srand(time(NULL));
+	int chance = rand() %5;
 	while(true){
 
 		//------------------Check if all customers have left store----------------
@@ -1294,7 +1301,9 @@ void manager(){
 		//------------------End check if all customers have left store------------
 
 		//-----------------Have loader check trolleys---------------------------
+		inactiveLoaderLock->Acquire();
 		inactiveLoaderCV->Signal(inactiveLoaderLock); //wake up goods loader to do a regular check of trolley and manager items
+		inactiveLoaderLock->Release();
 		if(counter != 100000000) counter ++;
 		//I don't need to acquire a lock because I never go to sleep
 		//Therefore, it doesn't matter if a cashierFlag is changed on this pass,
@@ -1334,19 +1343,19 @@ void manager(){
 		
 
 		}
-		else cashierLinesLock->Release();
+		else {
 		//---------------------------End Bring cashier back from break--------------------------
 
 		//---------------------------Begin send cashiers on break-------------------------------
-		cashierLinesLock->Acquire();
-		int chance = rand() % 5;
+
+
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ //.001% chance of sending cashier on break
 			//generate cashier index
 			int r = rand() % cashierNumber;
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
 				if(cashierStatus[r] == CASH_NOT_BUSY) {
 					cashierLock[r]->Acquire();
-					cashierDesk[r] = -1;
+					cashierDesk[r] = -2;
 					cashierStatus[r] = CASH_GO_ON_BREAK;
 					cout << "Manager signalling" <<endl;
 					cashierToCustCV[r]->Signal(cashierLock[r]);
@@ -1361,6 +1370,7 @@ void manager(){
 
 
 			}
+		}
 		}
 		//-----------------------------End send cashiers on break-------------------------------------
 		cashierLinesLock->Release();
@@ -1507,14 +1517,14 @@ void cashier(int myCounter){
 			//cout << "Cashier [" << myCounter << " acknowledges he will go on break" << endl;
 
 
-
-		unprivilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
-		privilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
 		cout << "Cashier [" << myCounter << "] is going on break." << endl;
 		cashierStatus[myCounter] = CASH_ON_BREAK;
-		
-		cashierLinesLock->Release();
+		unprivilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
+		privilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
+
 		cashierLock[myCounter]->Acquire();
+		cashierLinesLock->Release();
+
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 		cashierLinesLock->Acquire();
 		cashierStatus[myCounter] = CASH_NOT_BUSY;
@@ -1546,7 +1556,7 @@ void cashier(int myCounter){
 	//when I get here, there will be an item to scan
 	int total = 0;
 	int custID = cashierDesk[myCounter];
-	if(custID == -1){
+	if(custID == -2){
 		cashierLock[myCounter]->Release();
 		continue;
 	}
@@ -2478,6 +2488,7 @@ void Problem2(){
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice = 12;
+	/*
 	while(true){
 		cin >> choice;
 		if(cin.fail()){
@@ -2492,7 +2503,7 @@ void Problem2(){
 		}
 		else break;
 	}
-
+*/
 	switch (choice){
 	case 1:
 		testCustomerGettingInLine();
