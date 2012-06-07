@@ -434,7 +434,7 @@ void TestSuite() {
 #define NUM_ITEMS 10
  */
 
-int maxShelfQty = 10;
+int maxShelfQty = 15;
 int numTrollies = 40;
 int numSalesmen = 3;
 int numLoaders = 10;
@@ -880,7 +880,8 @@ void Customer(int myID){
 		myCash = customerCash;
 	}
 	else{
-		numItemsToBuy = (rand() % (numItems - 1)) + 1;
+		//numItemsToBuy = (rand() % (numItems - 1)) + 1;
+		numItemsToBuy = (rand() % numItems);
 		myCash = rand() % 200;
 	}
 
@@ -919,7 +920,7 @@ void Customer(int myID){
 	}
 	else{
 		for (int i = 0; i < numItemsToBuy; i++){
-			itemsToBuy[i] = getDepartmentFromItem(rand() % numItems);
+			itemsToBuy[i] = rand() % numItems;//getDepartmentFromItem(rand() % numItems);
 			qtyItemsToBuy[i] = (rand()% numItems);
 			itemsInCart[i] = -1;
 			qtyItemsInCart[i] = 0;
@@ -1461,6 +1462,7 @@ void manager(){
 				int cashierID = i;
 
 				managerLock->Acquire(); //manager lock protects the manager's interactions
+
 				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up customer, who also waits first in this interaction
 				cashierToCustCV[cashierID]->Signal(cashierLock[cashierID]); //wakes up cashier
 				cashierLock[i]->Release();
@@ -1490,7 +1492,9 @@ void manager(){
 					managerCV->Signal(managerLock);
 					managerCV->Wait(managerLock);
 				}
+				inactiveLoaderLock->Acquire();
 				inactiveLoaderCV->Signal(inactiveLoaderLock);
+				inactiveLoaderLock->Release();
 				//now customer has reached end of items or has enough money
 				//I give him total
 				managerDesk = amountOwed;
