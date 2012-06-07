@@ -2082,18 +2082,11 @@ void testCustomerEnteringStoreAndPickingUpItems() {
 	initCustomerCashier();
 	initTrolly();
 
-
 	char* name;
-
 	Thread * t;
-	/*for(int i = 0; i < numSalesmen; i++){
-		name = new char [20];
-		sprintf(name,"sales%d",i);
-		t = new Thread(name);
-		t->Fork((VoidFunctionPtr)Salesman, i);
-		delete name;
-	}*/
+
 	createSalesmen(numDepartments, numSalesmen);
+
 	for(int i = 0; i < custNumber; i++){
 		name = new char [20];
 		sprintf(name,"cust%d",i);
@@ -2255,6 +2248,7 @@ void testCashiersScanUntilTrollyIsEmpty(){
 	t->Fork((VoidFunctionPtr)Customer, 0);
 	createSalesmen(1, 1);
 }
+
 void testPutCashiersOnBreak(){
 	testNumber = 5;
 	initCustomerCashier();
@@ -2297,8 +2291,6 @@ void testBringCashiersBackFromBreak(){
 	numDepartments = 1;
 	numTrollies = 20;
 	numLoaders = 1;
-	//initCustomerCashier();
-	//initShelves();
 	initShelvesWithQty(100);
 	initSalesmen();
 	initLoaders();
@@ -2307,16 +2299,12 @@ void testBringCashiersBackFromBreak(){
 	Thread* t;
 	initCustomerCashier();
 
-
-	cout << cashierNumber << " num cahsier s" << endl;
-
 	for(int i = 0; i < cashierNumber; i++){
 		//if(i != 1 || i != 3){
 			unprivilegedLineCount[i] = 3;
 			privilegedLineCount[i] = 3;
 
 	}
-
 
 	name = new char[20];
 	name = "manager thread";
