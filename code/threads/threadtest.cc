@@ -1337,20 +1337,21 @@ void manager(){
 		}
 
 		//--------------------------Begin bring cashier back from break--------------------
-		if((unsigned int)numFullLines > (cashierNumber - numCashiersOnBreak) && cashiersOnBreak.size()){ //bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break
+		if(numFullLines > (cashierNumber - numCashiersOnBreak) && cashiersOnBreak.size()){ //bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break
 
 			int wakeCashier = cashiersOnBreak.front();
 			if(cashierStatus[wakeCashier] == CASH_ON_BREAK){
+			cashierLinesLock->Release();	
+			cashierLock[wakeCashier]->Acquire();
 			if (numAnyLines)cout << "Manager brings back Cashier " << wakeCashier << " from break." << endl;
-			cashierStatus[wakeCashier] = CASH_NOT_BUSY; //set this since any cashier that had breaked will have lines = 0
 			cashierToCustCV[wakeCashier]->Signal(cashierLock[wakeCashier]); //this is the actual act of bring a cashier back from break
-
+			cashierLock[wakeCashier]->Release();
 			//bookkeeping
 			numCashiersOnBreak--;
 			cashiersOnBreak.pop();
-				
+	
 			}
-			cashierLinesLock->Release();
+		
 
 		}
 		else cashierLinesLock->Release();
@@ -1362,8 +1363,18 @@ void manager(){
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ //.001% chance of sending cashier on break
 			//generate cashier index
 			int r = rand() % cashierNumber;
+			cout << " cashier " << r << " status is " << cashierStatus[r] << endl;
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
-				cashierStatus[r] = CASH_GO_ON_BREAK;
+				if(cashierStatus[r] == CASH_NOT_BUSY) {
+					cashierLock[r]->Acquire();
+					cashierDesk[r] = -1;
+					cashierStatus[r] = CASH_GO_ON_BREAK;
+					cout << "Manager signalling" <<endl;
+					cashierToCustCV[r]->Signal(cashierLock[r]);
+
+					cashierLock[r]->Release();
+				}
+				else cashierStatus[r] = CASH_GO_ON_BREAK;
 				/*if(numAnyLines)*/cout << "Manager sends Cashier [" << r << "] on break." << endl;
 				if(testNumber == 5) cout << "Manager has iterated " << counter << " times at this point." << endl;
 				cashiersOnBreak.push(r);
@@ -1529,11 +1540,13 @@ void cashier(int myCounter){
 		privilegedCashierLineCV[myCounter]->Broadcast(cashierLinesLock);
 		cout << "Cashier [" << myCounter << "] is going on break." << endl;
 		cashierStatus[myCounter] = CASH_ON_BREAK;
-		cashierLock[myCounter]->Acquire();
+		
 		cashierLinesLock->Release();
+		cashierLock[myCounter]->Acquire();
 		cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+		cashierLinesLock->Acquire();
+		cashierStatus[myCounter] = CASH_NOT_BUSY;
 		cout << "Cashier [" << myCounter << "] was called from break by Manager to work." << endl;
-		continue;
 	}
 	//check if my lines have anyone in it
 	//set my state so approaching Customers can wait in or engage me, as apropriate
@@ -1555,21 +1568,28 @@ void cashier(int myCounter){
 	cashierLock[myCounter]->Acquire();
 	cashierLinesLock->Release();
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
-	//cout << "Cashier falling asleep" << endl;
+	cout << "Cashier falling asleep" << endl;
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+	cout << "cashier waking up" << endl;
 	//the next time I'm woken up (assuming it is by a customer, not a manager
 	//I will be totaling items
 	//when I get here, there will be an item to scan
 	int total = 0;
 	int custID = cashierDesk[myCounter];
+	if(custID == -1){
+		cashierLock[myCounter]->Release();
+		continue;
+	}
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
+
 	if(cashierDesk[myCounter] == 1){
 		custType = "PrivilegedCustomer";
 	}
 	else{
 		custType = "Customer";
 	}
+
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
 	while(cashierDesk[myCounter] != -1){ //-1 means we're done scanning
@@ -2318,16 +2338,18 @@ void testPutCashiersOnBreak(){
 	initTrolly();
 	char* name;
 	Thread* t;
-	name = new char[20];
-	name = "manager thread";
-	t = new Thread(name);
-	t->Fork((VoidFunctionPtr)manager, 0);
+
 	for(int i = 0; i < cashierNumber; i++){
 		name = new char[20];
 		sprintf(name, "cashier%d", i);
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
 	}
+	name = new char[20];
+	name = "manager thread";
+	t = new Thread(name);
+	t->Fork((VoidFunctionPtr)manager, 0);
+
 }
 
 void testBringCashiersBackFromBreak(){
