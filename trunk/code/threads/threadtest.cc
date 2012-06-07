@@ -563,6 +563,9 @@ Lock *currentLoaderInStockLock;
 //Control variable for current loader in stock
 Condition *currentLoaderInStockCV;
 
+//Control variable for waiting for the stock room
+Condition *stockRoomCV;
+
 //Number of goodsloaders waiting for the stockroom
 int waitingForStockRoomCount;
 
@@ -695,6 +698,7 @@ void initLoaders() {
 	currentLoaderInStock = -1;
 	currentLoaderInStockLock = new Lock("cur loader in stock lock");
 	currentLoaderInStockCV = new Condition("Current Loader in Stock CV");
+	stockRoomCV = new Condition("Stock Room CV");
 	waitingForStockRoomCount = 0;
 	loaderStatus = new LoaderStatus[numLoaders];
 
@@ -1885,28 +1889,47 @@ void GoodsLoader(int myID) {
 			while(shelfInventory[currentDept][shelf] < maxShelfQty) {
 				shelfLock[currentDept][shelf]->Release();
 
-				if(currentLoaderInStock != -1 || waitingForStockRoomCount > 0){
+				currentLoaderInStockLock->Acquire(); //acquires the lock in order to access the number of waiting loaders and the id of the current loader in the stock room
+				if(currentLoaderInStock != -1 || waitingForStockRoomCount > 0){//if either someone is in line or there is a loader in the stock room...
 					cout << "GoodsLoader [" << myID << "] is waiting for GoodsLoader [" << currentLoaderInStock << "] to leave the StockRoom." << endl;
 					waitingForStockRoomCount++;
+					currentLoaderInStockCV->Wait(currentLoaderInStockLock); //wait to be let into the stock room
 				}
-				//Simulates a store room like the spec says
-				stockRoomLock->Acquire();
+				stockRoomLock->Acquire(); //acquire the lock to the actual stockroom
+				if(currentLoaderInStock != -1){ //if someone was in the stockroom, change the current loader to this loader's id, wake him up, and then wait for him to acknowledge
+					currentLoaderInStock = myID;
+					stockRoomCV->Signal(stockRoomLock);
+					stockRoomCV->Wait(stockRoomLock);
+				}
+				else{ //if no one was in the stockroom, then just set the current loader to this loader's id
+					currentLoaderInStock = myID;
+				}
 				cout << "GoodsLoader [" << myID << "] is in the StockRoom and got [" << shelf << "]" << endl;
-				currentLoaderInStock = myID;
-				qtyInHands++;
-				currentLoaderInStockCV->Signal(currentLoaderInStockLock);
-				cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
-				waitingForStockRoomCount--;
-				currentLoaderInStock = -1;
-				stockRoomLock->Release();
 
+				currentLoaderInStockLock->Release(); //releasing this allows others to check the current loader and get in line
+				qtyInHands++; //grab an item
+				currentLoaderInStockLock->Acquire();
+				if(waitingForStockRoomCount > 0){ //if there are people in line, then signal the next person in line and decrement the line count
+					currentLoaderInStockCV->Signal(currentLoaderInStockLock);
+					waitingForStockRoomCount--;
+					currentLoaderInStockLock->Release();
+					stockRoomCV->Wait(stockRoomLock); //wait for the loader that was woke up to put their id into current loader and then print that this loader is leaving
+					cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
+					stockRoomCV->Signal(stockRoomLock); //wake up the last loader so they can get into the stockroom
+				}
+				else{
+					currentLoaderInStock = -1; //if no one is in line, then set the current loader to -1, which signifies that the stockroom was empty prior
+					cout << "GoodsLoader [" << myID << "] leaves StockRoom." << endl;
+					currentLoaderInStockLock->Release();
+				}
+				stockRoomLock->Release();
 				for(int j = 0; j < 5; j++) {
 					currentThread->Yield();
 				}
 
 				//check the shelf i am going to restock
 				shelfLock[currentDept][shelf]->Acquire();
-				if(testNumber == 8) cout << "GoodsLoder [" << myID << "] is in the act of restocking shelf [" << shelf << "] in Department [" << currentDept << "]." << endl;
+				if(testNumber == 8) cout << "GoodsLoader [" << myID << "] is in the act of restocking shelf [" << shelf << "] in Department [" << currentDept << "]." << endl;
 				if(testNumber == 8) cout << "The shelf had " << shelfInventory[currentDept][shelf] << "  but GoodsLoader " << myID <<" has added one more." << endl;
 
 				if(shelfInventory[currentDept][shelf] == maxShelfQty) {	//check to see if a shelf needs more items
