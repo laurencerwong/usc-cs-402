@@ -1273,7 +1273,6 @@ void manager(){
 	int* numSalesmenOnBreak = new int[numDepartments];
 
 	srand(time(NULL));
-	int chance = rand() %5;
 	while(true){
 
 		//------------------Check if all customers have left store----------------
@@ -1343,11 +1342,15 @@ void manager(){
 		
 
 		}
-		else {
+		else cashierLinesLock->Release();
+
+		cashierLinesLock->Acquire();
+
+
 		//---------------------------End Bring cashier back from break--------------------------
 
 		//---------------------------Begin send cashiers on break-------------------------------
-
+		int chance = rand() %10;
 
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ //.001% chance of sending cashier on break
 			//generate cashier index
@@ -1371,7 +1374,7 @@ void manager(){
 
 			}
 		}
-		}
+
 		//-----------------------------End send cashiers on break-------------------------------------
 		cashierLinesLock->Release();
 
@@ -1548,9 +1551,7 @@ void cashier(int myCounter){
 	cashierLock[myCounter]->Acquire();
 	cashierLinesLock->Release();
 	cashierToCustCV[myCounter]->Signal(cashierLock[myCounter]);
-	cout << "Cashier falling asleep" << endl;
 	cashierToCustCV[myCounter]->Wait(cashierLock[myCounter]);
-	cout << "cashier waking up" << endl;
 	//the next time I'm woken up (assuming it is by a customer, not a manager
 	//I will be totaling items
 	//when I get here, there will be an item to scan
@@ -2488,7 +2489,7 @@ void Problem2(){
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice = 12;
-	/*
+
 	while(true){
 		cin >> choice;
 		if(cin.fail()){
@@ -2503,7 +2504,7 @@ void Problem2(){
 		}
 		else break;
 	}
-*/
+
 	switch (choice){
 	case 1:
 		testCustomerGettingInLine();
