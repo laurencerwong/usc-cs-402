@@ -196,7 +196,7 @@ void Condition::Wait(Lock* conditionLock) {
 	//check that the lock passed in is the lock associated with this CV.  Otherwise, it would be improper
 	//to allow the thread to release the lock, and would mess up the semantics of the CV
 	if(conditionLock != waitingLock){
-		printf("Argument passed to Condition::Wait() was the incorrect lock, returning without performing wait\n");
+		printf("Argument passed to Condition::Wait() for Condition %s was the incorrect lock, returning without performing wait\n", name);
 		(void) interrupt->SetLevel(oldLevel);
 		return;
 	}
@@ -218,15 +218,24 @@ void Condition::Wait(Lock* conditionLock) {
 void Condition::Signal(Lock* conditionLock) { 
 	Thread *thread;
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts so this opertion is atomic
-														//(can't be switch out
+	if(conditionLock == NULL){
+		printf("Argument passed to Condition::Signal() was null, returning without performing wait\n");
+		(void) interrupt->SetLevel(oldLevel);
+		return;
+	}											//(can't be switch out
 	if(queue->IsEmpty()){
 		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
 		return; //don't need to worry if an extraneous call to signal, just return
 	}
 	if(waitingLock != conditionLock){ //check that it is the proper lock, otherwise the thread woken up will try
 										//to acquire a lock that may not be free and be blocked as a result
-		printf("Argument passed to Condition::Signal() was the incorrect lock, returning without performing wait\n");
+		printf("Argument passed to Condition::Signal() for Condition %s was the incorrect lock, returning without performing wait\n", name);
 		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		return;
+	}
+	if(!waitingLock->isHeldByCurrentThread()){
+		printf("Thread %s calling Signal() on Condition %s does not have lock\n", currentThread->getName(), name);
+		(void) interrupt->SetLevel(oldLevel);
 		return;
 	}
 	thread = (Thread *) queue->Remove(); //get the next thread waiting on CV
@@ -239,6 +248,26 @@ void Condition::Signal(Lock* conditionLock) {
 }
 void Condition::Broadcast(Lock* conditionLock) { 
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
+	if(conditionLock == NULL){
+		printf("Argument passed to Condition::Broadcast() was null, returning without performing operation\n");
+		(void) interrupt->SetLevel(oldLevel);
+		return;
+	}
+	if(queue->IsEmpty()){
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		return; //don't need to worry if an extraneous call to signal, just return
+	}
+	if(waitingLock != conditionLock){ //check that it is the proper lock, otherwise the thread woken up will try
+										//to acquire a lock that may not be free and be blocked as a result
+		printf("Argument passed to Condition::Broadcast() for condition %s was the incorrect lock, returning without performing opeartion\n", name);
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		return;
+	}
+	if(!waitingLock->isHeldByCurrentThread()){
+		printf("Thread %s calling Signal() on Condition %s does not have lock\n", currentThread->getName(), name);
+		(void) interrupt->SetLevel(oldLevel);
+		return;
+	}
 	while(!queue->IsEmpty()) Signal(conditionLock); //all operations we need are in Signal, just need to call over and over
 	(void) interrupt->SetLevel(oldLevel);
 }
