@@ -1363,7 +1363,6 @@ void manager(){
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ //.001% chance of sending cashier on break
 			//generate cashier index
 			int r = rand() % cashierNumber;
-			cout << " cashier " << r << " status is " << cashierStatus[r] << endl;
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
 				if(cashierStatus[r] == CASH_NOT_BUSY) {
 					cashierLock[r]->Acquire();
@@ -1551,12 +1550,10 @@ void cashier(int myCounter){
 	//check if my lines have anyone in it
 	//set my state so approaching Customers can wait in or engage me, as apropriate
 	if(privilegedLineCount[myCounter]){
-		cashierStatus[myCounter] = CASH_BUSY; //if anyone sees this, they will wait in line
 		privilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 		custType = "Privileged Customer";
 	}
 	else if(unprivilegedLineCount[myCounter]){
-		cashierStatus[myCounter] = CASH_BUSY;
 		//cout << "Signalling customer in line" << endl;
 		unprivilegedCashierLineCV[myCounter]->Signal(cashierLinesLock);
 		custType = "Customer";
@@ -2370,11 +2367,6 @@ void testBringCashiersBackFromBreak(){
 	char* name;
 	Thread* t;
 	initCustomerCashier();
-	cashiersOnBreak.push(3);
-	cashiersOnBreak.push(2);
-	cashiersOnBreak.push(1);
-	cashiersOnBreak.push(0);
-	numCashiersOnBreak = 4;
 
 
 	cout << cashierNumber << " num cahsier s" << endl;
@@ -2383,10 +2375,7 @@ void testBringCashiersBackFromBreak(){
 		//if(i != 1 || i != 3){
 			unprivilegedLineCount[i] = 3;
 			privilegedLineCount[i] = 3;
-			cashierBreakBoard[i] = 1;
-		//}
-		cashierStatus[i] = CASH_ON_BREAK;
-			cout << "setting cahiers to on break... " << i << endl;
+
 	}
 
 
@@ -2397,6 +2386,7 @@ void testBringCashiersBackFromBreak(){
 	for(int i = 0; i < cashierNumber; i++){
 		name = new char[20];
 		sprintf(name, "cashier%d", i);
+		cashierStatus[i] = CASH_NOT_BUSY;
 		t = new Thread(name);
 		t->Fork((VoidFunctionPtr)cashier, i);
 	}
