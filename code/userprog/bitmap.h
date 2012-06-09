@@ -36,7 +36,9 @@ class BitMap {
     BitMap(int nitems);		// Initialize a bitmap, with "nitems" bits
 				// initially, all bits are cleared.
     ~BitMap();			// De-allocate bitmap
-    
+#ifdef CHANGED
+    void Resize();
+#endif
     void Mark(int which);   	// Set the "nth" bit
     void Clear(int which);  	// Clear the "nth" bit
     bool Test(int which);   	// Is the "nth" bit set?

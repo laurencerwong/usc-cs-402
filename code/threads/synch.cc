@@ -172,6 +172,19 @@ bool Lock::isHeldByCurrentThread(){
 	return currentThread == threadWithPossession;
 }
 
+#ifdef CHANGED
+
+bool Lock::isBusy(){
+	if(state == BUSY){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+#endif
+
 Condition::Condition(char* debugName) { 
 	name = debugName;
 	queue = new List;
@@ -271,3 +284,15 @@ void Condition::Broadcast(Lock* conditionLock) {
 	while(!queue->IsEmpty()) Signal(conditionLock); //all operations we need are in Signal, just need to call over and over
 	(void) interrupt->SetLevel(oldLevel);
 }
+
+#ifdef CHANGED
+bool Condition::hasWaiting(){
+	if(queue->Empty()){
+		return false;
+	}
+	else{
+		return true;
+	}
+}
+
+#endif

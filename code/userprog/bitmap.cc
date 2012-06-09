@@ -25,6 +25,26 @@ BitMap::BitMap(int nitems)
     for (int i = 0; i < numBits; i++) 
         Clear(i);
 }
+#ifdef CHANGED
+//Automatically resize bitmap
+
+void
+BitMap::Resize(){
+
+	unsigned int *newMap = new unsigned int[numWords *2];
+	for(int i = 0; i < numBits; i++){
+		newMap[i] = map[i];
+	}
+	for(int i = numBits; i < numBits *2; i++){
+		Clear(i);
+	}
+	numBits = nitems*2;
+	numWords = divRoundUp(numBits, BitsInWord);
+	delete []map;
+	map = newMap;
+}
+
+#endif
 
 //----------------------------------------------------------------------
 // BitMap::~BitMap
