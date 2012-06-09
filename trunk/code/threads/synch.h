@@ -77,6 +77,9 @@ class Lock {
 					// holds this lock.  Useful for
 					// checking in Release, and in
 					// Condition variable ops below.
+#ifdef CHANGED
+    bool isBusy();	// check if its busy
+#endif
 
   private:
     char* name;				// for debugging
