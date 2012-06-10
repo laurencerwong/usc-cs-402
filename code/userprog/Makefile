@@ -915,7 +915,17 @@ threadtest.o: ../threads/threadtest.cc ../threads/copyright.h \
   ../userprog/table.h ../userprog/bitmap.h ../threads/utility.h \
   ../filesys/openfile.h ../threads/scheduler.h ../threads/list.h \
   ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
-  ../machine/timer.h ../filesys/filesys.h
+  ../machine/timer.h ../filesys/filesys.h \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/queue \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/deque \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/bits/stl_deque.h \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/bits/deque.tcc \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/vector \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/bits/stl_vector.h \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/bits/stl_bvector.h \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/bits/vector.tcc \
+  /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/../../../../include/c++/3.4.3/bits/stl_queue.h \
+  ../threads/synch.h
 interrupt.o: ../machine/interrupt.cc \
   /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/include/stdio.h \
   /usr/include/stdarg.h /usr/include/iso/stdarg_iso.h \
@@ -1679,7 +1689,8 @@ exception.o: ../userprog/exception.cc ../threads/copyright.h \
   ../userprog/bitmap.h ../threads/utility.h ../filesys/openfile.h \
   ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
   ../threads/list.h ../machine/stats.h ../machine/timer.h \
-  ../filesys/filesys.h ../userprog/syscall.h
+  ../filesys/filesys.h ../userprog/syscall.h ../userprog/exception.h \
+  ../threads/synch.h ../userprog/addrspace.h
 progtest.o: ../userprog/progtest.cc ../threads/copyright.h \
   ../threads/system.h ../threads/copyright.h ../threads/utility.h \
   ../threads/bool.h ../machine/sysdep.h ../threads/copyright.h \
@@ -2291,6 +2302,8 @@ translate.o: ../machine/translate.cc ../threads/copyright.h \
   ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
   ../threads/list.h ../machine/stats.h ../machine/timer.h \
   ../filesys/filesys.h
+project2_part1_testsuite.o: ../userprog/project2_part1_testsuite.cc \
+  ../userprog/syscall.h ../threads/copyright.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above
