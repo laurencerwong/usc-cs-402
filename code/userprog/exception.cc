@@ -234,7 +234,9 @@ void Close_Syscall(int fd) {
 }
 #ifdef CHANGED
 
-int CreateLock_Syscall(char *name, int length){
+int CreateLock_Syscall(int nameIndex, int length){
+	char *name;
+	copyin(nameIndex, length, name);
 	if(lockArraySize == 0){
 		lockTable = new LockEntry[50];
 		lockMap = new BitMap(50);
@@ -245,35 +247,212 @@ int CreateLock_Syscall(char *name, int length){
 		lockMap->Resize();
 		LockEntry *temp = new LockEntry[lockArraySize *2];
 		for(int i = 0;i < lockArraySize; i++){
-			temp[i] = lockMap[i];
+			temp[i] = lockTable[i];
 		}
 		lockArraySize *= 2;
-		delete []lockMap;
-		lockMap = temp;
+		delete []lockTable;
+		lockTable = temp;
 		nextFreeIndex = lockMap->Find();
 	}
 	lockTable[nextFreeIndex].lock = new Lock (name);
 }
 
-int CreateCondition_Syscall(char *name, int length){
+int CreateCondition_Syscall(int nameIndex, int length){
+	char *name;
+	copyin(nameIndex, length, name);
 	if(conditionArraySize == 0){
 		conditionTable = new ConditionEntry[50];
 		conditionMap = new BitMap(50);
 		conditionArraySize = 50;
 	}
-	int nextFreeIndex = ConditionMap->Find();
+	int nextFreeIndex = conditionMap->Find();
 	if(nextFreeIndex == -1){
 		conditionMap->Resize();
-		conditionEntry *temp = new ConditionEntry[conditionArraySize *2];
+		ConditionEntry *temp = new ConditionEntry[conditionArraySize *2];
 		for(int i = 0;i < conditionArraySize; i++){
-			temp[i] = conditionMap[i];
+			temp[i] = conditionTable[i];
 		}
 		conditionArraySize = conditionArraySize *2;
-		delete []conditionMap;
-		conditionMap = temp;
+		delete []conditionTable;
+		conditionTable = temp;
 		nextFreeIndex = conditionMap->Find();
 	}
 	conditionTable[nextFreeIndex].condition = new Condition (name);
+}
+
+void P_Syscall(int semaphoreIndex){
+	if(semaphoreIndex < 0 || semaphoreIndex > semaphoreArraySize -1){
+		printf("Thread %s called P with an invalid index %d\n", currentThread->getName(), semaphoreIndex);
+	}
+	if(!semaphoreMap->Test(semaphoreIndex)){
+		printf("Thread %s called P on a semaphore that does not exist: %d\n", currentThread->getName(), semaphoreIndex);
+	}
+	if(semaphoreTable[semaphoreIndex].semaphoreSpace != currentThread->space){
+		printf("Thread %s called P on semaphore %d which does not belong to its address space\n", currentThread->getName(), semaphoreIndex);
+	}
+	semaphoreTable[semaphoreIndex].semaphore->P();
+}
+
+void V_Syscall(int semaphoreIndex){
+	if(semaphoreIndex < 0 || semaphoreIndex > semaphoreArraySize -1){
+		printf("Thread %s called V with an invalid index %d\n", currentThread->getName(), semaphoreIndex);
+	}
+	if(!semaphoreMap->Test(semaphoreIndex)){
+		printf("Thread %s called V on a semaphore that does not exist: %d\n", currentThread->getName(), semaphoreIndex);
+	}
+	if(semaphoreTable[semaphoreIndex].semaphoreSpace != currentThread->space){
+		printf("Thread %s called V on semaphore %d which does not belong to its address space\n", currentThread->getName(), semaphoreIndex);
+	}
+	semaphoreTable[semaphoreIndex].semaphore->V();
+	if(semaphoreTable[semaphoreIndex].isToBeDeleted){
+		if(!(semaphoreTable[semaphoreIndex].semaphore->isBusy())){
+			delete semaphoreTable[semaphoreIndex].semaphore;
+			semaphoreMap->Clear(semaphoreIndex);
+		}
+	}
+}
+
+void Signal_Syscall(int conditionIndex, int lockIndex){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(!conditionMap->Test(conditionIndex)){
+		printf("Thread %s called Signal on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+		printf("Thread %s called Signal on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+	}
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+		printf("Thread %s called Release in Signal with an invalid index %d\n", currentThread->getName(), lockIndex);
+	}
+	if(!lockMap->Test(lockIndex)){
+		printf("Thread %s called Release in Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+	}
+	if(lockTable[lockIndex].lockSpace != currentThread->space){
+		printf("Thread %s called Release in Signal on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+	}
+	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex].lock);
+	if(conditionTable[conditionIndex].isToBeDeleted){
+		if(!(conditionTable[conditionIndex].condition->hasWaiting())){
+			delete conditionTable[conditionIndex].condition;
+			conditionMap->Clear(conditionIndex);
+		}
+	}
+}
+
+void Broadcast_Syscall(int conditionIndex, int lockIndex){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(!conditionMap->Test(conditionIndex)){
+		printf("Thread %s called Broadcast on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+		printf("Thread %s called Broadcast on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+	}
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+		printf("Thread %s called Release in Broadcast with an invalid index %d\n", currentThread->getName(), lockIndex);
+	}
+	if(!lockMap->Test(lockIndex)){
+		printf("Thread %s called Release in Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+	}
+	if(lockTable[lockIndex].lockSpace != currentThread->space){
+		printf("Thread %s called Release in Broadcast on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+	}
+	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
+	if(conditionTable[conditionIndex].isToBeDeleted){
+		if(!(conditionTable[conditionIndex].condition->hasWaiting())){
+			delete conditionTable[conditionIndex].condition;
+			conditionMap->Clear(conditionIndex);
+		}
+	}
+}
+
+void Wait_Syscall(int conditionIndex, int lockIndex){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(!conditionMap->Test(conditionIndex)){
+		printf("Thread %s called Wait on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+		printf("Thread %s called Wait on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+	}
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+		printf("Thread %s called Release in Wait with an invalid index %d\n", currentThread->getName(), lockIndex);
+	}
+	if(!lockMap->Test(lockIndex)){
+		printf("Thread %s called Release in Wait on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+	}
+	if(lockTable[lockIndex].lockSpace != currentThread->space){
+		printf("Thread %s called Release in Wait on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+	}
+	conditionTable[conditionIndex].condition->Wait(lockTable[lockIndex].lock);
+}
+
+void DestroyLock_Syscall(int lockIndex){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+		printf("Thread %s tried to destroy a lock with an invalid index %d\n", currentThread->getName(), lockIndex);
+	}
+	if(!lockMap->Test(lockIndex)){
+		printf("Thread %s tried to destroy a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+	}
+	if(lockTable[lockIndex].lockSpace != currentThread->space){
+		printf("Thread %s tried to destroy a lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+	}
+	if(!(lockTable[lockIndex].lock->isBusy())){
+		delete lockTable[lockIndex].lock;
+		lockMap->Clear(lockIndex);
+	}
+	else{
+		lockTable[lockIndex].isToBeDeleted = true;
+	}
+}
+
+void DestroyCondition_Syscall(int conditionIndex){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+		printf("Thread %s tried to delete a condition with an invalid index %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(!conditionMap->Test(conditionIndex)){
+		printf("Thread %s tried to delete a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+	}
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+		printf("Thread %s tried to delete condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+	}
+	if(!(conditionTable[conditionIndex].condition->hasWaiting())){
+		delete conditionTable[conditionIndex].condition;
+		conditionMap->Clear(conditionIndex);
+	}
+	else{
+		conditionTable[conditionIndex].isToBeDeleted = true;
+	}
+}
+
+void Yield_Syscall(){
+	currentThread->Yield();
+}
+
+void CreateSemaphore_Syscall(int nameIndex, int length ){
+	char *name;
+	copyin(nameIndex, length, name);
+	if(semaphoreArraySize == 0){
+		semaphoreTable = new SemaphoreEntry[50];
+		semaphoreMap = new BitMap(50);
+		semaphoreArraySize = 50;
+	}
+	int nextFreeIndex = semaphoreMap->Find();
+	if(nextFreeIndex == -1){
+		semaphoreMap->Resize();
+		SemaphoreEntry *temp = new SemaphoreEntry[semaphoreArraySize *2];
+		for(int i = 0;i < semaphoreArraySize; i++){
+			temp[i] = semaphoreTable[i];
+		}
+		semaphoreArraySize *= 2;
+		delete []semaphoreTable;
+		semaphoreTable = temp;
+		nextFreeIndex = semaphoreMap->Find();
+	}
+	semaphoreTable[nextFreeIndex].semaphore = new Semaphore (name);
 }
 
 void Acquire_Syscall(int lockIndex){
@@ -302,130 +481,29 @@ void Release_Syscall(int lockIndex){
 	lockTable[lockIndex].lock->Release();
 	if(lockTable[lockIndex].isToBeDeleted){
 		if(!(lockTable[lockIndex].lock->isBusy())){
-			delete lockTable[lockIndex]->lock;
+			delete lockTable[lockIndex].lock;
 			lockMap->Clear(lockIndex);
 		}
 	}
 }
 
-void Signal_Syscall(int conditionIndex, int lockIndex){
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
-		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
+void Destroysemaphore_Syscall(int semaphoreIndex){
+	if(semaphoreIndex < 0 || semaphoreIndex > semaphoreArraySize -1){
+		printf("Thread %s tried to destroy a semaphore with an invalid index %d\n", currentThread->getName(), semaphoreIndex);
 	}
-	if(!conditionMap->Test(conditionIndex)){
-		printf("Thread %s called Signal on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+	if(!semaphoreMap->Test(semaphoreIndex)){
+		printf("Thread %s tried to destroy a semaphore that does not exist: %d\n", currentThread->getName(), semaphoreIndex);
 	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
-		printf("Thread %s called Signal on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+	if(semaphoreTable[semaphoreIndex].semaphoreSpace != currentThread->space){
+		printf("Thread %s tried to destroy a semaphore %d which does not belong to its address space\n", currentThread->getName(), semaphoreIndex);
 	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s called Release in Signal with an invalid index %d\n", currentThread->getName(), lockIndex);
-	}
-	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s called Release in Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
-	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s called Release in Signal on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
-	}
-	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex]->lock);
-	if(conditionTable[conditionIndex].isToBeDeleted){
-		if(!(conditionTable[conditionIndex].condition->hasWaiting())){
-			delete conditionTable[conditionIndex]->condition;
-			conditionMap->Clear(conditionIndex);
-		}
-	}
-}
-
-void Broadcast_Syscall(int conditionIndex, int lockIndex){
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
-		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
-	}
-	if(!conditionMap->Test(conditionIndex)){
-		printf("Thread %s called Broadcast on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
-	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
-		printf("Thread %s called Broadcast on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
-	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s called Release in Broadcast with an invalid index %d\n", currentThread->getName(), lockIndex);
-	}
-	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s called Release in Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
-	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s called Release in Broadcast on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
-	}
-	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex]->lock);
-	if(conditionTable[conditionIndex].isToBeDeleted){
-		if(!(conditionTable[conditionIndex].condition->hasWaiting())){
-			delete conditionTable[conditionIndex]->condition;
-			conditionMap->Clear(conditionIndex);
-		}
-	}
-}
-
-void Wait_Syscall(int conditionIndex, int lockIndex){
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
-		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
-	}
-	if(!conditionMap->Test(conditionIndex)){
-		printf("Thread %s called Wait on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
-	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
-		printf("Thread %s called Wait on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
-	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s called Release in Wait with an invalid index %d\n", currentThread->getName(), lockIndex);
-	}
-	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s called Release in Wait on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
-	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s called Release in Wait on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
-	}
-	conditionTable[conditionIndex].condition->Wait(lockTable[lockIndex]->lock);
-}
-
-void DestroyLock_Syscall(int lockIndex){
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s tried to destroy a lock with an invalid index %d\n", currentThread->getName(), lockIndex);
-	}
-	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s tried to destroy a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
-	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s tried to destroy a lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
-	}
-	if(!(lockTable[lockIndex].lock->isBusy())){
-		delete lockTable[lockIndex]->lock;
-		lockMap->Clear(lockIndex);
+	if(!(semaphoreTable[semaphoreIndex].semaphore->isBusy())){
+		delete semaphoreTable[semaphoreIndex].semaphore;
+		semaphoreMap->Clear(semaphoreIndex);
 	}
 	else{
-		lockTable[lockIndex]->isToBeDeleted = true;
+		semaphoreTable[semaphoreIndex].isToBeDeleted = true;
 	}
-}
-
-void DestroyCondition_Syscall(int conditionIndex){
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
-		printf("Thread %s tried to delete a condition with an invalid index %d\n", currentThread->getName(), conditionIndex);
-	}
-	if(!conditionMap->Test(conditionIndex)){
-		printf("Thread %s tried to delete a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
-	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
-		printf("Thread %s tried to delete condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
-	}
-	if(!(conditionTable[conditionIndex].condition->hasWaiting())){
-		delete conditionTable[conditionIndex]->condition;
-		conditionMap->Clear(conditionIndex);
-	}
-	else{
-		conditionTable[conditionIndex]->isToBeDeleted = true;
-	}
-}
-
-void Yield_Syscall(){
-	currentThread->Yield();
 }
 
 #endif
@@ -501,6 +579,22 @@ void ExceptionHandler(ExceptionType which) {
 	    case SC_DestroyCondition:
 		DEBUG('a', "DestroyCondition syscall.\n");
 		DestroyCondition_Syscall(machine->ReadRegister(4));
+	    break;
+	    case SC_CreateSemaphore:
+			DEBUG('a', "CreateSemaphore syscall.\n");
+			CreateSemaphore_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister->(6));
+	    break;
+	    case SC_DestroySemaphore:
+			DEBUG('a', "DestroyCondition syscall.\n");
+			DestroyCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    break;
+	    case SC_V:
+			DEBUG('a', "V syscall.\n");
+			V_Syscall(machine->ReadRegister(4));
+	    break;
+	    case SC_P:
+			DEBUG('a', "P syscall.\n");
+			P_Syscall(machine->ReadRegister(4));
 	    break;
 
 	}

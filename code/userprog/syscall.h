@@ -30,7 +30,7 @@
 #define SC_Fork		9
 #define SC_Yield	10
 
-#ifdef CHANGED
+/*#ifdef CHANGED*/
 
 #define SC_CreateLock 11
 #define SC_CreateCondition 12
@@ -41,8 +41,12 @@
 #define SC_DestroyLock 17
 #define SC_DestroyCondition 18
 #define SC_Wait 19
+#define SC_CreateSemaphore 20
+#define SC_DestroySemaphore 21
+#define SC_P 22
+#define SC_V 23
 
-#endif
+/*#endif*/
 
 #define MAXFILENAME 256
 
@@ -151,6 +155,12 @@ void Signal(int, int);
 void Acquire(int);
 void Release(int);
 void Broadcast(int);
+/*Semaphore stuff*/
+int CreateSemaphore(char *, int, int);
+void DestroySemaphore(int, int);
+void V(int);
+void P(int);
+
 
 #endif /*CHAGNED */
 

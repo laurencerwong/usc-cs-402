@@ -287,7 +287,7 @@ void Condition::Broadcast(Lock* conditionLock) {
 
 #ifdef CHANGED
 bool Condition::hasWaiting(){
-	if(queue->Empty()){
+	if(queue->IsEmpty()){
 		return false;
 	}
 	else{
