@@ -920,7 +920,8 @@ void Customer(int myID){
 	}
 	else{
 		for (int i = 0; i < numItemsToBuy; i++){
-			itemsToBuy[i] = rand() % numItems;//getDepartmentFromItem(rand() % numItems);
+			//itemsToBuy[i] = rand() % numItems;//getDepartmentFromItem(rand() % numItems);
+			itemsToBuy[i] = getDepartmentFromItem(rand() % numItems);
 			qtyItemsToBuy[i] = (rand()% numItems);
 			itemsInCart[i] = -1;
 			qtyItemsInCart[i] = 0;
@@ -1492,9 +1493,9 @@ void manager(){
 					managerCV->Signal(managerLock);
 					managerCV->Wait(managerLock);
 				}
-				inactiveLoaderLock->Acquire();
-				inactiveLoaderCV->Signal(inactiveLoaderLock);
-				inactiveLoaderLock->Release();
+				//inactiveLoaderLock->Acquire();
+				//inactiveLoaderCV->Signal(inactiveLoaderLock);
+				//inactiveLoaderLock->Release();
 				//now customer has reached end of items or has enough money
 				//I give him total
 				managerDesk = amountOwed;
@@ -2509,6 +2510,7 @@ void Problem2(){
 	cout << "9. Test only one Goods Loader enters the stock room at a time" << endl;
 	cout << "10. Test Customrs wait for items to be restocked" << endl;
 	cout << "11. Run full simulation" << endl;
+	cout << "12. Run full simulation with some predetermined values" << endl;
 	// put your necessary menu options here
 	cout << "Please input the number option you wish to take: " << endl;
 	int choice = 12;
