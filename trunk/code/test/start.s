@@ -203,6 +203,42 @@ Signal:
 	j	$31
 	.end Signal
 
+	.globl CreateSemaphore
+	.ent	CreateSemaphore
+
+CreateSemaphore:
+	addiu $2,$0,SC_CreateSemaphore
+	syscall
+	j	$31
+	.end CreateSemaphore
+
+	.globl DestroySemaphore
+	.ent	DestroySemaphore
+
+DestroySemaphore:
+	addiu $2,$0,SC_DestroySemaphore
+	syscall
+	j	$31
+	.end DestroySemaphore
+
+	.globl V
+	.ent	V
+
+V:
+	addiu $2,$0,SC_V
+	syscall
+	j	$31
+	.end V
+
+	.globl P
+	.ent	P
+
+P:
+	addiu $2,$0,SC_P
+	syscall
+	j	$31
+	.end P
+
 	.globl Wait
 	.ent	Wait
 

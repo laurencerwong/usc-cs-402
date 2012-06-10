@@ -38,7 +38,7 @@ BitMap::Resize(){
 	for(int i = numBits; i < numBits *2; i++){
 		Clear(i);
 	}
-	numBits = nitems*2;
+	numBits = numBits*2;
 	numWords = divRoundUp(numBits, BitsInWord);
 	delete []map;
 	map = newMap;

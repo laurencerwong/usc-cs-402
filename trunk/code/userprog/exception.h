@@ -9,6 +9,8 @@
 #define EXCEPTION_
 
 #include "bitmap.h"
+#include "synch.h"
+#include "addrspace.h"
 
 typedef struct Lock_Entry{
 	Lock *lock;
@@ -22,13 +24,22 @@ typedef struct Condition_Entry{
 	bool isToBeDeleted;
 } ConditionEntry;
 
+typedef struct Semaphore_Entry{
+	Semaphore *semaphore;
+	AddrSpace *semaphoreSpace;
+	bool isToBeDeleted;
+} SemaphoreEntry;
+
 BitMap *lockMap;
 BitMap *conditionMap;
+BitMap *semaphoreMap;
 
 LockEntry *lockTable;
 ConditionEntry *conditionTable;
+SemaphoreEntry *semaphoreTable;
 
 int lockArraySize = 0;
 int conditionArraySize = 0;
+int semaphoreArraySize = 0;
 
 #endif /* EXCEPTION_ */
