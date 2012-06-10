@@ -280,38 +280,6 @@ int CreateCondition_Syscall(int nameIndex, int length){
 	conditionTable[nextFreeIndex].condition = new Condition (name);
 }
 
-void P_Syscall(int semaphoreIndex){
-	if(semaphoreIndex < 0 || semaphoreIndex > semaphoreArraySize -1){
-		printf("Thread %s called P with an invalid index %d\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(!semaphoreMap->Test(semaphoreIndex)){
-		printf("Thread %s called P on a semaphore that does not exist: %d\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(semaphoreTable[semaphoreIndex].semaphoreSpace != currentThread->space){
-		printf("Thread %s called P on semaphore %d which does not belong to its address space\n", currentThread->getName(), semaphoreIndex);
-	}
-	semaphoreTable[semaphoreIndex].semaphore->P();
-}
-
-void V_Syscall(int semaphoreIndex){
-	if(semaphoreIndex < 0 || semaphoreIndex > semaphoreArraySize -1){
-		printf("Thread %s called V with an invalid index %d\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(!semaphoreMap->Test(semaphoreIndex)){
-		printf("Thread %s called V on a semaphore that does not exist: %d\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(semaphoreTable[semaphoreIndex].semaphoreSpace != currentThread->space){
-		printf("Thread %s called V on semaphore %d which does not belong to its address space\n", currentThread->getName(), semaphoreIndex);
-	}
-	semaphoreTable[semaphoreIndex].semaphore->V();
-	if(semaphoreTable[semaphoreIndex].isToBeDeleted){
-		if(!(semaphoreTable[semaphoreIndex].semaphore->isBusy())){
-			delete semaphoreTable[semaphoreIndex].semaphore;
-			semaphoreMap->Clear(semaphoreIndex);
-		}
-	}
-}
-
 void Signal_Syscall(int conditionIndex, int lockIndex){
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
 		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
@@ -432,28 +400,6 @@ void Yield_Syscall(){
 	currentThread->Yield();
 }
 
-void CreateSemaphore_Syscall(int nameIndex, int length ){
-	char *name;
-	copyin(nameIndex, length, name);
-	if(semaphoreArraySize == 0){
-		semaphoreTable = new SemaphoreEntry[50];
-		semaphoreMap = new BitMap(50);
-		semaphoreArraySize = 50;
-	}
-	int nextFreeIndex = semaphoreMap->Find();
-	if(nextFreeIndex == -1){
-		semaphoreMap->Resize();
-		SemaphoreEntry *temp = new SemaphoreEntry[semaphoreArraySize *2];
-		for(int i = 0;i < semaphoreArraySize; i++){
-			temp[i] = semaphoreTable[i];
-		}
-		semaphoreArraySize *= 2;
-		delete []semaphoreTable;
-		semaphoreTable = temp;
-		nextFreeIndex = semaphoreMap->Find();
-	}
-	semaphoreTable[nextFreeIndex].semaphore = new Semaphore (name);
-}
 
 void Acquire_Syscall(int lockIndex){
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
@@ -487,24 +433,6 @@ void Release_Syscall(int lockIndex){
 	}
 }
 
-void Destroysemaphore_Syscall(int semaphoreIndex){
-	if(semaphoreIndex < 0 || semaphoreIndex > semaphoreArraySize -1){
-		printf("Thread %s tried to destroy a semaphore with an invalid index %d\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(!semaphoreMap->Test(semaphoreIndex)){
-		printf("Thread %s tried to destroy a semaphore that does not exist: %d\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(semaphoreTable[semaphoreIndex].semaphoreSpace != currentThread->space){
-		printf("Thread %s tried to destroy a semaphore %d which does not belong to its address space\n", currentThread->getName(), semaphoreIndex);
-	}
-	if(!(semaphoreTable[semaphoreIndex].semaphore->isBusy())){
-		delete semaphoreTable[semaphoreIndex].semaphore;
-		semaphoreMap->Clear(semaphoreIndex);
-	}
-	else{
-		semaphoreTable[semaphoreIndex].isToBeDeleted = true;
-	}
-}
 
 #endif
 
@@ -579,22 +507,6 @@ void ExceptionHandler(ExceptionType which) {
 	    case SC_DestroyCondition:
 		DEBUG('a', "DestroyCondition syscall.\n");
 		DestroyCondition_Syscall(machine->ReadRegister(4));
-	    break;
-	    case SC_CreateSemaphore:
-			DEBUG('a', "CreateSemaphore syscall.\n");
-			CreateSemaphore_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister->(6));
-	    break;
-	    case SC_DestroySemaphore:
-			DEBUG('a', "DestroyCondition syscall.\n");
-			DestroyCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_V:
-			DEBUG('a', "V syscall.\n");
-			V_Syscall(machine->ReadRegister(4));
-	    break;
-	    case SC_P:
-			DEBUG('a', "P syscall.\n");
-			P_Syscall(machine->ReadRegister(4));
 	    break;
 
 	}

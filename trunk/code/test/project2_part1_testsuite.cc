@@ -7,9 +7,8 @@
 
 #include "syscall.h"
 
-int main(int argc, char *argv[]){
-	if(argc != 0){
-
-	}
+int main(){
+	char *buffer = "something";
+	Write(buffer, sizeof(buffer[]), 1);
 	return 0;
 }
