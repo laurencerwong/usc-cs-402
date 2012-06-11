@@ -200,6 +200,11 @@ Cleanup()
     delete scheduler;
     delete interrupt;
     
+#ifdef CHANGED
+    delete physPageBitmapLock;
+    delete physPageBitmap;
+#endif
+
     Exit(0);
 }
 
