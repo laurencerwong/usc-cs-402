@@ -10,7 +10,10 @@
 
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
-
+#ifdef CHANGED
+Bitmap *physPageBitmap;
+Lock *physPageBitmapLock;
+#endif
 Thread *currentThread;			// the thread we are running now
 Thread *threadToBeDestroyed;  		// the thread that just finished
 Scheduler *scheduler;			// the ready list
@@ -161,6 +164,11 @@ Initialize(int argc, char **argv)
 
 #ifdef NETWORK
     postOffice = new PostOffice(netname, rely, 10);
+#endif
+
+#ifdef CHANGED
+    physPageBitmapLock = new Lock("physPageBitmap Lock");
+    physPageBitmap = new Bitmap(numPhysPages);
 #endif
 }
 
