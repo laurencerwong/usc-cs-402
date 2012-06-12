@@ -16,6 +16,9 @@
 #include "stats.h"
 #include "timer.h"
 
+#define MAX_THREADS 100
+#define MAX_PROCESSES (NumPhysPages / (12 +  8 * MAX_THREADS))
+
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,
 						// called before anything else
@@ -23,9 +26,23 @@ extern void Cleanup();				// Cleanup, called when
 						// Nachos is done.
 
 #ifdef CHANGED
+
+struct ProcessEntry {
+	int numThreadsAlive = 0;
+	int processID;
+	int threadStacks[MAX_THREADS];
+	int nextThreadID = 0;
+
+	Lock processEntryLock = Lock("processEntryLock");
+};
+extern ProcessEntry processTable[MAX_PROCESSES];
+extern int nextProcessID = 0;
+extern Lock processIDLock = Lock("Process ID Lock");
+
 extern Bitmap *physPageBitmap;
 extern Lock *physPageBitmapLock;
 extern AddrSpace *pageOwners;
+
 #endif
 
 extern Thread *currentThread;			// the thread holding the CPU
