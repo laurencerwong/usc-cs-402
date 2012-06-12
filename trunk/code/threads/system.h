@@ -25,6 +25,7 @@ extern void Cleanup();				// Cleanup, called when
 #ifdef CHANGED
 extern Bitmap *physPageBitmap;
 extern Lock *physPageBitmapLock;
+extern AddrSpace *pageOwners;
 #endif
 
 extern Thread *currentThread;			// the thread holding the CPU

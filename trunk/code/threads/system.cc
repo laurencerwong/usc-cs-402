@@ -11,8 +11,9 @@
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
 #ifdef CHANGED
-Bitmap *physPageBitmap;
-Lock *physPageBitmapLock;
+Bitmap *mainMemoryBitmap;
+AddrSpace *pageOwners;
+Lock *processTableLock;
 #endif
 Thread *currentThread;			// the thread we are running now
 Thread *threadToBeDestroyed;  		// the thread that just finished
@@ -167,8 +168,9 @@ Initialize(int argc, char **argv)
 #endif
 
 #ifdef CHANGED
-    physPageBitmapLock = new Lock("physPageBitmap Lock");
-    physPageBitmap = new Bitmap(numPhysPages);
+    processTableLock = new Lock("Process Table Lock");
+    mainMemoryBitmap = new Bitmap(numPhysPages);
+    pageOwners = new AddrSpace[numPhysPages];
 #endif
 }
 
@@ -201,8 +203,8 @@ Cleanup()
     delete interrupt;
     
 #ifdef CHANGED
-    delete physPageBitmapLock;
-    delete physPageBitmap;
+    delete processTableLock;
+    delete mainMemoryBitmap;
 #endif
 
     Exit(0);
