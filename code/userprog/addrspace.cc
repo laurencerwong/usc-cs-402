@@ -117,6 +117,7 @@ SwapHeader (NoffHeader *noffH)
 //      constructed set to false.
 //----------------------------------------------------------------------
 
+#ifdef CHANGED
 AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     NoffHeader noffH;
     unsigned int i, size;
@@ -148,7 +149,14 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     pageTable = new TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	pageTable[i].physicalPage = i;
+	int newPhysPage = physPageBitmap.find();
+	if(newPhysPage == -1) {
+		cout << "ERROR: Out of memory" << endl;
+		interrupt->Halt();
+	}
+	else {
+		pageTable[i].physicalPage = newPhysPage;
+	}
 	pageTable[i].valid = TRUE;
 	pageTable[i].use = FALSE;
 	pageTable[i].dirty = FALSE;
@@ -176,6 +184,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     }
 
 }
+#endif
 
 //----------------------------------------------------------------------
 // AddrSpace::~AddrSpace
