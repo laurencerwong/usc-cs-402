@@ -149,7 +149,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     pageTable = new TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	int newPhysPage = physPageBitmap.find();
+	int newPhysPage = mainMemoryBitmap->Find();
 	if(newPhysPage == -1) {
 		cout << "ERROR: Out of memory" << endl;
 		interrupt->Halt();

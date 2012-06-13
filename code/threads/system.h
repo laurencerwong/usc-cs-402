@@ -15,7 +15,11 @@
 #include "interrupt.h"
 #include "stats.h"
 #include "timer.h"
-#include "userprog.h"
+
+#include "bitmap.h"
+#include "addrspace.h"
+#include "synch.h"
+#include "machine.h"
 
 #define MAX_THREADS 100
 #define MAX_PROCESSES (NumPhysPages / (12 +  8 * MAX_THREADS))
@@ -40,9 +44,9 @@ extern ProcessEntry processTable[MAX_PROCESSES];
 extern int nextProcessID;
 extern Lock processIDLock;
 
-extern BitMap *physPageBitmap;
-extern Lock *physPageBitmapLock;
-extern AddrSpace *pageOwners;
+extern BitMap *mainMemoryBitmap;
+extern Lock *processTableLock;
+extern AddrSpace **pageOwners;
 
 #endif
 
