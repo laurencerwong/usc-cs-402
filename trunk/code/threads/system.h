@@ -40,7 +40,7 @@ extern ProcessEntry processTable[MAX_PROCESSES];
 extern int nextProcessID;
 extern Lock processIDLock;
 
-extern Bitmap *physPageBitmap;
+extern BitMap *physPageBitmap;
 extern Lock *physPageBitmapLock;
 extern AddrSpace *pageOwners;
 
