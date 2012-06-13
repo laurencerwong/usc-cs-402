@@ -15,6 +15,7 @@
 #include "interrupt.h"
 #include "stats.h"
 #include "timer.h"
+#include "userprog.h"
 
 #define MAX_THREADS 100
 #define MAX_PROCESSES (NumPhysPages / (12 +  8 * MAX_THREADS))
