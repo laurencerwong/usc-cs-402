@@ -255,6 +255,7 @@ int CreateLock_Syscall(int nameIndex, int length){
 		nextFreeIndex = lockMap->Find();
 	}
 	lockTable[nextFreeIndex].lock = new Lock (name);
+	return nextFreeIndex;
 }
 
 int CreateCondition_Syscall(int nameIndex, int length){
@@ -278,6 +279,7 @@ int CreateCondition_Syscall(int nameIndex, int length){
 		nextFreeIndex = conditionMap->Find();
 	}
 	conditionTable[nextFreeIndex].condition = new Condition (name);
+	return nextFreeIndex;
 }
 
 void Signal_Syscall(int conditionIndex, int lockIndex){
@@ -434,6 +436,53 @@ void Release_Syscall(int lockIndex){
 }
 
 
+
+void Create_Kernel_Thread(unsigned int vaddr){
+	currentThread->space->RestoreState();
+	machine->WriteRegister(PCReg, vaddr);
+	machine->WriteRegister(NextPCReg, vaddr + 4);
+	int stackLoc = (12 /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
+	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] =  stackLoc;
+	machine->WriteRegister(StackReg, stackLoc );
+	machine->Run();
+}
+
+void Fork_Syscall(unsigned int vaddr){
+	Thread* t = new Thread("user thread");
+	t->space = currentThread->space;
+	processTable[t->space->processID].processEntryLock->Acquire();
+	t->threadID = processTable[t->space->processID].nextThreadID;
+	processTable[t->space->processID].nextThreadID++;
+	processTable[t->space->processID].processEntryLock->Release();
+
+
+
+	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, vaddr);
+}
+
+void Exec_Syscall(unsigned int fileName, int length){
+	char buf[length + 1];
+	copyin(fileName, length, buf);
+	OpenFile *executable = fileSystem->Open(buf);
+	AddrSpace* space = new AddrSpace(executable);
+	processIDLock.Acquire();
+	if(nextProcessID == MAX_PROCESSES){
+		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
+		interrupt->Halt();
+	}
+	space->processID = nextProcessID;
+	nextProcessID++;
+	processIDLock.Release();
+	Thread* t = new Thread("main thread");
+	t->space = space;
+	processTable[space->processID].processEntryLock->Acquire();
+	t->threadID = processTable[space->processID].nextThreadID;
+	processTable[space->processID].nextThreadID++;
+	processTable[space->processID].processEntryLock->Release();
+	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, 0);
+}
+
+
 #endif
 
 void ExceptionHandler(ExceptionType which) {
@@ -507,6 +556,14 @@ void ExceptionHandler(ExceptionType which) {
 	    case SC_DestroyCondition:
 		DEBUG('a', "DestroyCondition syscall.\n");
 		DestroyCondition_Syscall(machine->ReadRegister(4));
+	    break;
+	    case SC_Fork:
+	    DEBUG('a', "Fork syscall.\n");
+	    Fork_Syscall(machine->ReadRegister(4));
+	    break;
+	    case SC_Exec:
+	    DEBUG('a', "Exec syscall.\n");
+	    Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
 
 	}
