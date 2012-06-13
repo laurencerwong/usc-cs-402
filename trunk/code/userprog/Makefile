@@ -2301,8 +2301,7 @@ translate.o: ../machine/translate.cc ../threads/copyright.h \
   ../threads/thread.h ../machine/machine.h ../userprog/addrspace.h \
   ../threads/scheduler.h ../threads/list.h ../machine/interrupt.h \
   ../threads/list.h ../machine/stats.h ../machine/timer.h \
-  ../filesys/filesys.h
-project2_part1_testsuite.o: ../userprog/project2_part1_testsuite.cc \
+  ../filesys/filesys.h \
   ../userprog/syscall.h ../threads/copyright.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY

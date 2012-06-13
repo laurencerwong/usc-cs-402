@@ -11,8 +11,8 @@
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
 #ifdef CHANGED
-Bitmap *mainMemoryBitmap;
-AddrSpace *pageOwners;
+BitMap *mainMemoryBitmap;
+AddrSpace **pageOwners;
 Lock *processTableLock;
 
 ProcessEntry processTable[MAX_PROCESSES];
@@ -173,8 +173,8 @@ Initialize(int argc, char **argv)
 
 #ifdef CHANGED
     processTableLock = new Lock("Process Table Lock");
-    mainMemoryBitmap = new Bitmap(numPhysPages);
-    pageOwners = new AddrSpace[numPhysPages];
+    mainMemoryBitmap = new BitMap(NumPhysPages);
+    pageOwners = new AddrSpace*[NumPhysPages];
 #endif
 }
 

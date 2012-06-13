@@ -86,11 +86,10 @@ USERPROG_C = ../userprog/addrspace.cc\
 	../machine/console.cc\
 	../machine/machine.cc\
 	../machine/mipssim.cc\
-	../machine/translate.cc\
-	../userprog/project2_part1_testsuite.cc
+	../machine/translate.cc
 
 USERPROG_O = addrspace.o bitmap.o exception.o progtest.o console.o machine.o \
-	mipssim.o translate.o project2_part1_testsuite.o
+	mipssim.o translate.o
 
 VM_H = 
 VM_C = 
