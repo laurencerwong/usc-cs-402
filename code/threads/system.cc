@@ -14,6 +14,10 @@
 Bitmap *mainMemoryBitmap;
 AddrSpace *pageOwners;
 Lock *processTableLock;
+
+ProcessEntry processTable[MAX_PROCESSES];
+int nextProcessID = 0;
+Lock processIDLock = Lock("Process ID Lock");
 #endif
 Thread *currentThread;			// the thread we are running now
 Thread *threadToBeDestroyed;  		// the thread that just finished
