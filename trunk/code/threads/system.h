@@ -28,16 +28,16 @@ extern void Cleanup();				// Cleanup, called when
 #ifdef CHANGED
 
 struct ProcessEntry {
-	int numThreadsAlive = 0;
+	int numThreadsAlive;
 	int processID;
 	int threadStacks[MAX_THREADS];
-	int nextThreadID = 0;
+	int nextThreadID;
 
-	Lock processEntryLock = Lock("processEntryLock");
+	Lock *processEntryLock;
 };
 extern ProcessEntry processTable[MAX_PROCESSES];
-extern int nextProcessID = 0;
-extern Lock processIDLock = Lock("Process ID Lock");
+extern int nextProcessID;
+extern Lock processIDLock;
 
 extern Bitmap *physPageBitmap;
 extern Lock *physPageBitmapLock;
