@@ -18,6 +18,8 @@
 
 #include "bitmap.h"
 #include "addrspace.h"
+//#include "../userprog/bitmap.h"
+//#include "../userprog/addrspace.h"
 #include "synch.h"
 #include "machine.h"
 

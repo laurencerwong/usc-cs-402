@@ -239,6 +239,15 @@ P:
 	j	$31
 	.end P
 
+	.globl NPrint
+	.ent	NPrint
+
+NPrint:
+	addiu $2,$0,SC_NPrint
+	syscall
+	j	$31
+	.end NPrint
+
 	.globl Wait
 	.ent	Wait
 
