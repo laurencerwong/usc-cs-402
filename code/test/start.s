@@ -248,6 +248,24 @@ NPrint:
 	j	$31
 	.end NPrint
 
+	.globl NEncode2to1
+	.ent	NEncode2to1
+
+NEncode2to1:
+	addiu $2,$0,SC_NEncode2to1
+	syscall
+	j	$31
+	.end NEncode2to1
+
+	.globl NDecode1to2
+	.ent	NDecode1to2
+
+NDecode1to2:
+	addiu $2,$0,SC_NDecode1to2
+	syscall
+	j	$31
+	.end NDecode1to2
+
 	.globl Wait
 	.ent	Wait
 

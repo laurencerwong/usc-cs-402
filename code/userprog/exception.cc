@@ -472,6 +472,9 @@ void Exec_Syscall(unsigned int fileName, int length){
 	}
 	space->processID = nextProcessID;
 	nextProcessID++;
+	char* name = new char[sizeof("Process Entry Lock for process %d") + 1];
+	sprintf(name, "Process Entry Lock for process %d", space->processID);
+	processTable[space->processID].processEntryLock = new Lock(name);
 	processIDLock.Release();
 	Thread* t = new Thread("main thread");
 	t->space = space;
@@ -482,13 +485,39 @@ void Exec_Syscall(unsigned int fileName, int length){
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, 0);
 }
 
-int encode2to1(int v1, int v2) {
-	return (v2 << 16) | (v1 & 0x0000ffff);
+int NEncode2to1_Syscall(int v1, int v2) {
+	int res = (v2 << 16) | (v1 & 0x0000ffff);
+	cout << "NEncode2to1: " << v1 << " and " << v2 << " encoded to: " << res << endl;
+	return res;
+
+//	return (v2 << 16) | (v1 & 0x0000ffff);
 }
 
-void decode1to2(int v, int target[2]) {
+void NDecode1to2_Syscall(int v, int targetV1, int targetV2) {
+	/*
+	int target[2];
+	char targetChars[8];
 	target[0] = (v & 0x0000ffff);
-	target[1] = (v & 0xffff0000);
+	target[1] = (v & 0xffff0000) >> 16;
+
+	for(int i = 0; i < 4; i++) {
+		targetChars[i] = target[0] >> (i * 4);
+		targetChars[i + 4] = target[1] >> (i * 4);
+	}
+
+	copyout(targetV1, 4, targetChars);
+	copyout(targetV2, 4, targetChars + 4);
+	*/
+
+	cout << "WARNING: NDecode doesn't do anything" << endl;
+
+//	cout << "NDecode1to2: value 1 = " << target[0] << " value 2 = " << target[1] << endl;
+}
+
+void decode2to1(int v, int target[2]) {
+	target[0] = (v & 0x0000ffff);
+	target[1] = (v & 0xffff0000) >> 16;
+	cout << "decode1to2: input : " << v << " value 1 = " << target[0] << " value 2 = " << target[1] << endl;
 }
 
 void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVal2){
@@ -498,10 +527,12 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 	copyin(outputString, length, buf);
 	//cout << "In NPrint syscall... allocated buffer" << endl;
 
+	cout << "NPrint encoded values: " << encodedVal1 << " " << encodedVal2 << endl;
+
 	int t1[2];
 	int t2[2];
-	decode1to2(encodedVal1, t1);
-	decode1to2(encodedVal2, t2);
+	decode2to1(encodedVal1, t1);
+	decode2to1(encodedVal2, t2);
 	//cout << "In NPrint syscall... finished decoding" << endl;
 	//cout << (char*)buf << endl;
 	printf(buf, t1[0], t1[1], t2[0], t2[1]);
@@ -595,7 +626,14 @@ void ExceptionHandler(ExceptionType which) {
 	    DEBUG('a', "NPrint syscall.\n");
 	    NPrint_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 	    break;
-
+	    case SC_NEncode2to1:
+	    DEBUG('a', "NEncode2to1 syscall.\n");
+	    NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    break;
+	    case SC_NDecode1to2:
+	    DEBUG('a', "NDecode1to2 syscall.\n");
+	    NDecode1to2_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+	    break;
 	}
 
 	// Put in the return value and increment the PC
