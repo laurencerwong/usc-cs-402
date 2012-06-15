@@ -46,6 +46,8 @@
 #define SC_P 22
 #define SC_V 23
 #define SC_NPrint 24
+#define SC_NEncode2to1 25
+#define SC_NDecode1to2 26
 
 /*#endif*/
 
@@ -163,6 +165,8 @@ void V(int);
 void P(int);
 
 void NPrint(char*, int, int, int);
+int NEncode2to1(int, int);
+void NDecode1to2(int, int*, int*);
 
 
 #endif /*CHAGNED */
