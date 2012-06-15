@@ -482,6 +482,32 @@ void Exec_Syscall(unsigned int fileName, int length){
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, 0);
 }
 
+int encode2to1(int v1, int v2) {
+	return (v2 << 16) | (v1 & 0x0000ffff);
+}
+
+void decode1to2(int v, int target[2]) {
+	target[0] = (v & 0x0000ffff);
+	target[1] = (v & 0xffff0000);
+}
+
+void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVal2){
+	//cout << "In NPrint syscall... starting" << endl;
+	char *buf = new char[length + 1];
+	buf[length] = NULL;
+	copyin(outputString, length, buf);
+	//cout << "In NPrint syscall... allocated buffer" << endl;
+
+	int t1[2];
+	int t2[2];
+	decode1to2(encodedVal1, t1);
+	decode1to2(encodedVal2, t2);
+	//cout << "In NPrint syscall... finished decoding" << endl;
+	//cout << (char*)buf << endl;
+	printf(buf, t1[0], t1[1], t2[0], t2[1]);
+	//cout << "In NPrint syscall... finished printing" << endl;
+}
+
 
 #endif
 
@@ -564,6 +590,10 @@ void ExceptionHandler(ExceptionType which) {
 	    case SC_Exec:
 	    DEBUG('a', "Exec syscall.\n");
 	    Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    break;
+	    case SC_NPrint:
+	    DEBUG('a', "NPrint syscall.\n");
+	    NPrint_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 	    break;
 
 	}

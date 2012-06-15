@@ -45,6 +45,7 @@
 #define SC_DestroySemaphore 21
 #define SC_P 22
 #define SC_V 23
+#define SC_NPrint 24
 
 /*#endif*/
 
@@ -77,7 +78,7 @@ typedef int SpaceId;
 /* Run the executable, stored in the Nachos file "name", and return the 
  * address space identifier
  */
-SpaceId Exec(char *name);
+SpaceId Exec(char *name, int length);
  
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
@@ -160,6 +161,8 @@ int CreateSemaphore(char *, int, int);
 void DestroySemaphore(int, int);
 void V(int);
 void P(int);
+
+void NPrint(char*, int, int, int);
 
 
 #endif /*CHAGNED */

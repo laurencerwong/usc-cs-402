@@ -48,7 +48,10 @@ THREAD_H =../threads/copyright.h\
 	../machine/interrupt.h\
 	../machine/sysdep.h\
 	../machine/stats.h\
-	../machine/timer.h
+	../machine/timer.h\
+	../userprog/bitmap.h\
+	../userprog/addrspace.h\
+	../machine/machine.h	
 
 THREAD_C =../threads/main.cc\
 	../threads/list.cc\
