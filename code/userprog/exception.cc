@@ -487,7 +487,7 @@ void Exec_Syscall(unsigned int fileName, int length){
 
 int NEncode2to1_Syscall(int v1, int v2) {
 	int res = (v2 << 16) | (v1 & 0x0000ffff);
-	cout << "NEncode2to1: " << v1 << " and " << v2 << " encoded to: " << res << endl;
+	//cout << "NEncode2to1: " << v1 << " and " << v2 << " encoded to: " << res << endl;
 	return res;
 
 //	return (v2 << 16) | (v1 & 0x0000ffff);
@@ -517,7 +517,7 @@ void NDecode1to2_Syscall(int v, int targetV1, int targetV2) {
 void decode2to1(int v, int target[2]) {
 	target[0] = (v & 0x0000ffff);
 	target[1] = (v & 0xffff0000) >> 16;
-	cout << "decode1to2: input : " << v << " value 1 = " << target[0] << " value 2 = " << target[1] << endl;
+	//cout << "decode1to2: input : " << v << " value 1 = " << target[0] << " value 2 = " << target[1] << endl;
 }
 
 void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVal2){
@@ -527,7 +527,7 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 	copyin(outputString, length, buf);
 	//cout << "In NPrint syscall... allocated buffer" << endl;
 
-	cout << "NPrint encoded values: " << encodedVal1 << " " << encodedVal2 << endl;
+	//cout << "NPrint encoded values: " << encodedVal1 << " " << encodedVal2 << endl;
 
 	int t1[2];
 	int t2[2];
@@ -628,7 +628,7 @@ void ExceptionHandler(ExceptionType which) {
 	    break;
 	    case SC_NEncode2to1:
 	    DEBUG('a', "NEncode2to1 syscall.\n");
-	    NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    rv = NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
 	    case SC_NDecode1to2:
 	    DEBUG('a', "NDecode1to2 syscall.\n");
