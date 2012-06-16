@@ -26,18 +26,6 @@ void execTestPrint3() {
 	NPrint("Exec 3 printing!\n", sizeof("Exec 3 printing!\n"), 0, 0);
 }
 
-void testExec() {
-	NPrint("Exec test starting...\n", sizeof("Exec test starting...\n"), 0, 0);
-
-	Exec("../test/matmult", sizeof("../test/matmult"));
-	NPrint("Exec test: matmult complete\n", sizeof("Exec test: matmult complete\n"), 0, 0);
-	Exec("../test/sort", sizeof("../test/sort"));
-	NPrint("Exec test: sort complete\n", sizeof("Exec test: sort complete\n"), 0, 0);
-
-	NPrint("Exec test complete!\n\n", sizeof("Exec test complete!\n\n"), 0, 0);
-	/*Exec("halt", 4);*/
-}
-
 void testExecAndFork()
 {
 	int i;
@@ -63,13 +51,25 @@ void testNPrint()
 	NPrint("Testing printing...\n", sizeof("Testing printing...\n"), 0, 0);
 	NPrint("Testing printing the number 7: %d\n", sizeof("Testing printing the number 7: %d\n"), 7, 0);
 	NPrint("Testing printing the first 4 numbers constants: %d, %d, %d, %d\n", sizeof("Testing printing the first 4 numbers constants: %d, %d, %d, %d\n"),
-			65536, 196612);
+			65536, 262147);
 	NPrint("Testing printing the first 4 numbers encoded: %d, %d, %d, %d\n", sizeof("Testing printing the first 4 numbers encoded: %d, %d, %d, %d\n"),
 			NEncode2to1(0, 1), NEncode2to1(3, 4));
 	NPrint("Values should have been equal\n", sizeof("Values should have been equal\n"), 0, 0);
 
 	NPrint("NPrint test complete!\n\n", sizeof("NPrint test complete!\n\n"), 0, 0);
 	/*Exit(0);*/
+}
+
+void testExec() {
+	NPrint("Exec test starting...\n", sizeof("Exec test starting...\n"), 0, 0);
+
+	Exec("../test/sort", sizeof("../test/sort"));
+	NPrint("Exec test: sort executed\n", sizeof("Exec test: sort complete\n"), 0, 0);
+	Exec("../test/matmult", sizeof("../test/matmult"));
+	NPrint("Exec test: matmult executed\n", sizeof("Exec test: matmult complete\n"), 0, 0);
+
+	NPrint("Exec test complete!\n\n", sizeof("Exec test complete!\n\n"), 0, 0);
+	/*Exec("halt", 4);*/
 }
 
 int main(int argc, char** argv) {
@@ -82,4 +82,5 @@ int main(int argc, char** argv) {
 	testExec();
 
 	return 0;
+	Exit(0);
 }
