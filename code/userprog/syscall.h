@@ -157,7 +157,7 @@ void Wait(int, int);
 void Signal(int, int);
 void Acquire(int);
 void Release(int);
-void Broadcast(int);
+void Broadcast(int, int);
 /*Semaphore stuff*/
 int CreateSemaphore(char *, int, int);
 void DestroySemaphore(int, int);
