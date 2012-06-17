@@ -448,16 +448,19 @@ void Create_Kernel_Thread(unsigned int vaddr){
 }
 
 void Fork_Syscall(unsigned int vaddr){
+	//cout << "Forking a new thread..." << endl;
 	Thread* t = new Thread("user thread");
 	t->space = currentThread->space;
-	processTable[t->space->processID].processEntryLock->Acquire();
+	//cout << "New thread's address space set to the current address space" << endl;
+	processIDLock.Acquire();
+	//cout << "Process table lock acquired" << endl;
 	t->threadID = processTable[t->space->processID].nextThreadID;
 	processTable[t->space->processID].nextThreadID++;
-	processTable[t->space->processID].processEntryLock->Release();
-
-
+	processIDLock.Release();
+	//cout << "Process table lock released, IDs set" << endl;
 
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, vaddr);
+	//cout << "Thread Forked" << endl;
 }
 
 void Exec_Syscall(unsigned int fileName, int length){
@@ -465,24 +468,23 @@ void Exec_Syscall(unsigned int fileName, int length){
 	copyin(fileName, length, buf);
 	OpenFile *executable = fileSystem->Open(buf);
 	AddrSpace* space = new AddrSpace(executable);
+
 	processIDLock.Acquire();
+
 	if(nextProcessID == MAX_PROCESSES){
 		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
 		interrupt->Halt();
 	}
 	space->processID = nextProcessID;
 	nextProcessID++;
-	char* name = new char[sizeof("Process Entry Lock for process %d") + 1];
-	sprintf(name, "Process Entry Lock for process %d", space->processID);
-	processTable[space->processID].processEntryLock = new Lock(name);
-	processIDLock.Release();
+
 	Thread* t = new Thread("main thread");
 	t->space = space;
-	processTable[space->processID].processEntryLock->Acquire();
 	t->threadID = processTable[space->processID].nextThreadID;
 	processTable[space->processID].nextThreadID++;
-	processTable[space->processID].processEntryLock->Release();
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, 0);
+
+	processIDLock.Release();
 }
 
 int NEncode2to1_Syscall(int v1, int v2) {

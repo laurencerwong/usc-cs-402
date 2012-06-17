@@ -19,23 +19,15 @@ void forkTestPrint()
 	Exit(0);
 }
 
-void execTestPrint1() {
-	NPrint("Exec 1 printing!\n", sizeof("Exec 1 printing!\n"), 0, 0);
-}
-void execTestPrint2() {
-	NPrint("Exec 2 printing!\n", sizeof("Exec 2 printing!\n"), 0, 0);
-}
-void execTestPrint3() {
-	NPrint("Exec 3 printing!\n", sizeof("Exec 3 printing!\n"), 0, 0);
-}
-
-void testExecAndFork()
+void testFork()
 {
 	int i;
-	/*Exec(forkTestPrint)*/
+	NPrint("Fork test starting...\n", sizeof("Fork test starting...\n"), 0, 0);
 	for(i = 0; i < 5; i++) {
+		NPrint("Forking thread %d\n", sizeof("Forking thread %d\n"), i, 0);
 		Fork(forkTestPrint);
 	}
+	NPrint("Fork test complete!\n\n", sizeof("Fork test complete!\n\n"), 0, 0);
 }
 
 
@@ -274,7 +266,7 @@ void testConditionSequencing(){
 void testNEncode2to1() {
 	int e = NEncode2to1(5, 10);
 	NPrint("NEncode2to1 test starting...\n", sizeof("NEncode2to1 test starting...\n"), 0, 0);
-	NPrint("Encoded value for v1 = 5 and v2 = 10: %d\n", sizeof("Encoded value for v1 = 5 and v2 = 10: %d\n"), e, 0);
+	NPrint("Encoded value for v1 (5) and v2 (10): %d\n", sizeof("Encoded value for v1 (5) and v2 (10): %d\n"), e, 0);
 	NPrint("NEncode2to1 test complete!\n\n", sizeof("NEncode2to1 test complete!\n\n"), 0, 0);
 }
 
@@ -282,6 +274,7 @@ void testNPrint()
 {
 	int enc1 = 0;
 	int enc2 = 0;
+
 	NPrint("NPrint test starting\n", sizeof("NPrint test starting\n"), 0, 0);
 
 	NPrint("Testing printing...\n", sizeof("Testing printing...\n"), 0, 0);
@@ -299,10 +292,14 @@ void testNPrint()
 void testExec() {
 	NPrint("Exec test starting...\n", sizeof("Exec test starting...\n"), 0, 0);
 
+	/*Exec("../test/matmult", sizeof("../test/matmult"));
+	NPrint("Exec test: matmult executed\n", sizeof("Exec test: matmult complete\n"), 0, 0);*/
 	Exec("../test/sort", sizeof("../test/sort"));
 	NPrint("Exec test: sort executed\n", sizeof("Exec test: sort complete\n"), 0, 0);
-	Exec("../test/matmult", sizeof("../test/matmult"));
-	NPrint("Exec test: matmult executed\n", sizeof("Exec test: matmult complete\n"), 0, 0);
+	Exec("../test/sort", sizeof("../test/sort"));
+	NPrint("Exec test: sort 2 executed\n", sizeof("Exec test: sort 2 complete\n"), 0, 0);
+	Exec("../test/sort", sizeof("../test/sort"));
+	NPrint("Exec test: sort 3 executed\n", sizeof("Exec test: sort 3 complete\n"), 0, 0);
 
 	NPrint("Exec test complete!\n\n", sizeof("Exec test complete!\n\n"), 0, 0);
 	/*Exec("halt", 4);*/
@@ -313,9 +310,12 @@ int main(int argc, char** argv) {
 	/*char *buffer = "something";		 //What even is this?
 	Write(buffer, sizeof(buffer[]), 1);	 //are these arguments in the right place? */
 
+	NPrint("\n\nRunning Project 2 Test Suite", sizeof("\n\nRunning Project 2 Test Suite"), 0, 0);
+
 	testNEncode2to1();
 	testNPrint();
 	testExec();
+	testFork();
 
 	return 0;
 	Exit(0);

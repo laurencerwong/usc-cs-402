@@ -25,25 +25,42 @@
 void
 StartProcess(char *filename)
 {
-    OpenFile *executable = fileSystem->Open(filename);
-    AddrSpace *space;
+	OpenFile *executable = fileSystem->Open(filename);
+	AddrSpace *space;
 
-    if (executable == NULL) {
-	printf("Unable to open file %s\n", filename);
-	return;
-    }
-   
-    space = new AddrSpace(executable);
+	if (executable == NULL) {
+		printf("Unable to open file %s\n", filename);
+		return;
+	}
 
-    currentThread->space = space;
+	space = new AddrSpace(executable);
 
-    delete executable;			// close file
+#ifdef CHANGED
+	processIDLock.Acquire();
+	if(nextProcessID == MAX_PROCESSES){
+		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
+		interrupt->Halt();
+	}
+	space->processID = nextProcessID;
+	nextProcessID++;
 
-    space->InitRegisters();		// set the initial register values
-    space->RestoreState();		// load page table register
+	//
+	currentThread->threadID = processTable[space->processID].nextThreadID;
+	processTable[space->processID].nextThreadID++;
+	//
 
-    machine->Run();			// jump to the user progam
-    ASSERT(FALSE);			// machine->Run never returns;
+	processIDLock.Release();
+#endif
+
+	currentThread->space = space;
+
+	delete executable;			// close file
+
+	space->InitRegisters();		// set the initial register values
+	space->RestoreState();		// load page table register
+
+	machine->Run();			// jump to the user progam
+	ASSERT(FALSE);			// machine->Run never returns;
 					// the address space exits
 					// by doing the syscall "exit"
 }
