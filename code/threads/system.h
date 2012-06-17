@@ -39,9 +39,8 @@ struct ProcessEntry {
 	int processID;
 	int threadStacks[MAX_THREADS];
 	int nextThreadID;
-
-	Lock *processEntryLock;
 };
+
 extern ProcessEntry processTable[MAX_PROCESSES];
 extern int nextProcessID;
 extern Lock processIDLock;
