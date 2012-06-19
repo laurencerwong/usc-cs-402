@@ -437,13 +437,19 @@ void Release_Syscall(int lockIndex){
 
 
 
-void Create_Kernel_Thread(unsigned int vaddr){
-	currentThread->space->RestoreState();
+void Create_Kernel_Thread_Fork(unsigned int vaddr){
 	machine->WriteRegister(PCReg, vaddr);
 	machine->WriteRegister(NextPCReg, vaddr + 4);
+	currentThread->space->RestoreState();
 	int stackLoc = (12 /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
-	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] =  stackLoc;
+	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = stackLoc;
 	machine->WriteRegister(StackReg, stackLoc );
+	machine->Run();
+}
+
+void Create_Kernel_Thread_Exec() {
+	currentThread->space->InitRegisters();
+	currentThread->space->RestoreState();
 	machine->Run();
 }
 
@@ -459,7 +465,7 @@ void Fork_Syscall(unsigned int vaddr){
 	processIDLock.Release();
 	//cout << "Process table lock released, IDs set" << endl;
 
-	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, vaddr);
+	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Fork, vaddr);
 	//cout << "Thread Forked" << endl;
 }
 
@@ -482,7 +488,9 @@ void Exec_Syscall(unsigned int fileName, int length){
 	t->space = space;
 	t->threadID = processTable[space->processID].nextThreadID;
 	processTable[space->processID].nextThreadID++;
-	t->Fork((VoidFunctionPtr)Create_Kernel_Thread, 0);
+	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
+
+	scheduler->Print();
 
 	processIDLock.Release();
 }
@@ -541,6 +549,10 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 	//cout << "In NPrint syscall... finished printing" << endl;
 }
 
+
+void Exit_Syscall() {
+	currentThread->Finish();
+}
 
 #endif
 
@@ -636,6 +648,9 @@ void ExceptionHandler(ExceptionType which) {
 	    DEBUG('a', "NDecode1to2 syscall.\n");
 	    NDecode1to2_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
 	    break;
+	    case SC_Exit:
+	    	Exit_Syscall();
+	    	break;
 	}
 
 	// Put in the return value and increment the PC
