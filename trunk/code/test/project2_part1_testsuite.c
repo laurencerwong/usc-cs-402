@@ -15,7 +15,7 @@ void forkTestPrint()
 {
 	/*char message[14] = "Print message";
 	NPrint(message, 19, 0, 0);*/
-	NPrint("A thread printing...\n", sizeof("Thread printing...\n"), 0, 0);
+	NPrint("A thread printing...\n", sizeof("A thread printing...\n"), 0, 0);
 	Exit(0);
 }
 
@@ -294,12 +294,12 @@ void testExec() {
 
 	/*Exec("../test/matmult", sizeof("../test/matmult"));
 	NPrint("Exec test: matmult executed\n", sizeof("Exec test: matmult complete\n"), 0, 0);*/
-	Exec("../test/sort", sizeof("../test/sort"));
-	NPrint("Exec test: sort executed\n", sizeof("Exec test: sort complete\n"), 0, 0);
-	Exec("../test/sort", sizeof("../test/sort"));
-	NPrint("Exec test: sort 2 executed\n", sizeof("Exec test: sort 2 complete\n"), 0, 0);
-	Exec("../test/sort", sizeof("../test/sort"));
-	NPrint("Exec test: sort 3 executed\n", sizeof("Exec test: sort 3 complete\n"), 0, 0);
+	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	NPrint("Exec test: HelloWorld executed\n", sizeof("Exec test: HelloWorld complete\n"), 0, 0);
+	/*Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	NPrint("Exec test: HelloWorld 2 executed\n", sizeof("Exec test: HelloWorld 2 complete\n"), 0, 0);
+	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	NPrint("Exec test: HelloWorld 3 executed\n", sizeof("Exec test: HelloWorld 3 complete\n"), 0, 0);*/
 
 	NPrint("Exec test complete!\n\n", sizeof("Exec test complete!\n\n"), 0, 0);
 	/*Exec("halt", 4);*/
@@ -316,7 +316,6 @@ int main(int argc, char** argv) {
 	testNPrint();
 	testExec();
 	testFork();
-
 	return 0;
 	Exit(0);
 }

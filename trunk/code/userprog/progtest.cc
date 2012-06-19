@@ -44,10 +44,8 @@ StartProcess(char *filename)
 	space->processID = nextProcessID;
 	nextProcessID++;
 
-	//
 	currentThread->threadID = processTable[space->processID].nextThreadID;
 	processTable[space->processID].nextThreadID++;
-	//
 
 	processIDLock.Release();
 #endif
