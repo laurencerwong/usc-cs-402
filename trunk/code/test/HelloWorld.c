@@ -21,7 +21,7 @@ int main()
 	NPrint("This is a number: %d\n", sizeof("This is a number: %d\n"), 5, 0);
 	NPrint("%d + %d = %d\n", sizeof("%d + %d = %d\n"), NEncode2to1(x, y), x + y);
 
-	NPrint("Userprog HelloWorld done", sizeof("Userprog HelloWorld done"), 0, 0);
+	NPrint("Userprog HelloWorld done\n\n", sizeof("Userprog HelloWorld done\n\n"), 0, 0);
 
     Exit(0);
 }

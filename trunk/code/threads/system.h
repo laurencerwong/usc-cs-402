@@ -44,6 +44,7 @@ struct ProcessEntry {
 extern ProcessEntry processTable[MAX_PROCESSES];
 extern int nextProcessID;
 extern Lock processIDLock;
+extern int numLivingProcesses;
 
 extern BitMap *mainMemoryBitmap;
 extern Lock *processTableLock;
