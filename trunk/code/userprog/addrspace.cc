@@ -146,7 +146,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", numPages, size);
     // first, set up the translation
 
-    int numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size, PageSize);
+    numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
 
     pageTable = new TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
@@ -326,7 +326,7 @@ AddrSpace::InitRegisters()
    // allocated the stack; but subtract off a bit, to make sure we don't
    // accidentally reference off the end!
 #ifdef CHANGED
-	int stackLoc = (12 /*numCodeDataPages*/ + ((0 + 1) * 8)) * PageSize - 16;
+	int stackLoc = (numExecutablePages /*numCodeDataPages*/ + ((0 + 1) * 8)) * PageSize - 16;
     machine->WriteRegister(StackReg, stackLoc);
    // machine->WriteRegister(StackReg, numPages * PageSize - 16);
 #endif

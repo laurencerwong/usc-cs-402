@@ -37,7 +37,7 @@ class AddrSpace {
     Table fileTable;			// Table of openfiles
 
     int processID;				//unique identifier for this process
-
+    int numExecutablePages;  		//number of pages dedicated to code + initData + uninitData
  private:
     TranslationEntry *pageTable;	// Assume linear page table translation
 					// for now!

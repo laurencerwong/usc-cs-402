@@ -475,7 +475,7 @@ void Create_Kernel_Thread_Fork(unsigned int vaddr){
 	machine->WriteRegister(PCReg, vaddr);
 	machine->WriteRegister(NextPCReg, vaddr + 4);
 	currentThread->space->RestoreState();
-	int stackLoc = (12 /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
+	int stackLoc = (currentThread->space->numExecutablePages /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
 	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = stackLoc;
 	machine->WriteRegister(StackReg, stackLoc );
 	machine->Run();
