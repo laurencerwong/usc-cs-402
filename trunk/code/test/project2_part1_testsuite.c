@@ -280,16 +280,17 @@ int main(int argc, char** argv) {
 	Write(buffer, sizeof(buffer[]), 1);	 //are these arguments in the right place? */
 
 	NPrint("\n\nRunning Project 2 Test Suite\n", sizeof("\n\nRunning Project 2 Test Suite\n"), 0, 0);
-	NPrint("1. Test lock array boundaries\n", sizeof("1. Test lock array boundaries\n"));
-	NPrint("2. Test DestroyLock()\n", sizeof("2. Test DestroyLock()\n"));
-	NPrint("3. Test Condition array boundaries\n", sizeof("2. Test Condition array boundaries\n"));
-	NPrint("4. Test lock array boundaries in Condition operations\n", sizeof("4. Test lock array boundaries in Condition operations\n"));
-	NPrint("5. Test DestroyCondition()\n", sizeof("5. Test DestroyCondition()\n"));
-	NPrint("6. Test Acquire()\n", sizeof("6. Test Acquire()\n"));
-	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"));
-	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"));
+	NPrint("1. Test lock array boundaries\n", sizeof("1. Test lock array boundaries\n"), 0, 0);
+	NPrint("2. Test DestroyLock()\n", sizeof("2. Test DestroyLock()\n"), 0, 0);
+	NPrint("3. Test Condition array boundaries\n", sizeof("2. Test Condition array boundaries\n"), 0, 0);
+	NPrint("4. Test lock array boundaries in Condition operations\n", sizeof("4. Test lock array boundaries in Condition operations\n"), 0, 0);
+	NPrint("5. Test DestroyCondition()\n", sizeof("5. Test DestroyCondition()\n"), 0, 0);
+	NPrint("6. Test Acquire()\n", sizeof("6. Test Acquire()\n"), 0, 0);
+	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"), 0, 0);
+	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"), 0, 0);
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
+	NPrint("Choice: %d\n", sizeof("Choice: %d\n"), choice, 0);
 	switch(choice){
 	case 1:
 		testLockArrayBoundaries();
@@ -316,6 +317,7 @@ int main(int argc, char** argv) {
 		testConditionSequencing();
 		break;
 	default:
+		NPrint("No Choice?\n", sizeof("No Choice?\n"), 0, 0);
 		break;
 	}
 	Exit(0);

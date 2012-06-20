@@ -53,7 +53,7 @@ project2_part1_testsuite: project2_part1_testsuite.o start.o
 	
 project2_part2_testsuite.o: project2_part2_testsuite.c
 	$(CC) $(CFLAGS) -c project2_part2_testsuite.c
-project2_part1_testsuite: project2_part2_testsuite.o start.o
+project2_part2_testsuite: project2_part2_testsuite.o start.o
 	$(LD) $(LDFLAGS) start.o project2_part2_testsuite.o -o project2_part2_testsuite.coff
 	../bin/coff2noff project2_part2_testsuite.coff project2_part2_testsuite
 

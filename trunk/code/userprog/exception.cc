@@ -892,7 +892,7 @@ void ExceptionHandler(ExceptionType which) {
 			rv = RandInt_Syscall();
 			break;
 		case SC_CreateQueue:
-			CreateQueue_Syscall();
+			rv = CreateQueue_Syscall();
 			DEBUG('a', "CreateQueue syscall.\n");
 			break;
 		case SC_QueuePush:
@@ -900,7 +900,7 @@ void ExceptionHandler(ExceptionType which) {
 			DEBUG('a', "QueuePush syscall.\n");
 			break;
 		case SC_QueueFront:
-			QueueFront_Syscall(machine->ReadRegister(4));
+			rv = QueueFront_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "QueueFront syscall.\n");
 			break;
 		case SC_QueuePop:
@@ -908,19 +908,19 @@ void ExceptionHandler(ExceptionType which) {
 			DEBUG('a', "QueuePop syscall.\n");
 			break;
 		case SC_QueueEmpty:
-			QueueEmpty_Syscall(machine->ReadRegister(4));
+			rv = QueueEmpty_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "QueueEmpty syscall.\n");
 			break;
 		case SC_QueueSize:
-			QueueSize_Syscall(machine->ReadRegister(4));
+			rv = QueueSize_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "QueueSize syscall.\n");
 			break;
 		case SC_NRand:
-			NRand_Syscall();
+			rv = NRand_Syscall();
 			DEBUG('a', "Rand syscall.\n");
 			break;
 		case SC_NTime:
-			NTime_Syscall();
+			rv = NTime_Syscall();
 			DEBUG('a', "Time syscall.\n");
 			break;
 		case SC_NSrand:
