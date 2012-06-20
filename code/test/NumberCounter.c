@@ -34,4 +34,5 @@ int main()
 	NPrint("Done forking counting threads\n", sizeof("Done forking counting threads\n"), 0, 0);
 
     Exit(0);
+	return 0;
 }

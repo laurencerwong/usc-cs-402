@@ -80,11 +80,11 @@ void print2() {
 void testForkInExec() {
 	int i = 0;
 
-	Exec("../test/NumberCounter", sizeof("../test/NumberCounter"), "NumberCounter", sizeof("NumberCounter"));
+	/*Exec("../test/NumberCounter", sizeof("../test/NumberCounter"), "NumberCounter", sizeof("NumberCounter"));*/
 
-	/*Exec("../test/Smily", sizeof("../test/Smily"), "Smily Main Thread", sizeof("Smily Main Thread"));
+	Exec("../test/Smily", sizeof("../test/Smily"), "Smily Main Thread", sizeof("Smily Main Thread"));
 
-	Exec("../test/ExecAddingThings", sizeof("../test/ExecAddingThings"), "Adding main thread", sizeof("Adding main thread"));*/
+	Exec("../test/ExecAddingThings", sizeof("../test/ExecAddingThings"), "Adding main thread", sizeof("Adding main thread"));
 }
 
 void testInfiniteExecs() {
@@ -101,12 +101,12 @@ int main(int argc, char** argv) {
 	/*testExec();
 	testFork();*/
 
-	NPrint("Testing Fork and Exec: will run a counting program, a smily, and then an \nadding program which then executes another of the counter from within itself\n",
-			sizeof("Testing Fork and Exec: will run a counting program, a smily, and then an \nadding program which then executes another of the counter from within itself\n"),
+	NPrint("Testing Fork and Exec: will run a smily, and then an adding program \nwhich then executes a counter from within itself\n",
+			sizeof("Testing Fork and Exec: will run a smily, and then an adding program \nwhich then executes a counter from within itself\n"),
 			0, 0);
 	testForkInExec();
 
-	NPrint("\nProject 2 test suite part 2 main thread complete!\n", sizeof("\nProject 2 test suite part 2 complete!\n"), 0, 0);
+	NPrint("\nProject 2 test suite part 2 main thread complete!\n", sizeof("\nProject 2 test suite part 2 main thread complete!\n"), 0, 0);
 
 	Exit(0);
 

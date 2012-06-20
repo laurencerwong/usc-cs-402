@@ -535,7 +535,7 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	processTable[space->processID].numThreadsAlive++;
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
 
-	scheduler->Print();
+	//scheduler->Print();
 
 	processIDLock.Release();
 }
@@ -635,6 +635,7 @@ void Exit_Syscall() {
 		delete currentThread->space;
 		numLivingProcesses--;
 
+		processIDLock.Release();
 		currentThread->Finish();
 	}
 	else if(processTable[currentThread->space->processID].numThreadsAlive > 1) {
@@ -649,12 +650,13 @@ void Exit_Syscall() {
 		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
 		//cout << "last stack page" << lastStackPage << endl;
 
-		for(int i = 0; i < 7; i++) {
+		/*for(int i = 0; i < 7; i++) {
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
 			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
-		}
+		}*/
 
+		processIDLock.Release();
 		currentThread->Finish();
 	}
 	else {
@@ -669,91 +671,90 @@ void Exit_Syscall() {
 	}
 
 	//currentThread->Finish();
-	processIDLock.Release();
 }
 
 int CreateQueue_Syscall(){
-  if(queueArraySize == 0){
-    queueTable = new queue<int>[5];
-    queueMap = new BitMap(5);
-    queueArraySize = 5;
-  }
-  int nextFreeIndex = queueMap->Find();
-  if(nextFreeIndex == -1){
-    queueMap->Resize();
-    queue<int> *tempQueueTable = new queue<int>[queueArraySize *2];
-    for(int i = 0; i < queueArraySize; i++){
-      tempQueueTable[i] = queueTable[i];
-    }
-    queueArraySize *= 2;
-    delete []queueTable;
-    queueTable = tempQueueTable;
-    nextFreeIndex = queueMap->Find();
-  }
-  return nextFreeIndex;
+	if(queueArraySize == 0){
+		queueTable = new queue<int>[5];
+		queueMap = new BitMap(5);
+		queueArraySize = 5;
+	}
+	int nextFreeIndex = queueMap->Find();
+	if(nextFreeIndex == -1){
+		queueMap->Resize();
+		queue<int> *tempQueueTable = new queue<int>[queueArraySize *2];
+		for(int i = 0; i < queueArraySize; i++){
+			tempQueueTable[i] = queueTable[i];
+		}
+		queueArraySize *= 2;
+		delete []queueTable;
+		queueTable = tempQueueTable;
+		nextFreeIndex = queueMap->Find();
+	}
+	return nextFreeIndex;
 }
 
 void QueuePush_Syscall(int queueNum, int whatToPush){
-  if(queueNum < 0 || queueNum > queueArraySize){
-    printf("Push on out of bounds queue %d was attempted\n", queueNum);
-  }
-  if(!queueMap->Test(queueNum)){
-    printf("Push was called on queue that does not exist: %d\n", queueNum);
-  }
-  queueTable[queueNum].push(whatToPush);
+	if(queueNum < 0 || queueNum > queueArraySize){
+		printf("Push on out of bounds queue %d was attempted\n", queueNum);
+	}
+	if(!queueMap->Test(queueNum)){
+		printf("Push was called on queue that does not exist: %d\n", queueNum);
+	}
+	queueTable[queueNum].push(whatToPush);
 }
 
 int QueueFront_Syscall(int queueNum){
-  if(queueNum < 0 || queueNum > queueArraySize){
-    printf("Front on out of bounds queue %d was attempted\n", queueNum);
-  }
-  if(!queueMap->Test(queueNum)){
-    printf("Front was called on queue that does not exist: %d\n", queueNum);
-  }
-  return queueTable[queueNum].front();
+	if(queueNum < 0 || queueNum > queueArraySize){
+		printf("Front on out of bounds queue %d was attempted\n", queueNum);
+	}
+	if(!queueMap->Test(queueNum)){
+		printf("Front was called on queue that does not exist: %d\n", queueNum);
+	}
+	return queueTable[queueNum].front();
 }
 
 void QueuePop_Syscall(int queueNum){
-  if(queueNum < 0 || queueNum > queueArraySize){
-    printf("Pop on out of bounds queue %d was attempted\n", queueNum);
-  }
-  if(!queueMap->Test(queueNum)){
-    printf("Pop was called on queue that does not exist: %d\n", queueNum);
-  }
-  queueTable[queueNum].pop();
+	if(queueNum < 0 || queueNum > queueArraySize){
+		printf("Pop on out of bounds queue %d was attempted\n", queueNum);
+	}
+	if(!queueMap->Test(queueNum)){
+		printf("Pop was called on queue that does not exist: %d\n", queueNum);
+	}
+	queueTable[queueNum].pop();
 }
 
 int QueueEmpty_Syscall(int queueNum){
-  if(queueNum < 0 || queueNum > queueArraySize){
-    printf("Empty on out of bounds queue %d was attempted\n", queueNum);
-  }
-  if(!queueMap->Test(queueNum)){
-    printf("Empty was called on queue that does not exist: %d\n", queueNum);
-  }
-  return  queueTable[queueNum].empty()?1:0;
+	if(queueNum < 0 || queueNum > queueArraySize){
+		printf("Empty on out of bounds queue %d was attempted\n", queueNum);
+	}
+	if(!queueMap->Test(queueNum)){
+		printf("Empty was called on queue that does not exist: %d\n", queueNum);
+	}
+	return  queueTable[queueNum].empty()?1:0;
 }
 
 
 int QueueSize_Syscall(int queueNum){
-  if(queueNum < 0 || queueNum > queueArraySize){
-    printf("Size on out of bounds queue %d was attempted\n", queueNum);
-  }
-  if(!queueMap->Test(queueNum)){
-    printf("Size was called on queue that does not exist: %d\n", queueNum);
-  }
-  return   queueTable[queueNum].size();
+	if(queueNum < 0 || queueNum > queueArraySize){
+		printf("Size on out of bounds queue %d was attempted\n", queueNum);
+	}
+	if(!queueMap->Test(queueNum)){
+		printf("Size was called on queue that does not exist: %d\n", queueNum);
+	}
+	return   queueTable[queueNum].size();
 }
 
 int NRand_Syscall(){
-  return rand();
+	return rand();
 }
 
 time_t NTime_Syscall(){
-  return time(NULL);
+	return time(NULL);
 }
 
 void NSrand_Syscall(unsigned int seed){
-  srand(seed);
+	srand(seed);
 }
 
 int ReadInt_Syscall(unsigned int vaddr, int size){
@@ -890,6 +891,42 @@ void ExceptionHandler(ExceptionType which) {
 			DEBUG('a', "RandINt syscall.\n");
 			rv = RandInt_Syscall();
 			break;
+		case SC_CreateQueue:
+			CreateQueue_Syscall();
+			DEBUG('a', "CreateQueue syscall.\n");
+			break;
+		case SC_QueuePush:
+			QueuePush_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+			DEBUG('a', "QueuePush syscall.\n");
+			break;
+		case SC_QueueFront:
+			QueueFront_Syscall(machine->ReadRegister(4));
+			DEBUG('a', "QueueFront syscall.\n");
+			break;
+		case SC_QueuePop:
+			QueuePop_Syscall(machine->ReadRegister(4));
+			DEBUG('a', "QueuePop syscall.\n");
+			break;
+		case SC_QueueEmpty:
+			QueueEmpty_Syscall(machine->ReadRegister(4));
+			DEBUG('a', "QueueEmpty syscall.\n");
+			break;
+		case SC_QueueSize:
+			QueueSize_Syscall(machine->ReadRegister(4));
+			DEBUG('a', "QueueSize syscall.\n");
+			break;
+		case SC_NRand:
+			NRand_Syscall();
+			DEBUG('a', "Rand syscall.\n");
+			break;
+		case SC_NTime:
+			NTime_Syscall();
+			DEBUG('a', "Time syscall.\n");
+			break;
+		case SC_NSrand:
+			NSrand_Syscall(machine->ReadRegister(4));
+			DEBUG('a', "Srand syscall.\n");
+			break;
 		}
 
 		// Put in the return value and increment the PC
@@ -901,41 +938,5 @@ void ExceptionHandler(ExceptionType which) {
 	} else {
 		cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
 		interrupt->Halt();
-	case SC_CreateQueue:
-	  CreateQueue_Syscall();
-	  DEBUG('a', "CreateQueue syscall.\n");
-	  break;
-	case SC_QueuePush:
-	  QueuePush_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	  DEBUG('a', "QueuePush syscall.\n");
-	  break;
-	case SC_QueueFront:
-	  QueueFront_Syscall(machine->ReadRegister(4));
-	  DEBUG('a', "QueueFront syscall.\n");
-	  break;
-	case SC_QueuePop:
-	  QueuePop_Syscall(machine->ReadRegister(4));
-	  DEBUG('a', "QueuePop syscall.\n");
-	  break;
-	case SC_QueueEmpty:
-	  QueueEmpty_Syscall(machine->ReadRegister(4));
-	  DEBUG('a', "QueueEmpty syscall.\n");
-	  break;
-	case SC_QueueSize:
-	  QueueSize_Syscall(machine->ReadRegister(4));
-	  DEBUG('a', "QueueSize syscall.\n");
-	  break;
-	case SC_NRand:
-	  NRand_Syscall();
-	  DEBUG('a', "Rand syscall.\n");
-	  break;
-	case SC_NTime:
-	  NTime_Syscall();
-	  DEBUG('a', "Time syscall.\n");
-	  break;
-	case SC_NSrand:
-	  NSrand_Syscall(machine->ReadRegister(4));
-	  DEBUG('a', "Srand syscall.\n");
-	  break;
 	}
 }

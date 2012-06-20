@@ -48,18 +48,18 @@
 #define SC_NPrint 24
 #define SC_NEncode2to1 25
 #define SC_NDecode1to2 26
-#define SC_CreateQueue 28
-#define SC_DestroyQueue 29
-#define SC_QueuePush 30
-#define SC_QueueFront 31
-#define SC_QueuePop 32
-#define SC_QueueEmpty 33
-#define SC_QueueSize 34
-#define SC_NTime 35
-#define SC_NRand 36
-#define SC_NSrand 37
-#define SC_ReadInt 27
-#define SC_RandInt 28
+#define SC_CreateQueue 27
+#define SC_DestroyQueue 28
+#define SC_QueuePush 29
+#define SC_QueueFront 30
+#define SC_QueuePop 31
+#define SC_QueueEmpty 32
+#define SC_QueueSize 33
+#define SC_NTime 34
+#define SC_NRand 35
+#define SC_NSrand 36
+#define SC_ReadInt 37
+#define SC_RandInt 38
 
 
 

@@ -11,8 +11,11 @@
 #include "syscall.h"
 
 void addRand() {
-	int res = (RandInt() % 10) + (RandInt() % 10);
-	NPrint("%d\n", sizeof("%d\n"), res, 0);
+	int x = (RandInt() % 10);
+	int y = (RandInt() % 10);
+	int res = x + y;
+
+	NPrint("%d + %d = %d\n", sizeof("%d + %d = %d\n"), NEncode2to1(x, y), res);
 	Exit(0);
 }
 
