@@ -25,7 +25,7 @@ void testFork()
 	NPrint("Fork test starting...\n", sizeof("Fork test starting...\n"), 0, 0);
 	for(i = 0; i < 5; i++) {
 		NPrint("Forking thread %d\n", sizeof("Forking thread %d\n"), i, 0);
-		Fork(forkTestPrint);
+		Fork(forkTestPrint, "test fork", sizeof("test fork"));
 	}
 	NPrint("Fork test complete!\n\n", sizeof("Fork test complete!\n\n"), 0, 0);
 }
@@ -39,7 +39,7 @@ void testYieldCompanion(){
  * This function will call yield after it forks.  When tested WITHOUT AN RS VALUE, the forked method should always print first
  */
 void testYield(){
-	Fork(testYieldCompanion);
+	Fork(testYieldCompanion, "testYield companion thread", sizeof("testYield companion thread"));
 	Yield();
 	NPrint("testYield is printing\n", sizeof("testYield is printing\n"), 0, 0);
 	Exit(0);
@@ -103,13 +103,7 @@ void testDestroyLock(){
 
 }
 
-void startTestMutex(){
-	int i;
-	testCounter = 0;
-	for(i = 0; i < 10; i++){
-		NPrint("startTestMutex() forking a thread\n", sizeof("startTestMutex() forking a thread\n"), 0, 0);
-	}
-}
+
 
 void testMutex(){
 	Acquire(lock);
@@ -118,6 +112,14 @@ void testMutex(){
 	Release(lock);
 }
 
+void startTestMutex(){
+	int i;
+	testCounter = 0;
+	for(i = 0; i < 10; i++){
+		NPrint("startTestMutex() forking a thread\n", sizeof("startTestMutex() forking a thread\n"), 0, 0);
+		Fork(testMutex, "testMutex thread", sizeof("testMutex thread"));
+	}
+}
 
 /*We will fork many threads to this same function.  Basically, they will all try to acquire a lock and then print.
  * Only one print should ever happen, because we won't ever release the lock
@@ -125,6 +127,7 @@ void testMutex(){
 void testAcquire(){
 	Acquire(lock);
 	NPrint("testAcquire now printing\n", sizeof("testAcquire now printing\n"), 0, 0);
+
 }
 
 void startTestAcquire(){
@@ -132,7 +135,7 @@ void startTestAcquire(){
 	lock = CreateLock();
 	for(i = 0; i < 10; i++){
 		NPrint("startTestAcquire() forking a thread\n", sizeof("startTestAcquire() forking a thread\n"), 0, 0);
-		Fork(testAcquire);
+		Fork(testAcquire, "testAcquire thread", sizeof("testAcquire thread"));
 	}
 }
 
@@ -140,10 +143,10 @@ void startTestAcquire(){
  * in order to exercise the validation in condition syscalls
  */
 void testConditionArrayBoundaries(){
-	int condition1 = CreateCondition();
-	int condition2 = CreateCondition();
-	int lock1 = CreateLock();
-	int lock2 = CreateLock();
+	int condition1 = CreateCondition("condition 1", sizeof("condition 1"));
+	int condition2 = CreateCondition("condition 2", sizeof("condition 2"));
+	int lock1 = CreateLock("lock 1", sizeof("lock 1"));
+	int lock2 = CreateLock("lock 2", sizeof("lock 2"));
 	/*This is the only thread running, so we know the only two valid indices are 0 and 1 */
 
 	NPrint("Conditions w/indices %d and &d have been created\n", sizeof("Conditions w/ indicies %d and %d have been created\n"), condition1, condition2);
@@ -178,8 +181,8 @@ void testConditionArrayBoundaries(){
 
 /*We will test that within Condition system calls, locks are still validated */
 void testLockBoundariesWithConditions(){
-	int condition1 = CreateCondition();
-	int lock1 = CreateCondition();
+	int condition1 = CreateCondition("condition1", sizeof("condition1"));
+	int lock1 = CreateLock("lock1", sizeof("lock1"));
 
 	NPrint("Condition w/index %d has been created\n", sizeof("Condition w/ index %d has been created\n"), condition1);
 	NPrint("Lock w/ index %d has been created\n", sizeof("Lock w/ index %d has been created\n"), condition1);
@@ -211,8 +214,10 @@ void testLockBoundariesWithConditions(){
  *
  */
 void testDestroyConditionCompanion(){
+	Acquire(lock);
 	Signal(condition, lock);
 	Wait(condition, lock);
+	Release(lock);
 }
 /*We will test the destruction of a condition in 2 ways: creating a condition and destroying it without a wait,
  * in order to see that it will be destroyed upon our call to DestroyCondition since no thread is waiting on the condition.
@@ -225,9 +230,9 @@ void testDestroyConditionCompanion(){
  */
 void testDestroyCondition(){
 	/*Method 1*/
-	condition = CreateCondition();
+	condition = CreateCondition("testCondition", sizeof("testCondition"));
 	NPrint("Created condition\n", sizeof("Created condition\n"));
-	lock = CreateLock();
+	lock = CreateLock("test lock", sizeof("test lock"));
 	NPrint("Created lock\n", sizeof("Created lock\n"));
 	Acquire(lock);
 	DestroyCondition(condition);
@@ -235,20 +240,20 @@ void testDestroyCondition(){
 	Signal(condition, lock); /*This system call should give an error */
 
 	/*Method 2*/
-	condition = CreateCondition();
-	Fork(testDestroyConditionCompanion);
+	condition = CreateCondition("testCondition", sizeof("testCondition"));
+	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyCondition(condition);
-	Signal(condition);
-	Wait(condition);
+	Signal(condition, lock);
+	Wait(condition, lock);
 
 	/*Method 3*/
 	condition = CreateCondition();
-	Fork(testDestroyConditionCompanion);
+	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyLock(lock);
 	Acquire(lock);
-	Signal(condition);
+	Signal(condition, lock);
 	Acquire(lock);
 
 }
@@ -265,12 +270,12 @@ void testConditionSequencingCompanion(){
 
 void testConditionSequencing(){
 	int i;
-	lock = CreateLock();
+	lock = CreateLock("test lock", sizeof("test lock"));
 	condition = CreateCondition();
 	testCounter = 0;
 	Acquire(lock);
 	NPrint("testConditionSequencing has value of %d\n", sizeof("testConditionSequencing has value of %d\n"), testCounter, 0);
-	Fork(testConditionSequencingCompanion);
+	Fork(testConditionSequencingCompanion, "test condition sequencing companion thread", sizeof("test condition sequencing companion thread"));
 	for(i = 0; i < 10; i++){
 		Signal(condition, lock);
 		Wait(condition, lock);
@@ -310,7 +315,7 @@ void testExec() {
 
 	/*Exec("../test/matmult", sizeof("../test/matmult"));
 	NPrint("Exec test: matmult executed\n", sizeof("Exec test: matmult complete\n"), 0, 0);*/
-	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"), "hello world main", sizeof("hello world main"));
 	NPrint("Exec test: HelloWorld executed\n", sizeof("Exec test: HelloWorld complete\n"), 0, 0);
 	/*Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
 	NPrint("Exec test: HelloWorld 2 executed\n", sizeof("Exec test: HelloWorld 2 complete\n"), 0, 0);
@@ -332,6 +337,8 @@ int main(int argc, char** argv) {
 	NPrint("3. Test Condition array boundaries\n", sizeof("2. Test Condition array boundaries\n"));
 	NPrint("4. Test lock array boundaries in Condition operations\n", sizeof("4. Test lock array boundaries in Condition operations\n"));
 	NPrint("5. Test DestroyCondition()\n", sizeof("5. Test DestroyCondition()\n"));
+	NPrint("6. Test Acquire()\n", sizeof("6. Test Acquire()\n"));
+	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"));
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
 	switch(choice){
@@ -349,6 +356,12 @@ int main(int argc, char** argv) {
 		break;
 	case 5:
 		testDestroyCondition();
+		break;
+	case 6:
+		startTestAcquire();
+		break;
+	case 7:
+		startTestMutex();
 		break;
 	default:
 		break;
