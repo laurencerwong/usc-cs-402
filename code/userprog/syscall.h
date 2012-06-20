@@ -48,7 +48,20 @@
 #define SC_NPrint 24
 #define SC_NEncode2to1 25
 #define SC_NDecode1to2 26
-#define SC_ReadInt	27
+#define SC_CreateQueue 28
+#define SC_DestroyQueue 29
+#define SC_QueuePush 30
+#define SC_QueueFront 31
+#define SC_QueuePop 32
+#define SC_QueueEmpty 33
+#define SC_QueueSize 34
+#define SC_Time 35
+#define SC_Rand 36
+#define SC_Srand 37
+#define SC_ReadInt 27
+
+
+
 
 /*#endif*/
 
@@ -169,6 +182,14 @@ void NPrint(char*, int, int, int);
 int NEncode2to1(int, int);
 void NDecode1to2(int, int*, int*);
 int ReadInt(char*, int);
+
+int CreateQueue();
+void DestroyQueue(int);
+void QueuePush(int, int);
+int QueueFront(int);
+void QueuePop(int);
+int QueueEmpty(int);
+int QueueSize(int);
 
 
 #endif /*CHAGNED */

@@ -275,6 +275,97 @@ Wait:
 	j	$31
 	.end Wait
 
+	.globl CreateQueue
+	.ent	CreateQueue
+
+CreateQueue:
+	addiu $2,$0,SC_CreateQueue
+	syscall
+	j	$31
+	.end CreateQueue
+
+	.globl DestroyQueue
+	.ent	DestroyQueue
+
+DestroyQueue:
+	addiu $2,$0,SC_DestroyQueue
+	syscall
+	j	$31
+	.end DestroyQueue
+
+ 	.globl QueuePush
+	.ent	QueuePush
+
+QueuePush:
+	addiu $2,$0,SC_QueuePush
+	syscall
+	j	$31
+	.end QueuePush
+
+	.globl QueueFront
+	.ent	QueueFront
+
+QueueFront:
+	addiu $2,$0,SC_QueueFront
+	syscall
+	j	$31
+	.end QueueFront
+
+	.globl QueuePop
+	.ent	QueuePop
+
+QueuePop:
+	addiu $2,$0,SC_QueuePop
+	syscall
+	j	$31
+	.end QueuePop
+
+	.globl QueueEmpty
+	.ent	QueueEmpty
+
+QueueEmpty:
+	addiu $2,$0,SC_QueueEmpty
+	syscall
+	j	$31
+	.end QueueEmpty
+
+	.globl QueueSize
+	.ent	QueueSize
+
+QueueSize:
+	addiu $2,$0,SC_QueueSize
+	syscall
+	j	$31
+	.end QueueSize
+
+	.globl Time
+	.ent	Time
+
+Time:
+	addiu $2,$0,SC_Time
+	syscall
+	j	$31
+	.end Time
+
+	.globl Rand
+	.ent	Rand
+
+Rand:
+	addiu $2,$0,SC_Rand
+	syscall
+	j	$31
+	.end Rand
+
+	.globl Srand
+	.ent	Srand
+
+Srand:
+	addiu $2,$0,SC_Srand
+	syscall
+	j	$31
+	.end Srand
+	
+
 	.globl ReadInt
 	.ent	ReadInt
 

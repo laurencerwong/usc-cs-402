@@ -11,6 +11,7 @@
 #include "bitmap.h"
 #include "synch.h"
 #include "addrspace.h"
+#include <queue>
 
 typedef struct Lock_Entry{
 	Lock *lock;
@@ -33,14 +34,17 @@ typedef struct Semaphore_Entry{
 BitMap *lockMap;
 BitMap *conditionMap;
 BitMap *semaphoreMap;
+BitMap *queueMap;
 
 LockEntry *lockTable;
 ConditionEntry *conditionTable;
 SemaphoreEntry *semaphoreTable;
+queue<int> *queueTable;
 
 int lockArraySize = 0;
 int conditionArraySize = 0;
 int semaphoreArraySize = 0;
+int queueArraySize = 0;
 
 
 

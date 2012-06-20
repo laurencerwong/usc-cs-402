@@ -25,6 +25,7 @@
 #include "system.h"
 #include "syscall.h"
 #include "exception.h"
+#include <time.h>
 #include <stdio.h>
 #include <iostream>
 
@@ -671,6 +672,90 @@ void Exit_Syscall() {
 	processIDLock.Release();
 }
 
+int CreateQueue_Syscall(){
+  if(queueArraySize == 0){
+    queueTable = new queue<int>[5];
+    queueMap = new BitMap(5);
+    queueArraySize = 5;
+  }
+  int nextFreeIndex = queueMap->Find();
+  if(nextFreeIndex == -1){
+    queueMap->Resize();
+    queue<int> *tempQueueTable = new queue<int>[queueArraySize *2];
+    for(int i = 0; i < queueArraySize; i++){
+      tempQueueTable[i] = queueTable[i];
+    }
+    queueArraySize *= 2;
+    delete []queueTable;
+    queueTable = tempQueueTable;
+    nextFreeIndex = queueMap->Find();
+  }
+  return nextFreeIndex;
+}
+
+void QueuePush_Syscall(int queueNum, int whatToPush){
+  if(queueNum < 0 || queueNum > queueArraySize){
+    printf("Push on out of bounds queue %d was attempted\n", queueNum);
+  }
+  if(!queueMap->Test(queueNum)){
+    printf("Push was called on queue that does not exist: %d\n", queueNum);
+  }
+  queueTable[queueNum].push(whatToPush);
+}
+
+int QueueFront_Syscall(int queueNum){
+  if(queueNum < 0 || queueNum > queueArraySize){
+    printf("Front on out of bounds queue %d was attempted\n", queueNum);
+  }
+  if(!queueMap->Test(queueNum)){
+    printf("Front was called on queue that does not exist: %d\n", queueNum);
+  }
+  return queueTable[queueNum].front();
+}
+
+void QueuePop_Syscall(int queueNum){
+  if(queueNum < 0 || queueNum > queueArraySize){
+    printf("Pop on out of bounds queue %d was attempted\n", queueNum);
+  }
+  if(!queueMap->Test(queueNum)){
+    printf("Pop was called on queue that does not exist: %d\n", queueNum);
+  }
+  queueTable[queueNum].pop();
+}
+
+int QueueEmpty_Syscall(int queueNum){
+  if(queueNum < 0 || queueNum > queueArraySize){
+    printf("Empty on out of bounds queue %d was attempted\n", queueNum);
+  }
+  if(!queueMap->Test(queueNum)){
+    printf("Empty was called on queue that does not exist: %d\n", queueNum);
+  }
+  return  queueTable[queueNum].empty()?1:0;
+}
+
+
+int QueueSize_Syscall(int queueNum){
+  if(queueNum < 0 || queueNum > queueArraySize){
+    printf("Size on out of bounds queue %d was attempted\n", queueNum);
+  }
+  if(!queueMap->Test(queueNum)){
+    printf("Size was called on queue that does not exist: %d\n", queueNum);
+  }
+  return   queueTable[queueNum].size();
+}
+
+int Rand_Syscall(){
+  return rand();
+}
+
+time_t Time_Syscall(){
+  return time(NULL);
+}
+
+void Srand_Syscall(unsigned int seed){
+  srand(seed);
+}
+
 int ReadInt_Syscall(unsigned int vaddr, int size){
 	char* buf = new char[size];
 	copyin(vaddr, size, buf);
@@ -797,6 +882,42 @@ void ExceptionHandler(ExceptionType which) {
 	    DEBUG('a', "ReadInt syscall.\n");
 	    rv = ReadInt_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
+	case SC_CreateQueue:
+	  CreateQueue();
+	  DEBUG('a', "CreateQueue syscall.\n");
+	  break;
+	case SC_QueuePush:
+	  QueuePush(machine->ReadRegister(4), machine->ReadRegister(5));
+	  DEBUG('a', "QueuePush syscall.\n");
+	  break;
+	case SC_QueueFront:
+	  QueueFront(machine->ReadRegister(4));
+	  DEBUG('a', "QueueFront syscall.\n");
+	  break;
+	case SC_QueuePop:
+	  QueuePop(machine->ReadRegister(4));
+	  DEBUG('a', "QueuePop syscall.\n");
+	  break;
+	case SC_QueueEmpty:
+	  QueueEmpty(machine->ReadRegister(4));
+	  DEBUG('a', "QueueEmpty syscall.\n");
+	  break;
+	case SC_QueueSize:
+	  QueueSize(machine->ReadRegister(4));
+	  DEBUG('a', "QueueSize syscall.\n");
+	  break;
+	case SC_Rand:
+	  Rand();
+	  DEBUG('a', "Rand syscall.\n");
+	  break;
+	case SC_Time:
+	  Time();
+	  DEBUG('a', "Time syscall.\n");
+	  break;
+	case SC_Srand:
+	  Srand(machine->ReadRegister(4));
+	  DEBUG('a', "Srand syscall.\n");
+	  break;
 	}
 
 	// Put in the return value and increment the PC

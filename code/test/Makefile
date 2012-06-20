@@ -31,7 +31,10 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite HelloWorld
+
+
+all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite HelloWorld supermarket
+
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -55,6 +58,12 @@ project2_part2_testsuite.o: project2_part2_testsuite.c
 project2_part1_testsuite: project2_part2_testsuite.o start.o
 	$(LD) $(LDFLAGS) start.o project2_part2_testsuite.o -o project2_part2_testsuite.coff
 	../bin/coff2noff project2_part2_testsuite.coff project2_part2_testsuite
+
+supermarket.o: supermarket.c
+	$(CC) $(CFLAGS) -c supermarket.c
+supermarket: supermarket.o start.o
+	$(LD) $(LDFLAGS) start.o supermarket.o -o supermarket.coff
+	../bin/coff2noff supermarket.coff supermarket
 
 HelloWorld.o: HelloWorld.c
 	$(CC) $(CFLAGS) -c HelloWorld.c
