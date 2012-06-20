@@ -237,7 +237,7 @@ void Close_Syscall(int fd) {
 //#ifdef CHANGED
 
 int CreateLock_Syscall(unsigned int nameIndex, int length){
-	char name[length];
+	char* name = new char[length];
 	copyin(nameIndex, length, name);
 	if(lockArraySize == 0){
 		lockTable = new LockEntry[50];
@@ -263,7 +263,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 }
 
 int CreateCondition_Syscall(unsigned int nameIndex, int length){
-	char name[length];
+	char* name = new char [length];
 	copyin(nameIndex, length, name);
 	if(conditionArraySize == 0){
 		conditionTable = new ConditionEntry[50];
@@ -302,15 +302,15 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 		return;
 	}
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s called Release in Signal with an invalid index %d\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s called Release in Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s called Release in Signal on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Signal on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex].lock);
@@ -336,15 +336,15 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 		return;
 	}
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s called Release in Broadcast with an invalid index %d\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s called Release in Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Broadcast with a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s called Release in Broadcast on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Broadcast with lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
@@ -370,15 +370,15 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 		return;
 	}
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
-		printf("Thread %s called Release in Wait with an invalid index %d\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Wait with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	if(!lockMap->Test(lockIndex)){
-		printf("Thread %s called Release in Wait on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Wait with a lock index that does not exist: %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
-		printf("Thread %s called Release in Wait on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		printf("Thread %s called Wait with lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		return;
 	}
 	conditionTable[conditionIndex].condition->Wait(lockTable[lockIndex].lock);
@@ -491,7 +491,7 @@ void Create_Kernel_Thread_Exec() {
 }
 
 void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
-	char name[length];
+	char* name = new char[length + 1];
 	copyin(nameIndex, length, name);
 	//cout << "Forking a new thread..." << endl;
 	Thread* t = new Thread(name);
@@ -773,6 +773,7 @@ int ReadInt_Syscall(unsigned int vaddr, int size){
 		}
 		else break;
 	}
+	ioLock->Release();
 	return choice;
 }
 
