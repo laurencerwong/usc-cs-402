@@ -234,7 +234,7 @@ void Close_Syscall(int fd) {
 }
 #ifdef CHANGED
 
-int CreateLock_Syscall(int nameIndex, int length){
+int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char name[length];
 	copyin(nameIndex, length, name);
 	if(lockArraySize == 0){
@@ -260,7 +260,7 @@ int CreateLock_Syscall(int nameIndex, int length){
 	return nextFreeIndex;
 }
 
-int CreateCondition_Syscall(int nameIndex, int length){
+int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	char name[length];
 	copyin(nameIndex, length, name);
 	if(conditionArraySize == 0){
