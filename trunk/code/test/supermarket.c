@@ -2881,14 +2881,11 @@ void testCustomerGettingInLine(){
 	}
 	unprivilegedLineCount[cashierNumber-1] = 1;
 	unprivilegedLineCount[cashierNumber-2] = 3;
-	/* t = new Thread(name); */
-	/* t->Fork((VoidFunctionPtr)Salesman, 0); */
-	/* for(int i = 0; i < custNumber; i++){ */
-	/* 	name = new char [20]; */
-	/* 	sprintf(name,"cust%d",i); */
-	/* 	t = new Thread(name); */
-	/* 	t->Fork((VoidFunctionPtr)Customer, i); */
-	/* } */
+
+	Fork(Salesman, "Salesman thread", sizeof("Salesman thread"));
+	for(i = 0; i < custNumber; i++) {
+		Fork(Customer, "Customer thread", sizeof("Customer thread"));
+	}
 }
 
 int main(int argv, char** argc){
@@ -2909,14 +2906,15 @@ int main(int argv, char** argc){
 	NPrint("12. Run full simulation with some predetermined values\n", sizeof("12. Run full simulation with some predetermined values\n"), 0, 0);
 	NPrint("Please input the number option you wish to take: \n", sizeof("Please input the number option you wish to take: \n"), 0, 0);
 
+	choice = ReadInt("> ", sizeof("> "));
 
-	printInitialConditions();
-	choice = 1;
 	switch(choice){
 	  case 1:
+		printInitialConditions();
 	    testCustomerGettingInLine();
 	    break;
 	  case 2:
+		  Fork(Customer, "ACUST", sizeof("ACUST"));
 	    break;
 	  case 3:
 	    break;
