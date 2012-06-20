@@ -338,32 +338,32 @@ QueueSize:
 	j	$31
 	.end QueueSize
 
-	.globl Time
-	.ent	Time
+	.globl NTime
+	.ent	NTime
 
-Time:
-	addiu $2,$0,SC_Time
+NTime:
+	addiu $2,$0,SC_NTime
 	syscall
 	j	$31
-	.end Time
+	.end NTime
 
-	.globl Rand
-	.ent	Rand
+	.globl NRand
+	.ent	NRand
 
-Rand:
-	addiu $2,$0,SC_Rand
+NRand:
+	addiu $2,$0,SC_NRand
 	syscall
 	j	$31
-	.end Rand
+	.end NRand
 
-	.globl Srand
-	.ent	Srand
+	.globl NSrand
+	.ent	NSrand
 
-Srand:
-	addiu $2,$0,SC_Srand
+NSrand:
+	addiu $2,$0,SC_NSrand
 	syscall
 	j	$31
-	.end Srand
+	.end NSrand
 	
 
 	.globl ReadInt
