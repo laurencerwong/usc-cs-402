@@ -20,10 +20,11 @@ void testYieldCompanion(){
  * This function will call yield after it forks.  When tested WITHOUT AN RS VALUE, the forked method should always print first
  */
 void testYield(){
+	int i;
 	Fork(testYieldCompanion, "testYield companion thread", sizeof("testYield companion thread"));
 	Yield();
 	NPrint("testYield is printing\n", sizeof("testYield is printing\n"), 0, 0);
-	Exit(0);
+
 }
 
 /*We will create some locks, but then try to access invalid locks in acquires, releases, and destroys
@@ -72,6 +73,7 @@ void testDestroyLock(){
 	lock = CreateLock();
 	NPrint("Created lock\n", sizeof("Created lock\n"));
 	Acquire(lock);
+	NPrint("Acquired lock\n", sizeof("Acquired lock\n"));
 	DestroyLock(lock);
 	NPrint("Called destroy lock\n", sizeof("Called destroy lock\n"));
 	NPrint("Acquiring lock\n", sizeof("Acquiring lock\n"));
@@ -200,6 +202,7 @@ void testDestroyConditionCompanion(){
 	Acquire(lock);
 	Signal(condition, lock);
 	Wait(condition, lock);
+	NPrint("Thread destroyConditionCompanion has woken up after Wait\n", sizeof("Thread destroyConditionCompanion has woken up after Wait\n"));
 	Release(lock);
 	Exit(0);
 }
@@ -213,6 +216,7 @@ void testDestroyConditionCompanion(){
  */
 void testDestroyCondition(){
 	/*Method 1*/
+	NPrint("\n\nStarting first DestroyCondition test\n", sizeof("\n\nStarting first DestroyCondition test\n"));
 	condition = CreateCondition("testCondition", sizeof("testCondition"));
 	NPrint("Created condition\n", sizeof("Created condition\n"));
 	lock = CreateLock("test lock", sizeof("test lock"));
@@ -223,21 +227,26 @@ void testDestroyCondition(){
 	Signal(condition, lock); /*This system call should give an error */
 
 	/*Method 2*/
+	NPrint("\n\nStarting second DestroyCondition test\n", sizeof("\n\nStarting first DestroyCondition test\n"));
 	condition = CreateCondition("testCondition", sizeof("testCondition"));
-	NPrint("index of condition is %d\n", sizeof("index of condition is %d/n"), condition);
+	NPrint("Created condition\n", sizeof("Created condition\n"));
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyCondition(condition);
+	NPrint("Destroyed condition\n", sizeof("Destroyed condition\n"));
+	NPrint("About to call Signal on the condition\n", sizeof("About to call Signal on the condition\n"));
 	Signal(condition, lock);
+	NPrint("About to call Wait on the condition\n", sizeof("About to call Wait on the condition\n"));
 	Wait(condition, lock);
 
 	/*Method 3*/
+	NPrint("\n\nStarting third DestroyCondition test\n", sizeof("\n\nStarting third DestroyCondition test\n"));
 	condition = CreateCondition("testCondition", sizeof("testCondition"));
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyLock(lock);
-	Acquire(lock);
 	Signal(condition, lock);
+	Release(lock);
 	Acquire(lock);
 	Exit(0);
 
@@ -288,6 +297,7 @@ int main(int argc, char** argv) {
 	NPrint("6. Test Acquire()\n", sizeof("6. Test Acquire()\n"), 0, 0);
 	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"), 0, 0);
 	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"), 0, 0);
+	NPrint("9. Test yield\n", sizeof("9. Test yield\n"));
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
 	NPrint("Choice: %d\n", sizeof("Choice: %d\n"), choice, 0);
@@ -315,6 +325,9 @@ int main(int argc, char** argv) {
 		break;
 	case 8:
 		testConditionSequencing();
+		break;
+	case 9:
+		testYield();
 		break;
 	default:
 		NPrint("No Choice?\n", sizeof("No Choice?\n"), 0, 0);

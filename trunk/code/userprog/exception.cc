@@ -239,6 +239,8 @@ void Close_Syscall(int fd) {
 int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char* name = new char[length];
 	copyin(nameIndex, length, name);
+	if(lockTableLock == NULL) lockTableLock = new Lock("Lock table lock");
+	lockTableLock->Acquire();
 	if(lockArraySize == 0){
 		lockTable = new LockEntry[50];
 		lockMap = new BitMap(50);
@@ -256,6 +258,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 		lockTable = temp;
 		nextFreeIndex = lockMap->Find();
 	}
+	lockTableLock->Release();
 	lockTable[nextFreeIndex].lock = new Lock (name);
 	lockTable[nextFreeIndex].lockSpace = currentThread->space;
 	lockTable[nextFreeIndex].isToBeDeleted = false;
@@ -265,6 +268,8 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
+	if(conditionTableLock == NULL) conditionTableLock = new Lock("Condition table lock");
+	conditionTableLock->Acquire();
 	if(conditionArraySize == 0){
 		conditionTable = new ConditionEntry[50];
 		conditionMap = new BitMap(50);
@@ -282,6 +287,7 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 		conditionTable = temp;
 		nextFreeIndex = conditionMap->Find();
 	}
+	conditionTableLock->Release();
 	conditionTable[nextFreeIndex].condition = new Condition (name);
 	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
 	conditionTable[nextFreeIndex].isToBeDeleted = false;
