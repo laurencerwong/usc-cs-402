@@ -107,13 +107,15 @@ void testDestroyLock(){
 
 void testMutex(){
 	Acquire(lock);
-	NPrint("Incrementing testCounter from %d to %d\n", sizeof("Incrementing testCounter from %d to %d\n"), testCounter, testCounter + 1);
+	NPrint("Incrementing testCounter from %d to %d\n", sizeof("Incrementing testCounter from %d to %d\n"), NEncode2to1(testCounter, testCounter + 1));
 	testCounter++;
 	Release(lock);
+	Exit(0);
 }
 
 void startTestMutex(){
 	int i;
+	lock = CreateLock("mutex test lock", sizeof("mutex test lock"));
 	testCounter = 0;
 	for(i = 0; i < 10; i++){
 		NPrint("startTestMutex() forking a thread\n", sizeof("startTestMutex() forking a thread\n"), 0, 0);
@@ -218,6 +220,7 @@ void testDestroyConditionCompanion(){
 	Signal(condition, lock);
 	Wait(condition, lock);
 	Release(lock);
+	Exit(0);
 }
 /*We will test the destruction of a condition in 2 ways: creating a condition and destroying it without a wait,
  * in order to see that it will be destroyed upon our call to DestroyCondition since no thread is waiting on the condition.
@@ -225,8 +228,7 @@ void testDestroyConditionCompanion(){
  * The second way we will test destroying the Condition is to create it, have a thread wait on it, and then try to destroy it.  We will then
  * signal it again, which if the condition still exists, won't give us any error messages. We will then do another wait on the condition, but it should now be destroyed.
  * A third test will create the condition, fork to another method that will wait on the condition, and then we will destroy the lock, check if it still exists while a thread
- * waits on an associated condition by Acquiring, and then wake up the thread on the condition.  Finally, we test if the lock has now been deleted by calling acquire on it, which should
- * give us an error.
+ * waits on an associated condition by Acquiring, We should be blocked and not able to acquire.
  */
 void testDestroyCondition(){
 	/*Method 1*/
@@ -241,6 +243,7 @@ void testDestroyCondition(){
 
 	/*Method 2*/
 	condition = CreateCondition("testCondition", sizeof("testCondition"));
+	NPrint("index of condition is %d\n", sizeof("index of condition is %d/n"), condition);
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyCondition(condition);
@@ -248,13 +251,14 @@ void testDestroyCondition(){
 	Wait(condition, lock);
 
 	/*Method 3*/
-	condition = CreateCondition();
+	condition = CreateCondition("testCondition", sizeof("testCondition"));
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyLock(lock);
 	Acquire(lock);
 	Signal(condition, lock);
 	Acquire(lock);
+	Exit(0);
 
 }
 
@@ -262,10 +266,13 @@ void testConditionSequencingCompanion(){
 	int j;
 	Acquire(lock);
 	for(j = 0; j < 10; j++){
+		NPrint("Thread 2 has value of %d\n", sizeof("Thread 2 has value of %d\n"), testCounter);
 		testCounter++;
 		Signal(condition, lock);
 		Wait(condition, lock);
+
 	}
+	Exit(0);
 }
 
 void testConditionSequencing(){
@@ -274,13 +281,15 @@ void testConditionSequencing(){
 	condition = CreateCondition();
 	testCounter = 0;
 	Acquire(lock);
-	NPrint("testConditionSequencing has value of %d\n", sizeof("testConditionSequencing has value of %d\n"), testCounter, 0);
 	Fork(testConditionSequencingCompanion, "test condition sequencing companion thread", sizeof("test condition sequencing companion thread"));
 	for(i = 0; i < 10; i++){
-		Signal(condition, lock);
 		Wait(condition, lock);
-		NPrint("testConditionSequencing has value of %d\n", sizeof("testConditionSequencing has value of %d\n"), testCounter, 0);
+		NPrint("Thread 1 has value of %d\n", sizeof("testConditionSequencing has value of %d\n"), testCounter, 0);
+		testCounter++;
+		Signal(condition, lock);
+
 	}
+	Exit(0);
 }
 
 
@@ -339,6 +348,7 @@ int main(int argc, char** argv) {
 	NPrint("5. Test DestroyCondition()\n", sizeof("5. Test DestroyCondition()\n"));
 	NPrint("6. Test Acquire()\n", sizeof("6. Test Acquire()\n"));
 	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"));
+	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"));
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
 	switch(choice){
@@ -363,7 +373,11 @@ int main(int argc, char** argv) {
 	case 7:
 		startTestMutex();
 		break;
+	case 8:
+		testConditionSequencing();
+		break;
 	default:
 		break;
 	}
+	Exit(0);
 }
