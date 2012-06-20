@@ -600,7 +600,7 @@ void createSalesmen(int numDepts, int numSalesPerDept) {
   int i, j;
 	for(i = 0; i < numDepts; i++) {
 		for(j = 0; j < numSalesPerDept; j++) {
-		  Fork(Salesman);
+		  /* Fork(Salesman); */
 		}
 	}
 }
@@ -643,9 +643,9 @@ void Customer(){
 		myCash = customerCash;
 	}
 	else{
-		/* numItemsToBuy = (Rand() % (numItems - 1)) + 1; */
-		numItemsToBuy = (Rand() % numItems);
-		myCash = Rand() % 200;
+		/* numItemsToBuy = (NRand() % (numItems - 1)) + 1; */
+		numItemsToBuy = (NRand() % numItems);
+		myCash = NRand() % 200;
 	}
 
 	/*itemsToBuy = new int[numItemsToBuy];
@@ -656,9 +656,9 @@ void Customer(){
 	/*char* type = new char[20];
          int privileged;*/
 
-	/* ---------Randomly generate whether this customer is privileged-------------- */
-	Srand(myID + Time(NULL));
-	r = Rand() % 10; /* Random value to set Customer either as privileged or unprivileged */
+	/* ---------NRandomly generate whether this customer is privileged-------------- */
+	NSrand(myID + NTime(NULL));
+	r = NRand() % 10; /* NRandom value to set Customer either as privileged or unprivileged */
 	if(r < 2){				/* 30% chance customer is privileged */
            /*privileged = 1;*/
            type = 1;
@@ -686,9 +686,9 @@ void Customer(){
 	}
 	else{
 		for ( i = 0; i < numItemsToBuy; i++){
-			/* itemsToBuy[i] = Rand() % numItems;//getDepartmentFromItem(Rand() % numItems); */
-                  itemsToBuy[i] = getDepartmentFromItem(Rand() % numItems);
-			qtyItemsToBuy[i] = (Rand()% numItems);
+			/* itemsToBuy[i] = NRand() % numItems;//getDepartmentFromItem(NRand() % numItems); */
+                  itemsToBuy[i] = getDepartmentFromItem(NRand() % numItems);
+			qtyItemsToBuy[i] = (NRand()% numItems);
 			itemsInCart[i] = -1;
 			qtyItemsInCart[i] = 0;
 		}
@@ -1248,7 +1248,7 @@ void manager(){
 	/*queue<int> Break;
           int* numSalesmenOnBreak = new int[numDepartments];*/
 	
-	Srand(Time(NULL));
+	NSrand(NTime(NULL));
 	while(1){
 
 		/* ------------------Check if all customers have left store---------------- */
@@ -1344,11 +1344,11 @@ void manager(){
 		/* ---------------------------End Bring cashier back from break-------------------------- */
 
 		/* ---------------------------Begin send cashiers on break------------------------------- */
-		 chance = Rand() %10;
+		 chance = NRand() %10;
 
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ /* .001% chance of sending cashier on break */
 			/* generate cashier index */
-			 r = Rand() % cashierNumber;
+			 r = NRand() % cashierNumber;
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
 				if(cashierStatus[r] == CASH_NOT_BUSY) {
 				  /*cashierLock[r]->Acquire();*/
@@ -1413,11 +1413,11 @@ void manager(){
 		/* ------------------------------end bringing salesmen back from break-------------- */
 
 		/* ------------------------------Begin putting salesmen on break------------------ */
-		dept = Rand() % numDepartments;
+		dept = NRand() % numDepartments;
 		/*salesLock[dept]->Acquire();*/
 		Acquire(salesLock[dept]);
 		if (chance == 1 && numSalesmenOnBreak[dept] < numSalesmen -1) {
-			 r = Rand() % numSalesmen;
+			 r = NRand() % numSalesmen;
 			if(!salesBreakBoard[dept][r] && currentSalesStatus[dept][r] != SALES_ON_BREAK && currentSalesStatus[dept][r] != SALES_GO_ON_BREAK) {
 				salesBreakBoard[dept][r] = 1;
 				/*cout << "Manager sends Salesman [" << r << "] of dept " << dept << " on break." << endl;*/
@@ -2401,7 +2401,7 @@ void testCustomerGettingInLine(){
 	char* name;
 	cout << "Test 1: please note that all cashier lines are set to be 5 except for cashier 4's line for unprivileged customers, which is set to 1 ";
 	cout << " and cashier 3's line for unprivileged customer, which is set to 3.";
-	cout << "\tThe privileged status of Customers is set Randomly, so we will create enough ";
+	cout << "\tThe privileged status of Customers is set NRandomly, so we will create enough ";
 	cout << "customer threads to likely fill up a line and start choosing other lines" << endl;
 	initShelves();
 	initShelvesWithQty(30);
@@ -2740,7 +2740,7 @@ void printInitialConditions() {
 	cout << "Test " << testNumber << " beginning with initial conditions:" << endl;
 	cout << "Number of Cashiers = [" << cashierNumber << "]" << endl;
 	cout << "Number of Goods Loaders = [" << numLoaders << "]" << endl;
-	cout << "Number of PrivilegedCustomers = [" << "Randomly generated, 30% chance" << "]" << endl;
+	cout << "Number of PrivilegedCustomers = [" << "NRandomly generated, 30% chance" << "]" << endl;
 	cout << "Number of Customers = [" << custNumber << "]" << endl;
 	cout << "Number of Managers = [" << "1" << "]" << endl;
 	cout << "Number of DepartmentSalesmen = [" << numSalesmen << "]" << endl;
@@ -2838,7 +2838,7 @@ void printInitialConditions() {
   NPrint("Test %d beginning with initial conditions: \n", sizeof("Test %d beginning with initial conditions: \n"), testNumber, 0);
   NPrint("Number of Cashiers = [%d]\n", sizeof("Number of Cashiers = [%d]\n"), cashierNumber, 0);
   NPrint("Number of GoodsLoaders = [%d]\n", sizeof("Number of GoodsLoaders = [%d]\n"), numLoaders, 0);
-  NPrint("Number of PrivilegedCustomers = [Randomly generated, 30%% chance]\n", sizeof("Number of PrivilegedCustomers = [Randomly generated, 30% chance]\n"), 0, 0);
+  NPrint("Number of PrivilegedCustomers = [NRandomly generated, 30%% chance]\n", sizeof("Number of PrivilegedCustomers = [NRandomly generated, 30% chance]\n"), 0, 0);
   NPrint("Number of Customers = [%d]\n", sizeof("Number of Customers = [%d]\n"), custNumber, 0);
   NPrint("Number of Managers [1]\n", sizeof("Number of Managers [1]\n"), 0,0);
   NPrint("Number of DepartmentSalesmen = [%d]\n", sizeof("Number of DepartmentSalesmen = [%d]\n"), numSalesmen, 0);
@@ -2869,7 +2869,7 @@ void testCustomerGettingInLine(){
 	initCustomerCashier();
 	/* cout << "Test 1: please note that all cashier lines are set to be 5 except for cashier 4's line for unprivileged customers, which is set to 1 "; */
 	/* cout << " and cashier 3's line for unprivileged customer, which is set to 3."; */
-	/* cout << "\tThe privileged status of Customers is set Randomly, so we will create enough "; */
+	/* cout << "\tThe privileged status of Customers is set NRandomly, so we will create enough "; */
 	/* cout << "customer threads to likely fill up a line and start choosing other lines" << endl; */
 	initShelvesWithQty(30);
 	initSalesmen();
@@ -2939,6 +2939,8 @@ int main(int argv, char** argc){
 	  case 12:
 	    break;
 	}
+	Exit(0);
+
 }
   /*
 	cout << "Menu: " << endl;

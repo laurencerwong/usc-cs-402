@@ -55,9 +55,9 @@
 #define SC_QueuePop 32
 #define SC_QueueEmpty 33
 #define SC_QueueSize 34
-#define SC_Time 35
-#define SC_Rand 36
-#define SC_Srand 37
+#define SC_NTime 35
+#define SC_NRand 36
+#define SC_NSrand 37
 #define SC_ReadInt 27
 
 
@@ -190,9 +190,9 @@ int QueueFront(int);
 void QueuePop(int);
 int QueueEmpty(int);
 int QueueSize(int);
-int Rand();
-time_t Time();
-void Srand(int);
+int NRand();
+time_t NTime();
+void NSrand(int);
 
 
 #endif /*CHAGNED */
