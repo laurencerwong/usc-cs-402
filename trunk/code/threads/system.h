@@ -48,6 +48,7 @@ extern Lock processIDLock;
 extern BitMap *mainMemoryBitmap;
 extern Lock *processTableLock;
 extern AddrSpace **pageOwners;
+extern Lock* ioLock;
 
 #endif
 

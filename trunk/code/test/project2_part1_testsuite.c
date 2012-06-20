@@ -49,8 +49,10 @@ void testYield(){
  * in order to exercise the validation in lock syscalls
  */
 void testLockArrayBoundaries(){
+
 	int lock1 = CreateLock();
 	int lock2 = CreateLock();
+	NPrint("Starting testLockArrayBoundaries()\n", sizeof("Starting testLockArrayBoundaries()\n"));
 	/*This is the only thread running, so we know the only two valid indices are 0 and 1*/
 
 	/*First, we check acquire, to be sure its validation works */
@@ -80,15 +82,22 @@ void testLockArrayBoundaries(){
 void testDestroyLock(){
 	/*Method 1*/
 	int lock = CreateLock();
+	NPrint("Created lock\n", sizeof("Created lock\n"));
 	DestroyLock(lock);
+	NPrint("Destroyed lock\n", sizeof("Destroyed lock\n"));
 	Acquire(lock); /*This system call should give an error */
 
 	/*Method 2*/
 	lock = CreateLock();
+	NPrint("Created lock\n", sizeof("Created lock\n"));
 	Acquire(lock);
 	DestroyLock(lock);
+	NPrint("Called destroy lock\n", sizeof("Called destroy lock\n"));
+	NPrint("Acquiring lock\n", sizeof("Acquiring lock\n"));
 	Acquire(lock); /*this should still be valid */
+	NPrint("Releasing lock\n", sizeof("Releasing lock\n"));
 	Release(lock); /*at this point the kernel should destroy the lock */
+	NPrint("Acquiring lock\n", sizeof("Acquiring lock\n"));
 	Acquire(lock); /*this should give an error */
 
 
@@ -137,6 +146,8 @@ void testConditionArrayBoundaries(){
 	int lock2 = CreateLock();
 	/*This is the only thread running, so we know the only two valid indices are 0 and 1 */
 
+	NPrint("Conditions w/indices %d and &d have been created\n", sizeof("Conditions w/ indicies %d and %d have been created\n"), condition1, condition2);
+	NPrint("Locks w/ indices %d and &d have been created\n", sizeof("Locks w/ indices %d and %d have been created\n"), condition1, condition2);
 	/*Exercise Wait's validation procedures */
 	Wait(3, lock1);
 	Wait(-1, lock1);
@@ -170,6 +181,8 @@ void testLockBoundariesWithConditions(){
 	int condition1 = CreateCondition();
 	int lock1 = CreateCondition();
 
+	NPrint("Condition w/index %d has been created\n", sizeof("Condition w/ index %d has been created\n"), condition1);
+	NPrint("Lock w/ index %d has been created\n", sizeof("Lock w/ index %d has been created\n"), condition1);
 	/*Exercise lock validation procedures in Signal */
 	Signal(condition1, 1);
 	Signal(condition1, -1);
@@ -213,9 +226,12 @@ void testDestroyConditionCompanion(){
 void testDestroyCondition(){
 	/*Method 1*/
 	condition = CreateCondition();
+	NPrint("Created condition\n", sizeof("Created condition\n"));
 	lock = CreateLock();
+	NPrint("Created lock\n", sizeof("Created lock\n"));
 	Acquire(lock);
 	DestroyCondition(condition);
+	NPrint("Destroyed condition\n", sizeof("Destroyed condition\n"));
 	Signal(condition, lock); /*This system call should give an error */
 
 	/*Method 2*/
@@ -306,16 +322,35 @@ void testExec() {
 }
 
 int main(int argc, char** argv) {
-
+	int choice;
 	/*char *buffer = "something";		 //What even is this?
 	Write(buffer, sizeof(buffer[]), 1);	 //are these arguments in the right place? */
 
-	NPrint("\n\nRunning Project 2 Test Suite", sizeof("\n\nRunning Project 2 Test Suite"), 0, 0);
+	NPrint("\n\nRunning Project 2 Test Suite\n", sizeof("\n\nRunning Project 2 Test Suite\n"), 0, 0);
+	NPrint("1. Test lock array boundaries\n", sizeof("1. Test lock array boundaries\n"));
+	NPrint("2. Test DestroyLock()\n", sizeof("2. Test DestroyLock()\n"));
+	NPrint("3. Test Condition array boundaries\n", sizeof("2. Test Condition array boundaries\n"));
+	NPrint("4. Test lock array boundaries in Condition operations\n", sizeof("4. Test lock array boundaries in Condition operations\n"));
+	NPrint("5. Test DestroyCondition()\n", sizeof("5. Test DestroyCondition()\n"));
 
-	testNEncode2to1();
-	testNPrint();
-	testExec();
-	testFork();
-	return 0;
-	Exit(0);
+	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
+	switch(choice){
+	case 1:
+		testLockArrayBoundaries();
+		break;
+	case 2:
+		testDestroyLock();
+		break;
+	case 3:
+		testConditionArrayBoundaries();
+		break;
+	case 4:
+		testLockBoundariesWithConditions();
+		break;
+	case 5:
+		testDestroyCondition();
+		break;
+	default:
+		break;
+	}
 }
