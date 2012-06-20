@@ -38,13 +38,13 @@ void testExec() {
 
 	/*Exec("../test/matmult", sizeof("../test/matmult"));
 	NPrint("Exec test: matmult executed\n", sizeof("Exec test: matmult complete\n"), 0, 0);*/
-	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"), "HelloWorld main thread", sizeof("HelloWorld main thread"));
 	NPrint("Exec test: HelloWorld executed\n", sizeof("Exec test: HelloWorld complete\n"), 0, 0);
 
-	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"), "HelloWorld2 main thread", sizeof("HelloWorld2 main thread"));
 	NPrint("Exec test: HelloWorld 2 executed\n", sizeof("Exec test: HelloWorld 2 complete\n"), 0, 0);
 
-	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"));
+	Exec("../test/HelloWorld", sizeof("../test/HelloWorld"), "HelloWorld3 main thread", sizeof("HelloWorld3 main thread"));
 	NPrint("Exec test: HelloWorld 3 executed\n", sizeof("Exec test: HelloWorld 3 complete\n"), 0, 0);
 
 	NPrint("Exec test complete!\n\n", sizeof("Exec test complete!\n\n"), 0, 0);
@@ -62,10 +62,11 @@ void forkTestPrint()
 void testFork()
 {
 	int i;
+	/*char n[10] = "Thread X\n";*/
 	NPrint("Fork test starting...\n", sizeof("Fork test starting...\n"), 0, 0);
 	for(i = 0; i < 5; i++) {
 		NPrint("Forking thread %d\n", sizeof("Forking thread %d\n"), i, 0);
-		Fork(forkTestPrint);
+		Fork(forkTestPrint, "Thread", sizeof("Thread"));
 	}
 	NPrint("Fork test complete!\n\n", sizeof("Fork test complete!\n\n"), 0, 0);
 }
