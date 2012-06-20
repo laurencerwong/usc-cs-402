@@ -31,9 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-
-
-all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite HelloWorld supermarket
+all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite HelloWorld Smily NumberCounter ExecAddingThings supermarket
 
 
 start.o: start.s ../userprog/syscall.h
@@ -70,6 +68,24 @@ HelloWorld.o: HelloWorld.c
 HelloWorld: HelloWorld.o start.o
 	$(LD) $(LDFLAGS) start.o HelloWorld.o -o HelloWorld.coff
 	../bin/coff2noff HelloWorld.coff HelloWorld
+
+Smily.o: Smily.c
+	$(CC) $(CFLAGS) -c Smily.c
+Smily: Smily.o start.o
+	$(LD) $(LDFLAGS) start.o Smily.o -o Smily.coff
+	../bin/coff2noff Smily.coff Smily
+
+NumberCounter.o: NumberCounter.c
+	$(CC) $(CFLAGS) -c NumberCounter.c
+NumberCounter: NumberCounter.o start.o
+	$(LD) $(LDFLAGS) start.o NumberCounter.o -o NumberCounter.coff
+	../bin/coff2noff NumberCounter.coff NumberCounter
+
+ExecAddingThings.o: ExecAddingThings.c
+	$(CC) $(CFLAGS) -c ExecAddingThings.c
+ExecAddingThings: ExecAddingThings.o start.o
+	$(LD) $(LDFLAGS) start.o ExecAddingThings.o -o ExecAddingThings.coff
+	../bin/coff2noff ExecAddingThings.coff ExecAddingThings
 
 sort.o: sort.c
 	$(CC) $(CFLAGS) -c sort.c

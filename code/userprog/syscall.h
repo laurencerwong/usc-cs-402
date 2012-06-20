@@ -59,6 +59,7 @@
 #define SC_NRand 36
 #define SC_NSrand 37
 #define SC_ReadInt 27
+#define SC_RandInt 28
 
 
 
@@ -182,6 +183,7 @@ void NPrint(char*, int, int, int);
 int NEncode2to1(int, int);
 void NDecode1to2(int, int*, int*);
 int ReadInt(char*, int);
+int RandInt();
 
 int CreateQueue();
 void DestroyQueue(int);
