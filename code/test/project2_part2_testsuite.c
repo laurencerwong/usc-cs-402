@@ -80,6 +80,10 @@ void print2() {
 void testForkInExec() {
 	int i = 0;
 
+	NPrint("Testing Fork and Exec: will run a smily, and then an adding program \nwhich then executes a counter from within itself\n",
+			sizeof("Testing Fork and Exec: will run a smily, and then an adding program \nwhich then executes a counter from within itself\n"),
+			0, 0);
+
 	/*Exec("../test/NumberCounter", sizeof("../test/NumberCounter"), "NumberCounter", sizeof("NumberCounter"));*/
 
 	Exec("../test/Smily", sizeof("../test/Smily"), "Smily Main Thread", sizeof("Smily Main Thread"));
@@ -94,23 +98,48 @@ void testInfiniteExecs() {
 }
 
 int main(int argc, char** argv) {
+	int choice = -1;
+	int loop = 1;
+
 	NPrint("\n\nRunning Project 2 Test Suite part 2\n", sizeof("\n\nRunning Project 2 Test Suite part 2\n"), 0, 0);
 
-	testNEncode2to1();
-	testNPrint();
-	/*testExec();
-	testFork();*/
+	while(loop) {
+		NPrint("\nPlease select a test:\n", sizeof("Please select a test:\n"), 0, 0);
+		NPrint("1. Test printing and print encoding\n", sizeof("1. Test printing and print encoding\n"), 0, 0);
+		NPrint("2. Test fork\n", sizeof("2. Test fork\n"), 0, 0);
+		NPrint("3. Test exec\n", sizeof("3. Test exec\n"), 0, 0);
+		NPrint("4. Test more complicated fork and exec\n", sizeof("4. Test more complicated fork and exec\n"), 0, 0);
+		NPrint("5. Test running out of memory\n", sizeof("5. Test running out of memory\n"), 0, 0);
 
-	NPrint("Testing Fork and Exec: will run a smily, and then an adding program \nwhich then executes a counter from within itself\n",
-			sizeof("Testing Fork and Exec: will run a smily, and then an adding program \nwhich then executes a counter from within itself\n"),
-			0, 0);
-	testForkInExec();
+		choice = ReadInt("> ", sizeof("> "));
+		loop = 0;
+
+		switch(choice) {
+		case 1:
+			testNEncode2to1();
+			testNPrint();
+			break;
+		case 2:
+			testFork();
+			break;
+		case 3:
+			testExec();
+			break;
+		case 4:
+			testForkInExec();
+			break;
+		case 5:
+			testInfiniteExecs();
+			break;
+		default:
+			NPrint("Invalid menu option!\n", sizeof("Invalid menu option!\n"), 0, 0);
+			loop = 1;
+			break;
+		}
+	}
 
 	NPrint("\nProject 2 test suite part 2 main thread complete!\n", sizeof("\nProject 2 test suite part 2 main thread complete!\n"), 0, 0);
 
 	Exit(0);
-
-	/*NPrint("Testing infinite Execs...", sizeof("Testing infinite Execs..."), 0, 0);
-	testInfiniteExecs();*/
 }
 
