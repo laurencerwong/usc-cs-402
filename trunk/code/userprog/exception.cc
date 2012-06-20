@@ -744,15 +744,15 @@ int QueueSize_Syscall(int queueNum){
   return   queueTable[queueNum].size();
 }
 
-int Rand_Syscall(){
+int NRand_Syscall(){
   return rand();
 }
 
-time_t Time_Syscall(){
+time_t NTime_Syscall(){
   return time(NULL);
 }
 
-void Srand_Syscall(unsigned int seed){
+void NSrand_Syscall(unsigned int seed){
   srand(seed);
 }
 
@@ -883,39 +883,39 @@ void ExceptionHandler(ExceptionType which) {
 	    rv = ReadInt_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
 	case SC_CreateQueue:
-	  CreateQueue();
+	  CreateQueue_Syscall();
 	  DEBUG('a', "CreateQueue syscall.\n");
 	  break;
 	case SC_QueuePush:
-	  QueuePush(machine->ReadRegister(4), machine->ReadRegister(5));
+	  QueuePush_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	  DEBUG('a', "QueuePush syscall.\n");
 	  break;
 	case SC_QueueFront:
-	  QueueFront(machine->ReadRegister(4));
+	  QueueFront_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "QueueFront syscall.\n");
 	  break;
 	case SC_QueuePop:
-	  QueuePop(machine->ReadRegister(4));
+	  QueuePop_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "QueuePop syscall.\n");
 	  break;
 	case SC_QueueEmpty:
-	  QueueEmpty(machine->ReadRegister(4));
+	  QueueEmpty_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "QueueEmpty syscall.\n");
 	  break;
 	case SC_QueueSize:
-	  QueueSize(machine->ReadRegister(4));
+	  QueueSize_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "QueueSize syscall.\n");
 	  break;
 	case SC_Rand:
-	  Rand();
+	  NRand_Syscall();
 	  DEBUG('a', "Rand syscall.\n");
 	  break;
 	case SC_Time:
-	  Time();
+	  NTime_Syscall();
 	  DEBUG('a', "Time syscall.\n");
 	  break;
 	case SC_Srand:
-	  Srand(machine->ReadRegister(4));
+	  NSrand_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "Srand syscall.\n");
 	  break;
 	}

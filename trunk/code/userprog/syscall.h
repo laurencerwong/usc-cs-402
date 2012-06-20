@@ -190,6 +190,9 @@ int QueueFront(int);
 void QueuePop(int);
 int QueueEmpty(int);
 int QueueSize(int);
+int Rand();
+time_t Time();
+void Srand(int);
 
 
 #endif /*CHAGNED */
