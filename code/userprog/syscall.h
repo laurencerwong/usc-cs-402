@@ -48,6 +48,7 @@
 #define SC_NPrint 24
 #define SC_NEncode2to1 25
 #define SC_NDecode1to2 26
+#define SC_ReadInt	27
 
 /*#endif*/
 
@@ -167,6 +168,7 @@ void P(int);
 void NPrint(char*, int, int, int);
 int NEncode2to1(int, int);
 void NDecode1to2(int, int*, int*);
+int ReadInt(char*, int);
 
 
 #endif /*CHAGNED */

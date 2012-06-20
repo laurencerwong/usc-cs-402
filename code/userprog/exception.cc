@@ -235,7 +235,7 @@ void Close_Syscall(int fd) {
 #ifdef CHANGED
 
 int CreateLock_Syscall(int nameIndex, int length){
-	char *name;
+	char name[length];
 	copyin(nameIndex, length, name);
 	if(lockArraySize == 0){
 		lockTable = new LockEntry[50];
@@ -255,11 +255,13 @@ int CreateLock_Syscall(int nameIndex, int length){
 		nextFreeIndex = lockMap->Find();
 	}
 	lockTable[nextFreeIndex].lock = new Lock (name);
+	lockTable[nextFreeIndex].lockSpace = currentThread->space;
+	lockTable[nextFreeIndex].isToBeDeleted = false;
 	return nextFreeIndex;
 }
 
 int CreateCondition_Syscall(int nameIndex, int length){
-	char *name;
+	char name[length];
 	copyin(nameIndex, length, name);
 	if(conditionArraySize == 0){
 		conditionTable = new ConditionEntry[50];
@@ -279,27 +281,35 @@ int CreateCondition_Syscall(int nameIndex, int length){
 		nextFreeIndex = conditionMap->Find();
 	}
 	conditionTable[nextFreeIndex].condition = new Condition (name);
+	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
+	conditionTable[nextFreeIndex].isToBeDeleted = false;
 	return nextFreeIndex;
 }
 
 void Signal_Syscall(int conditionIndex, int lockIndex){
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
 		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(!conditionMap->Test(conditionIndex)){
 		printf("Thread %s called Signal on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
 		printf("Thread %s called Signal on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
 		printf("Thread %s called Release in Signal with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!lockMap->Test(lockIndex)){
 		printf("Thread %s called Release in Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
 		printf("Thread %s called Release in Signal on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex].lock);
 	if(conditionTable[conditionIndex].isToBeDeleted){
@@ -313,21 +323,27 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
 		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(!conditionMap->Test(conditionIndex)){
 		printf("Thread %s called Broadcast on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
 		printf("Thread %s called Broadcast on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
 		printf("Thread %s called Release in Broadcast with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!lockMap->Test(lockIndex)){
 		printf("Thread %s called Release in Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
 		printf("Thread %s called Release in Broadcast on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
 	if(conditionTable[conditionIndex].isToBeDeleted){
@@ -341,21 +357,27 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 void Wait_Syscall(int conditionIndex, int lockIndex){
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
 		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(!conditionMap->Test(conditionIndex)){
 		printf("Thread %s called Wait on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
 		printf("Thread %s called Wait on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
 		printf("Thread %s called Release in Wait with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!lockMap->Test(lockIndex)){
 		printf("Thread %s called Release in Wait on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
 		printf("Thread %s called Release in Wait on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	conditionTable[conditionIndex].condition->Wait(lockTable[lockIndex].lock);
 }
@@ -363,12 +385,15 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 void DestroyLock_Syscall(int lockIndex){
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
 		printf("Thread %s tried to destroy a lock with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!lockMap->Test(lockIndex)){
 		printf("Thread %s tried to destroy a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
 		printf("Thread %s tried to destroy a lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!(lockTable[lockIndex].lock->isBusy())){
 		delete lockTable[lockIndex].lock;
@@ -382,12 +407,15 @@ void DestroyLock_Syscall(int lockIndex){
 void DestroyCondition_Syscall(int conditionIndex){
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
 		printf("Thread %s tried to delete a condition with an invalid index %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(!conditionMap->Test(conditionIndex)){
 		printf("Thread %s tried to delete a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
 		printf("Thread %s tried to delete condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
+		return;
 	}
 	if(!(conditionTable[conditionIndex].condition->hasWaiting())){
 		delete conditionTable[conditionIndex].condition;
@@ -406,12 +434,15 @@ void Yield_Syscall(){
 void Acquire_Syscall(int lockIndex){
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
 		printf("Thread %s called Acquire with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!lockMap->Test(lockIndex)){
 		printf("Thread %s called Acquire on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
 		printf("Thread %s called Acquire on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	lockTable[lockIndex].lock->Acquire();
 }
@@ -419,12 +450,15 @@ void Acquire_Syscall(int lockIndex){
 void Release_Syscall(int lockIndex){
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){
 		printf("Thread %s called Release with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(!lockMap->Test(lockIndex)){
 		printf("Thread %s called Release on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	if(lockTable[lockIndex].lockSpace != currentThread->space){
 		printf("Thread %s called Release on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
+		return;
 	}
 	lockTable[lockIndex].lock->Release();
 	if(lockTable[lockIndex].isToBeDeleted){
@@ -545,13 +579,34 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 	decode2to1(encodedVal2, t2);
 	//cout << "In NPrint syscall... finished decoding" << endl;
 	//cout << (char*)buf << endl;
+	ioLock->Acquire();
 	printf(buf, t1[0], t1[1], t2[0], t2[1]);
+	ioLock->Release();
 	//cout << "In NPrint syscall... finished printing" << endl;
 }
 
 
 void Exit_Syscall() {
 	currentThread->Finish();
+}
+
+int ReadInt_Syscall(unsigned int vaddr, int size){
+	char* buf = new char[size];
+	copyin(vaddr, size, buf);
+	ioLock->Acquire();
+	printf("%s", buf);
+	int choice;
+	while(true){
+		cin >> choice;
+		if(cin.fail()){
+			cin.clear();
+			cin.ignore(100, '\n');
+			cout << "Not a valid integer option. Please try again: ";
+			continue;
+		}
+		else break;
+	}
+	return choice;
 }
 
 #endif
@@ -604,17 +659,21 @@ void ExceptionHandler(ExceptionType which) {
 		DEBUG('a', "Signal syscall.\n");
 		Signal_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
+	    case SC_Wait:
+	    DEBUG('a', "Wait syscall.\n");
+	    Wait_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    break;
 	    case SC_Broadcast:
 		DEBUG('a', "Broadcast syscall.\n");
 		Broadcast_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
 	    case SC_CreateLock:
 		DEBUG('a', "CreateLock syscall.\n");
-		CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+		rv = CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
 	    case SC_CreateCondition:
 		DEBUG('a', "CreateCondition syscall.\n");
-		CreateCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+		rv = CreateCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    break;
 	    case SC_Yield:
 		DEBUG('a', "Yield syscall.\n");
@@ -651,6 +710,10 @@ void ExceptionHandler(ExceptionType which) {
 	    case SC_Exit:
 	    	Exit_Syscall();
 	    	break;
+	    case SC_ReadInt:
+	    DEBUG('a', "ReadInt syscall.\n");
+	    rv = ReadInt_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    break;
 	}
 
 	// Put in the return value and increment the PC

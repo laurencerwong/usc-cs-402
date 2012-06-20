@@ -42,4 +42,6 @@ int lockArraySize = 0;
 int conditionArraySize = 0;
 int semaphoreArraySize = 0;
 
+
+
 #endif /* EXCEPTION_ */

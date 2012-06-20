@@ -14,6 +14,7 @@
 BitMap *mainMemoryBitmap;
 AddrSpace **pageOwners;
 Lock *processTableLock;
+Lock *ioLock;
 
 ProcessEntry processTable[MAX_PROCESSES];
 int nextProcessID = 0;
@@ -175,6 +176,7 @@ Initialize(int argc, char **argv)
     processTableLock = new Lock("Process Table Lock");
     mainMemoryBitmap = new BitMap(NumPhysPages);
     pageOwners = new AddrSpace*[NumPhysPages];
+    ioLock = new Lock("IO Lock");
 #endif
 }
 

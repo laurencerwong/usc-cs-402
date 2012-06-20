@@ -1,4 +1,4 @@
-// thread.h 
+ // thread.h
 //	Data structures for managing threads.  A thread represents
 //	sequential execution of code within a program.
 //	So the state of a thread includes the program counter,
