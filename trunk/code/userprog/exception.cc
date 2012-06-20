@@ -487,9 +487,11 @@ void Create_Kernel_Thread_Exec() {
 	machine->Run();
 }
 
-void Fork_Syscall(unsigned int vaddr){
+void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
+	char name[length];
+	copyin(nameIndex, length, name);
 	//cout << "Forking a new thread..." << endl;
-	Thread* t = new Thread("user thread");
+	Thread* t = new Thread(name);
 	t->space = currentThread->space;
 	//cout << "New thread's address space set to the current address space" << endl;
 	processIDLock.Acquire();
@@ -503,7 +505,7 @@ void Fork_Syscall(unsigned int vaddr){
 	//cout << "Thread Forked" << endl;
 }
 
-void Exec_Syscall(unsigned int fileName, int length){
+void Exec_Syscall(unsigned int fileName, int length, unsigned int nameIndex, int size){
 	char buf[length + 1];
 	copyin(fileName, length, buf);
 	OpenFile *executable = fileSystem->Open(buf);
@@ -517,8 +519,9 @@ void Exec_Syscall(unsigned int fileName, int length){
 	}
 	space->processID = nextProcessID;
 	nextProcessID++;
-
-	Thread* t = new Thread("main thread");
+	char buf2[size];
+	copyin(nameIndex, size, buf2);
+	Thread* t = new Thread(buf2);
 	t->space = space;
 	t->threadID = processTable[space->processID].nextThreadID;
 	processTable[space->processID].nextThreadID++;
@@ -689,11 +692,11 @@ void ExceptionHandler(ExceptionType which) {
 	    break;
 	    case SC_Fork:
 	    DEBUG('a', "Fork syscall.\n");
-	    Fork_Syscall(machine->ReadRegister(4));
+	    Fork_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
 	    break;
 	    case SC_Exec:
 	    DEBUG('a', "Exec syscall.\n");
-	    Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+	    Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 	    break;
 	    case SC_NPrint:
 	    DEBUG('a', "NPrint syscall.\n");
