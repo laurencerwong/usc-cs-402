@@ -800,8 +800,8 @@ void Customer(){
 	else{
 		myCash -= cashierDesk[myCashier];
 		/* Now I wait for my receipt */
-		printf("%s [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", type, myID, cashierDesk[myCashier], myCashier);
-		cashierToCustCV[myCashier]->Wait(cashierLock[myCashier]);
+		/*printf("%s [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", type, myID, cashierDesk[myCashier], myCashier);*/
+		Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		/* now I've received my receipt and should release the cashier */
                 Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		if(type){
@@ -832,7 +832,7 @@ void Customer(){
 	customersDone++;	/* increment the total customers done count */
 
 	/* some cleanup */
-	/*delete itemsToBuy;
+	/*delete itemsToBuy;*/
         
 }
 
@@ -894,7 +894,6 @@ void manager(){
 		/* ------------------End check if all customers have left store------------ */
 
 		/* -----------------Have loader check trolleys--------------------------- */
-		inactiveLoaderCV->Signal(inactiveLoaderLock); /* wake up goods loader to do a regular check of trolley and manager items */
                 Acquire(inactiveLoaderLock);
                 Signal(inactiveLoaderCV, inactiveLoaderLock);
 		Release(inactiveLoaderLock);
@@ -1427,7 +1426,7 @@ void GoodsLoader() {
 	Release(loaderIndexLock);
 
 
-	//true if i go to help a salesman, and he was signalling for a loader to restock something */
+	/*//true if i go to help a salesman, and he was signalling for a loader to restock something */
 	Acquire(inactiveLoaderLock);
 	/* normal action loop */
 	while(1) {
