@@ -906,15 +906,15 @@ void ExceptionHandler(ExceptionType which) {
 	  QueueSize_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "QueueSize syscall.\n");
 	  break;
-	case SC_Rand:
+	case SC_NRand:
 	  NRand_Syscall();
 	  DEBUG('a', "Rand syscall.\n");
 	  break;
-	case SC_Time:
+	case SC_NTime:
 	  NTime_Syscall();
 	  DEBUG('a', "Time syscall.\n");
 	  break;
-	case SC_Srand:
+	case SC_NSrand:
 	  NSrand_Syscall(machine->ReadRegister(4));
 	  DEBUG('a', "Srand syscall.\n");
 	  break;
