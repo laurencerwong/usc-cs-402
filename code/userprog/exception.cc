@@ -232,7 +232,8 @@ void Close_Syscall(int fd) {
       printf("%s","Tried to close an unopen file\n");
     }
 }
-#ifdef CHANGED
+
+//#ifdef CHANGED
 
 int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char name[length];
@@ -476,7 +477,8 @@ void Create_Kernel_Thread_Fork(unsigned int vaddr){
 	machine->WriteRegister(NextPCReg, vaddr + 4);
 	currentThread->space->RestoreState();
 	int stackLoc = (currentThread->space->numExecutablePages /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
-	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = stackLoc;
+	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = (currentThread->space->numExecutablePages + ((currentThread->threadID + 1) * 8));
+	//cout << "creating thread with stack loc: " << stackLoc << endl;
 	machine->WriteRegister(StackReg, stackLoc );
 	machine->Run();
 }
@@ -498,6 +500,7 @@ void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 	//cout << "Process table lock acquired" << endl;
 	t->threadID = processTable[t->space->processID].nextThreadID;
 	processTable[t->space->processID].nextThreadID++;
+	processTable[t->space->processID].numThreadsAlive++;
 	processIDLock.Release();
 	//cout << "Process table lock released, IDs set" << endl;
 
@@ -505,9 +508,9 @@ void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 	//cout << "Thread Forked" << endl;
 }
 
-void Exec_Syscall(unsigned int fileName, int length, unsigned int nameIndex, int size){
-	char buf[length + 1];
-	copyin(fileName, length, buf);
+void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIndex, int nameLength){
+	char buf[filenameLength + 1];
+	copyin(fileName, filenameLength, buf);
 	OpenFile *executable = fileSystem->Open(buf);
 	AddrSpace* space = new AddrSpace(executable);
 
@@ -517,14 +520,18 @@ void Exec_Syscall(unsigned int fileName, int length, unsigned int nameIndex, int
 		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
 		interrupt->Halt();
 	}
+
 	space->processID = nextProcessID;
+	numLivingProcesses++;
 	nextProcessID++;
-	char buf2[size];
-	copyin(nameIndex, size, buf2);
+	char buf2[nameLength];
+	copyin(nameIndex, nameLength, buf2);
 	Thread* t = new Thread(buf2);
 	t->space = space;
 	t->threadID = processTable[space->processID].nextThreadID;
+	processTable[space->processID].processID = space->processID;
 	processTable[space->processID].nextThreadID++;
+	processTable[space->processID].numThreadsAlive++;
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
 
 	scheduler->Print();
@@ -533,6 +540,11 @@ void Exec_Syscall(unsigned int fileName, int length, unsigned int nameIndex, int
 }
 
 int NEncode2to1_Syscall(int v1, int v2) {
+	if( ((v1 & 0xffff0000) != 0) || ((v2 & 0xffff0000) != 0)) {
+		cout << "WARNING: values passed to NEncode2to1 should be limited to 16 bits.  "
+			 << v1 << " and " << v2 << " were passed" << endl;
+	}
+
 	int res = (v2 << 16) | (v1 & 0x0000ffff);
 	//cout << "NEncode2to1: " << v1 << " and " << v2 << " encoded to: " << res << endl;
 	return res;
@@ -590,7 +602,73 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 
 
 void Exit_Syscall() {
-	currentThread->Finish();
+
+	processIDLock.Acquire();
+
+	if(numLivingProcesses == 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
+		//I am the last thread of the last process
+		//cout << "Exiting: Last thread of last process" << endl;
+		interrupt->Halt();
+	}
+	else if(numLivingProcesses > 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
+		//I am the last thread in a process, but there are other processes
+		//cout << "Exiting: Last thread of a process, more processes exist" << endl;
+		AddrSpace *currentSpace = currentThread->space;
+
+		for(int i = 0; i < lockArraySize; i++) {
+			if(lockTable[i].lockSpace == currentSpace) {
+				lockTable[i].lockSpace = NULL;
+				lockTable[i].isToBeDeleted = false;
+				delete lockTable[i].lock;
+			}
+		}
+
+		for(int i = 0; i < conditionArraySize; i++) {
+			if(conditionTable[i].conditionSpace == currentSpace) {
+				conditionTable[i].conditionSpace = NULL;
+				conditionTable[i].isToBeDeleted = false;
+				delete conditionTable[i].condition;
+			}
+		}
+
+		delete currentThread->space;
+		numLivingProcesses--;
+
+		currentThread->Finish();
+	}
+	else if(processTable[currentThread->space->processID].numThreadsAlive > 1) {
+		//I am just a thread (not the last) in a process (also not the last)
+		//cout << "Exiting: a thread of a process, more processes and threads exist: " << endl;
+		//cout << processTable[currentThread->space->processID].numThreadsAlive << " threads remain in this process ("
+		//	 << currentThread->space->processID << ") and " << numLivingProcesses
+		//	 << " processes are still alive" << endl;
+
+		processTable[currentThread->space->processID].numThreadsAlive--;
+
+		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
+		//cout << "last stack page" << lastStackPage << endl;
+
+		for(int i = 0; i < 7; i++) {
+			//cout << "clearing out stack... virtpage: " << lastStackPage - i
+			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
+			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
+		}
+
+		currentThread->Finish();
+	}
+	else {
+		cout << "ERROR: Unknown Exit status!!" << endl;
+		cout << "Number of living processes: " << numLivingProcesses << endl;
+		cout << "Number of Threads for each process:" << endl;
+		for(int i = 0; i < numLivingProcesses; i++) {
+			cout << "Process: " << processTable[i].processID << "  Threads: " << processTable[i].numThreadsAlive << endl;
+		}
+		cout << "Terminating Nachos..." << endl;
+		interrupt->Halt();
+	}
+
+	//currentThread->Finish();
+	processIDLock.Release();
 }
 
 int ReadInt_Syscall(unsigned int vaddr, int size){
@@ -612,107 +690,109 @@ int ReadInt_Syscall(unsigned int vaddr, int size){
 	return choice;
 }
 
-#endif
+//#endif
 
 void ExceptionHandler(ExceptionType which) {
     int type = machine->ReadRegister(2); // Which syscall?
     int rv=0; 	// the return value from a syscall
 
     if ( which == SyscallException ) {
-	switch (type) {
-	    default:
-		DEBUG('a', "Unknown syscall - shutting down.\n");
-	    case SC_Halt:
-		DEBUG('a', "Shutdown, initiated by user program.\n");
-		interrupt->Halt();
-		break;
-	    case SC_Create:
-		DEBUG('a', "Create syscall.\n");
-		Create_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-		break;
-	    case SC_Open:
-		DEBUG('a', "Open syscall.\n");
-		rv = Open_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-		break;
-	    case SC_Write:
-		DEBUG('a', "Write syscall.\n");
-		Write_Syscall(machine->ReadRegister(4),
-			      machine->ReadRegister(5),
-			      machine->ReadRegister(6));
-		break;
-	    case SC_Read:
-		DEBUG('a', "Read syscall.\n");
-		rv = Read_Syscall(machine->ReadRegister(4),
-			      machine->ReadRegister(5),
-			      machine->ReadRegister(6));
-		break;
-	    case SC_Close:
-		DEBUG('a', "Close syscall.\n");
-		Close_Syscall(machine->ReadRegister(4));
-		break;
-	    case SC_Acquire:
-	    DEBUG('a', "Acquire syscall.\n");
-	    Acquire_Syscall(machine->ReadRegister(4));
-	    break;
-	    case SC_Release:
-		DEBUG('a', "Release syscall.\n");
-		Release_Syscall(machine->ReadRegister(4));
-	    break;
-	    case SC_Signal:
-		DEBUG('a', "Signal syscall.\n");
-		Signal_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_Wait:
-	    DEBUG('a', "Wait syscall.\n");
-	    Wait_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_Broadcast:
-		DEBUG('a', "Broadcast syscall.\n");
-		Broadcast_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_CreateLock:
-		DEBUG('a', "CreateLock syscall.\n");
-		rv = CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_CreateCondition:
-		DEBUG('a', "CreateCondition syscall.\n");
-		rv = CreateCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_Yield:
-		DEBUG('a', "Yield syscall.\n");
-		Yield_Syscall();
-	    break;
-	    case SC_DestroyLock:
-		DEBUG('a', "DestroyLock syscall.\n");
-		DestroyLock_Syscall(machine->ReadRegister(4));
-	    break;
-	    case SC_DestroyCondition:
-		DEBUG('a', "DestroyCondition syscall.\n");
-		DestroyCondition_Syscall(machine->ReadRegister(4));
-	    break;
-	    case SC_Fork:
-	    DEBUG('a', "Fork syscall.\n");
-	    Fork_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
-	    break;
-	    case SC_Exec:
-	    DEBUG('a', "Exec syscall.\n");
-	    Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
-	    break;
-	    case SC_NPrint:
-	    DEBUG('a', "NPrint syscall.\n");
-	    NPrint_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
-	    break;
-	    case SC_NEncode2to1:
-	    DEBUG('a', "NEncode2to1 syscall.\n");
-	    rv = NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-	    break;
-	    case SC_NDecode1to2:
-	    DEBUG('a', "NDecode1to2 syscall.\n");
-	    NDecode1to2_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
-	    break;
-	    case SC_Exit:
-	    	Exit_Syscall();
+    	switch (type) {
+    	default:
+    		DEBUG('a', "Unknown syscall - shutting down.\n");
+    	case SC_Halt:
+    		DEBUG('a', "Shutdown, initiated by user program.\n");
+    		interrupt->Halt();
+    		break;
+    	case SC_Create:
+    		DEBUG('a', "Create syscall.\n");
+    		Create_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+    	case SC_Open:
+    		DEBUG('a', "Open syscall.\n");
+    		rv = Open_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+    	case SC_Write:
+    		DEBUG('a', "Write syscall.\n");
+    		Write_Syscall(machine->ReadRegister(4),
+    				machine->ReadRegister(5),
+    				machine->ReadRegister(6));
+    		break;
+    	case SC_Read:
+    		DEBUG('a', "Read syscall.\n");
+    		rv = Read_Syscall(machine->ReadRegister(4),
+    				machine->ReadRegister(5),
+    				machine->ReadRegister(6));
+    		break;
+    	case SC_Close:
+    		DEBUG('a', "Close syscall.\n");
+    		Close_Syscall(machine->ReadRegister(4));
+    		break;
+    	case SC_Acquire:
+    		DEBUG('a', "Acquire syscall.\n");
+    		Acquire_Syscall(machine->ReadRegister(4));
+    		break;
+    	case SC_Release:
+    		DEBUG('a', "Release syscall.\n");
+    		Release_Syscall(machine->ReadRegister(4));
+    		break;
+    	case SC_Signal:
+    		DEBUG('a', "Signal syscall.\n");
+    		Signal_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+   	    case SC_Wait:
+	    	DEBUG('a', "Wait syscall.\n");
+	    	Wait_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 	    	break;
+    	case SC_Broadcast:
+    		DEBUG('a', "Broadcast syscall.\n");
+    		Broadcast_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+    	case SC_CreateLock:
+    		DEBUG('a', "CreateLock syscall.\n");
+    		CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+    	case SC_CreateCondition:
+    		DEBUG('a', "CreateCondition syscall.\n");
+    		CreateCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+    	case SC_Yield:
+    		DEBUG('a', "Yield syscall.\n");
+    		Yield_Syscall();
+    		break;
+    	case SC_DestroyLock:
+    		DEBUG('a', "DestroyLock syscall.\n");
+    		DestroyLock_Syscall(machine->ReadRegister(4));
+    		break;
+    	case SC_DestroyCondition:
+    		DEBUG('a', "DestroyCondition syscall.\n");
+    		DestroyCondition_Syscall(machine->ReadRegister(4));
+    		break;
+    	case SC_Fork:
+    		DEBUG('a', "Fork syscall.\n");
+    		Fork_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+    		break;
+    	case SC_Exec:
+    		DEBUG('a', "Exec syscall.\n");
+    		Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+    		break;
+    	case SC_NPrint:
+    		DEBUG('a', "NPrint syscall.\n");
+    		NPrint_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+    		break;
+    	case SC_NEncode2to1:
+    		DEBUG('a', "NEncode2to1 syscall.\n");
+    		rv = NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+    		break;
+    	case SC_NDecode1to2:
+    		DEBUG('a', "NDecode1to2 syscall.\n");
+    		NDecode1to2_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+    		break;
+    	case SC_Exit:
+    		DEBUG('a', "Exit syscall.\n");
+    		rv = machine->ReadRegister(4);
+    		Exit_Syscall();
+    		break;
 	    case SC_ReadInt:
 	    DEBUG('a', "ReadInt syscall.\n");
 	    rv = ReadInt_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));

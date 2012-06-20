@@ -41,10 +41,14 @@ StartProcess(char *filename)
 		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
 		interrupt->Halt();
 	}
+	//cout << "starting process with ID " << nextProcessID << endl;
 	space->processID = nextProcessID;
 	nextProcessID++;
+	numLivingProcesses++;
 
 	currentThread->threadID = processTable[space->processID].nextThreadID;
+	processTable[space->processID].processID = space->processID;
+	processTable[space->processID].numThreadsAlive++;
 	processTable[space->processID].nextThreadID++;
 
 	processIDLock.Release();

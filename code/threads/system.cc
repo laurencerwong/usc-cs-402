@@ -19,6 +19,8 @@ Lock *ioLock;
 ProcessEntry processTable[MAX_PROCESSES];
 int nextProcessID = 0;
 Lock processIDLock = Lock("Process ID Lock");
+int numLivingProcesses = 0;
+
 #endif
 Thread *currentThread;			// the thread we are running now
 Thread *threadToBeDestroyed;  		// the thread that just finished
@@ -176,6 +178,14 @@ Initialize(int argc, char **argv)
     processTableLock = new Lock("Process Table Lock");
     mainMemoryBitmap = new BitMap(NumPhysPages);
     pageOwners = new AddrSpace*[NumPhysPages];
+
+    for(int i = 0; i < MAX_PROCESSES; i++) {
+    	processTable[i].numThreadsAlive = 0;
+    	processTable[i].processID = -1;
+    	processTable[i].nextThreadID = 0;
+    }
+    numLivingProcesses = 0;
+    nextProcessID = 0;
     ioLock = new Lock("IO Lock");
 #endif
 }

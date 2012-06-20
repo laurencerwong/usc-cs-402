@@ -122,6 +122,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     NoffHeader noffH;
     unsigned int i, size;
 
+
     // Don't allocate the input or output to disk files
     fileTable.Put(0);
     fileTable.Put(0);
@@ -157,6 +158,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     		interrupt->Halt();
     	}
     	else {
+    		//cout << "in addrspace constructor, assigning virtual page " << i << " to phys page " << newPhysPage << endl;
     		pageTable[i].physicalPage = newPhysPage;
     	}
     	pageTable[i].valid = TRUE;
@@ -166,8 +168,9 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     	// a separate page, we could set its
     	// pages to be read-only
 
+
     	//copy executable over
-    	if(i < numExecutablePages) {
+    	if(i < (unsigned int)numExecutablePages) {
     		int tempPhysAddr = pageTable[i].physicalPage * PageSize;
     		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.code.inFileAddr + i * PageSize);
     	}
@@ -294,6 +297,10 @@ void AddrSpace::TranslateForInitialPageTable(int virtAddr, int* physAddr, int si
 
 AddrSpace::~AddrSpace()
 {
+	for(unsigned int i = 0; i < numPages; i++) {
+		mainMemoryBitmap->Clear(pageTable[i].physicalPage);
+	}
+
     delete pageTable;
 }
 
@@ -327,7 +334,10 @@ AddrSpace::InitRegisters()
    // accidentally reference off the end!
 #ifdef CHANGED
 	int stackLoc = (numExecutablePages /*numCodeDataPages*/ + ((0 + 1) * 8)) * PageSize - 16;
-    machine->WriteRegister(StackReg, stackLoc);
+	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = numExecutablePages + 8;
+	//cout << "num executable pages: " << numExecutablePages << endl;
+	//cout << "initializing stack location to: " << stackLoc << " for thread " << currentThread->threadID << " in process " << currentThread->space->processID << endl;
+	machine->WriteRegister(StackReg, stackLoc);
    // machine->WriteRegister(StackReg, numPages * PageSize - 16);
 #endif
     DEBUG('a', "Initializing stack register to %x\n", numPages * PageSize - 16);
