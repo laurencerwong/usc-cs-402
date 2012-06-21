@@ -882,8 +882,6 @@ void manager(){
 
 	salesmenOnBreak = CreateQueue();
 	cashiersOnBreak = CreateQueue();
-	NPrint("salesmenOnBreak = %d\n", sizeof("salesmenOnBreak = %d\n"), salesmenOnBreak);
-	NPrint("cashiersOnBreak = %d\n", sizeof("cashiersOnBreak = %d\n"), cashiersOnBreak);	
 
 	/* initializes cashier totals, by which we keep track of how much money each cashier has had */
 	/* in their registers over Time */
@@ -940,7 +938,6 @@ void manager(){
 		}
 
 		/* --------------------------Begin bring cashier back from break-------------------- */
-		NPrint("Cashiers on break: %d\n", sizeof("Cashiers on break: %d\n"), cashiersOnBreak);
 		if(numFullLines > (cashierNumber - numCashiersOnBreak) && QueueSize(cashiersOnBreak)){
 			/* bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break*/
 			wakeCashier = QueueFront(cashiersOnBreak);
@@ -1533,7 +1530,7 @@ void GoodsLoader() {
 			shelf = salesDesk[currentDept][mySalesID];	/* read the shelf that needs stocking in from the desk */
 			salesDesk[currentDept][mySalesID] = -1;		/* write back that i was not on a previous job */
 
-			NPrint("GoodsLoader [%d] is informed by DepartmentSalesman [%d] of Department [%d] to restock [%d]", sizeof("GoodsLoader [%d] is informed by DepartmentSalesman [%d] of Department [%d] to restock [%d]"), NEncode2to1(myID, mySalesID), NEncode2to1(currentDept, shelf));
+			NPrint("GoodsLoader [%d] is informed by DepartmentSalesman [%d] of Department [%d] to restock [%d]\n", sizeof("GoodsLoader [%d] is informed by DepartmentSalesman [%d] of Department [%d] to restock [%d]\n"), NEncode2to1(myID, mySalesID), NEncode2to1(currentDept, shelf));
 
 			Signal(salesmanCV[currentDept][mySalesID], individualSalesmanLock[currentDept][mySalesID]);
 			Wait(salesmanCV[currentDept][mySalesID], individualSalesmanLock[currentDept][mySalesID]);
