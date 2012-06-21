@@ -1,5 +1,5 @@
 /*
- * Smily.c
+ * Smiley.c
  *
  *	tests a lot of uninitialized data, and printing things in a sequence
  *
@@ -40,7 +40,7 @@ int main()
 		NPrint(a, sizeof(a), 0, 0);
 	}
 
-	NPrint("Userprog Smily done\n\n", sizeof("Userprog Smily done\n\n"), 0, 0);
+	NPrint("Userprog Smiley done\n\n", sizeof("Userprog Smiley done\n\n"), 0, 0);
 
     Exit(0);
 }

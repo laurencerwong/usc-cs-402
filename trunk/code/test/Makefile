@@ -32,7 +32,7 @@ INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
-HelloWorld Smily NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket
+HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket
 
 
 start.o: start.s ../userprog/syscall.h
@@ -82,11 +82,11 @@ queueTest: queueTest.o start.o
 	$(LD) $(LDFLAGS) start.o queueTest.o -o queueTest.coff
 	../bin/coff2noff queueTest.coff queueTest
 
-Smily.o: Smily.c
-	$(CC) $(CFLAGS) -c Smily.c
-Smily: Smily.o start.o
-	$(LD) $(LDFLAGS) start.o Smily.o -o Smily.coff
-	../bin/coff2noff Smily.coff Smily
+Smiley.o: Smiley.c
+	$(CC) $(CFLAGS) -c Smiley.c
+Smiley: Smiley.o start.o
+	$(LD) $(LDFLAGS) start.o Smiley.o -o Smiley.coff
+	../bin/coff2noff Smiley.coff Smiley
 
 MaxLockCVMaker.o: MaxLockCVMaker.c
 	$(CC) $(CFLAGS) -c MaxLockCVMaker.c
