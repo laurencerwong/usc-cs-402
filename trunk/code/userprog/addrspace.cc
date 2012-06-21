@@ -297,10 +297,6 @@ void AddrSpace::TranslateForInitialPageTable(int virtAddr, int* physAddr, int si
 
 AddrSpace::~AddrSpace()
 {
-	for(unsigned int i = 0; i < numPages; i++) {
-		mainMemoryBitmap->Clear(pageTable[i].physicalPage);
-	}
-
     delete pageTable;
 }
 
