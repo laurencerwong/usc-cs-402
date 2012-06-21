@@ -529,43 +529,52 @@ void Release_Syscall(int lockIndex){
 }
 
 
-
+//First function a new user thread executes.  Our Fork_Syscall function forks to this unconditionally.
+//The argument vaddr is the logical address of the function the call user program intends to fork to
 void Create_Kernel_Thread_Fork(unsigned int vaddr){
-	machine->WriteRegister(PCReg, vaddr);
+	machine->WriteRegister(PCReg, vaddr); //point the machine to the first instruction in the user program function
 	machine->WriteRegister(NextPCReg, vaddr + 4);
-	currentThread->space->RestoreState();
+	currentThread->space->RestoreState(); //make sure machine is working with the correct pageTable with our executable code
+	//allocate the thread's stack location at the bottom of the 8 pages belonging to it.
 	int stackLoc = (currentThread->space->numExecutablePages /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
+	//record where the thread's stack starts in processTable we can release next time the thread calls Exit
 	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = (currentThread->space->numExecutablePages + ((currentThread->threadID + 1) * 8));
-	machine->WriteRegister(StackReg, stackLoc );
-	machine->Run();
+	machine->WriteRegister(StackReg, stackLoc ); //give machine the stack location
+	machine->Run(); //begin execution of user program function
 }
 
+//first function a new user thread executes if it is the first in a new user process.  Our Exec_Syscall forks to this unconditionally
+//differs from Create_Kernel_Thread_Fork because we always know what virtual address to execute (the main) and where our stack should be (first slot)
 void Create_Kernel_Thread_Exec() {
-	currentThread->space->InitRegisters();
-	currentThread->space->RestoreState();
-	machine->Run();
+	currentThread->space->InitRegisters(); //Set up PC/PCNext/StackRegisters
+	currentThread->space->RestoreState(); //ensure machine has correct pageTable
+	machine->Run(); //begin execution of new process
 }
 
+//syscall a user accesses when they fork.  vaddr is logical address of function to be forked, and other two arguments are so
+//the new kernel Thread can be named by the user
 void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 	char* name = new char[length + 1];
-	copyin(nameIndex, length, name);
+	copyin(nameIndex, length, name); //retrieve name for thread
 	Thread* t = new Thread(name);
 	t->space = currentThread->space;
-	processIDLock.Acquire();
+	processIDLock.Acquire(); //threadIDs must be retrieved in mutually exclusive manner
 	t->threadID = processTable[t->space->processID].nextThreadID;
-	processTable[t->space->processID].nextThreadID++;
-	processTable[t->space->processID].numThreadsAlive++;
+	processTable[t->space->processID].nextThreadID++; //update so next thread doesn't grab this thread's ID
+	processTable[t->space->processID].numThreadsAlive++; //allows Exit to tell there is another ReadyToRun thread for process
 	processIDLock.Release();
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Fork, vaddr);
 }
 
+//syscall a user accesses when they exec.  first two arguments are how the executable name is retrieved,
+//second two are so the user can name the kernel level thread
 void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIndex, int nameLength){
 	char* buf = new char[filenameLength + 1];
-	copyin(fileName, filenameLength, buf);
+	copyin(fileName, filenameLength, buf);  //retrieve executable name
 	OpenFile *executable = fileSystem->Open(buf);
-	AddrSpace* space = new AddrSpace(executable);
+	AddrSpace* space = new AddrSpace(executable); //first part of process, address space, instantiated
 
-	processIDLock.Acquire();
+	processIDLock.Acquire(); //processTable must be accessed in mutually exclusive manner
 
 	if(nextProcessID == MAX_PROCESSES){
 		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
@@ -573,20 +582,17 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	}
 
 	space->processID = nextProcessID;
-	numLivingProcesses++;
-	nextProcessID++;
+	numLivingProcesses++; //information for Exit
+	nextProcessID++; //make sure no one else can get our id
 	buf = new char[nameLength];
-	copyin(nameIndex, nameLength, buf);
+	copyin(nameIndex, nameLength, buf); //retrieve user's desired thread name
 	Thread* t = new Thread(buf);
 	t->space = space;
-	t->threadID = processTable[space->processID].nextThreadID;
+	t->threadID = processTable[space->processID].nextThreadID; //have to also set thread id
 	processTable[space->processID].processID = space->processID;
 	processTable[space->processID].nextThreadID++;
 	processTable[space->processID].numThreadsAlive++;
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
-
-	//scheduler->Print();
-
 	processIDLock.Release();
 }
 
