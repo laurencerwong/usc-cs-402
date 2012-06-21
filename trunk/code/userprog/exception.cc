@@ -557,7 +557,7 @@ void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 }
 
 void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIndex, int nameLength){
-	char buf[filenameLength + 1];
+	char* buf = new char[filenameLength + 1];
 	copyin(fileName, filenameLength, buf);
 	OpenFile *executable = fileSystem->Open(buf);
 	AddrSpace* space = new AddrSpace(executable);
@@ -572,9 +572,9 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	space->processID = nextProcessID;
 	numLivingProcesses++;
 	nextProcessID++;
-	char buf2[nameLength];
-	copyin(nameIndex, nameLength, buf2);
-	Thread* t = new Thread(buf2);
+	buf = new char[nameLength];
+	copyin(nameIndex, nameLength, buf);
+	Thread* t = new Thread(buf);
 	t->space = space;
 	t->threadID = processTable[space->processID].nextThreadID;
 	processTable[space->processID].processID = space->processID;
