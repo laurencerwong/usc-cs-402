@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite HelloWorld Smily NumberCounter ExecAddingThings supermarket
+all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification HelloWorld Smily NumberCounter ExecAddingThings supermarket
 
 
 start.o: start.s ../userprog/syscall.h
@@ -63,6 +63,12 @@ supermarket: supermarket.o start.o
 	$(LD) $(LDFLAGS) start.o supermarket.o -o supermarket.coff
 	../bin/coff2noff supermarket.coff supermarket
 
+addrspace_verification.o: addrspace_verification.c
+	$(CC) $(CFLAGS) -c addrspace_verification.c
+addrspace_verification: addrspace_verification.o start.o
+	$(LD) $(LDFLAGS) start.o addrspace_verification.o -o addrspace_verification.coff
+	../bin/coff2noff addrspace_verification.coff addrspace_verification
+	
 HelloWorld.o: HelloWorld.c
 	$(CC) $(CFLAGS) -c HelloWorld.c
 HelloWorld: HelloWorld.o start.o

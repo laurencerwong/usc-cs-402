@@ -87,7 +87,7 @@ void testDestroyLock(){
 }
 
 
-
+/*Only one of these function should be able to increment the testCounter at once. Every value of testCounter should be visited in ascending order */
 void testMutex(){
 	Acquire(lock);
 	NPrint("Incrementing testCounter from %d to %d\n", sizeof("Incrementing testCounter from %d to %d\n"), NEncode2to1(testCounter, testCounter + 1));
@@ -96,6 +96,9 @@ void testMutex(){
 	Exit(0);
 }
 
+/*Function that will fork threads to testMutex.  We assume fork is working in order to test this.  We don't care in what order threads are forked,
+ * as long as the CS in testMutex() is accessed in accordance with mutual exclusion
+ */
 void startTestMutex(){
 	int i;
 	lock = CreateLock("mutex test lock", sizeof("mutex test lock"));
@@ -275,6 +278,9 @@ void testConditionSequencingCompanion(){
 	Exit(0);
 }
 
+/*This test emulates the "tennis" depiction of condition based sequencing.  The value of testCounter should increment one by one as it is
+ * "hit back and forth" between the two threads we create
+ */
 void testConditionSequencing(){
 	int i;
 	lock = CreateLock("test lock", sizeof("test lock"));
@@ -290,6 +296,16 @@ void testConditionSequencing(){
 
 	}
 	Exit(0);
+}
+
+void testAddressSpaceVerification(){
+	int i;
+	condition = CreateCondition();
+	lock = CreateLock();
+	Exec("../test/addrspace_verification", sizeof("../test/addrspace_verification"), "addrspace verification thread", sizeof("addrspace verification thread"));
+	for(i = 0; i < 1000; i++){
+		Yield();
+	}
 }
 
 
@@ -308,6 +324,7 @@ int main(int argc, char** argv) {
 	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"), 0, 0);
 	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"), 0, 0);
 	NPrint("9. Test yield\n", sizeof("9. Test yield\n"));
+	NPrint("10. Test address space verification in both locks and conditions\n", sizeof("0. Test address space verification in both locks and conditions\n"));
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
 	NPrint("Choice: %d\n", sizeof("Choice: %d\n"), choice, 0);
@@ -338,6 +355,9 @@ int main(int argc, char** argv) {
 		break;
 	case 9:
 		testYield();
+		break;
+	case 10:
+		testAddressSpaceVerification();
 		break;
 	default:
 		NPrint("No Choice?\n", sizeof("No Choice?\n"), 0, 0);
