@@ -54,7 +54,7 @@ int privilegedCashierLineCV[MAX_CASHIERS];
 /* array of CVs for unprivileged customers waiting in line */
 /* one for each cashier */
 int unprivilegedCashierLineCV[MAX_CASHIERS];
- 
+
 /* Lock associated with cashToCustCV */
 /* controls access to each cashier */
 int cashierLock[MAX_CASHIERS];
@@ -207,10 +207,11 @@ int customerIndexLock;
 
 
 void initCashierArrays(int numCashiersIn){
-    int i;
-  cashierLinesLock  = CreateLock("cashierLineLock", sizeof("cashierLineLock"));
-  cashierIndexLock = CreateLock("cashierIndexLock", sizeof("cashierIndexLock"));
-  cashierNumber = numCashiersIn;
+	int i;
+	cashierLinesLock  = CreateLock("cashierLineLock", sizeof("cashierLineLock"));
+	cashierIndexLock = CreateLock("cashierIndexLock", sizeof("cashierIndexLock"));
+	numCashiers = numCashiersIn;
+	cashierNumber = numCashiersIn;
 	for( i = 0; i < numCashiersIn; i++){
 		total[i] = 0;
 		custID[i] = 0;
@@ -227,9 +228,9 @@ void initCashierArrays(int numCashiersIn){
 }
 
 void initSalesmanArrays(){
-  int i, j;
-  salesmanIndexLock = CreateLock("salesmanIndexLock", sizeof("salsemanIndexLock"));
-  departmentIndexLock = CreateLock("departmentIndexLock", sizeof("departmentIndexLock"));
+	int i, j;
+	salesmanIndexLock = CreateLock("salesmanIndexLock", sizeof("salsemanIndexLock"));
+	departmentIndexLock = CreateLock("departmentIndexLock", sizeof("departmentIndexLock"));
 	for( i = 0; i < numDepartments; i++){
 		greetingCustWaitingLineCount[i] = 0;
 		complainingCustWaitingLineCount[i] = 0;
@@ -253,26 +254,26 @@ void initSalesmanArrays(){
 }
 
 void initLoaderArrays(){
-    int i, j;
-  inactiveLoaderLock = CreateLock("inactiveLoaderLock", sizeof("inactiveLoaderLock"));
-  inactiveLoaderCV = CreateCondition("inactiveLoaderCV", sizeof("inactiveLoaderCV"));
-  stockRoomLock = CreateLock("stockRoomLock", sizeof("stockRoomLock"));
-  loaderIndexLock = CreateLock("loaderIndexLock", sizeof("loaderIndexLock"));
-  currentLoaderInStockLock = CreateLock("currentLoaderInStockLock", sizeof("currentLoaderInStockLock"));
-  currentLoaderInStockCV = CreateCondition("currentLoaderInStockCV", sizeof("currentLoaderInStockCV"));
-  stockRoomCV = CreateCondition("stockRoomCV", sizeof("stockRoomCV"));
-  for( i = 0; i < numDepartments; i++)	{
-    for( j = 0; j < numItems; j++){
-      shelfLock[i][j] = CreateLock("shelfLock", sizeof("shelfLock"));
-      shelfCV[i][j] = CreateCondition("shelfCV", sizeof("shelfCV"));
-      shelfInventory[i][j] = 10; /* default inventory */
-    }
-  }
-  NPrint("finished initializing loader arrays\n", sizeof("finished initializing loader arrays\n"));
+	int i, j;
+	inactiveLoaderLock = CreateLock("inactiveLoaderLock", sizeof("inactiveLoaderLock"));
+	inactiveLoaderCV = CreateCondition("inactiveLoaderCV", sizeof("inactiveLoaderCV"));
+	stockRoomLock = CreateLock("stockRoomLock", sizeof("stockRoomLock"));
+	loaderIndexLock = CreateLock("loaderIndexLock", sizeof("loaderIndexLock"));
+	currentLoaderInStockLock = CreateLock("currentLoaderInStockLock", sizeof("currentLoaderInStockLock"));
+	currentLoaderInStockCV = CreateCondition("currentLoaderInStockCV", sizeof("currentLoaderInStockCV"));
+	stockRoomCV = CreateCondition("stockRoomCV", sizeof("stockRoomCV"));
+	for( i = 0; i < numDepartments; i++)	{
+		for( j = 0; j < numItems; j++){
+			shelfLock[i][j] = CreateLock("shelfLock", sizeof("shelfLock"));
+			shelfCV[i][j] = CreateCondition("shelfCV", sizeof("shelfCV"));
+			shelfInventory[i][j] = 10; /* default inventory */
+		}
+	}
+	NPrint("finished initializing loader arrays\n", sizeof("finished initializing loader arrays\n"));
 }
 
 void initLoaderArraysWithQty(){
-  int i, j;
+	int i, j;
 	for( i = 0; i < numDepartments; i++)	{
 		for( j = 0; j < numItems; j++){
 			shelfLock[i][j] = CreateLock("shelfLock", sizeof("shelfLock"));
@@ -284,28 +285,30 @@ void initLoaderArraysWithQty(){
 }
 
 void initManagerArrays(){
-  int i;
-  managerLock = CreateLock("managerLock", sizeof("managerLock"));
-  managerCV = CreateCondition("managerCV", sizeof("managerCV"));
-  managerItemsLock = CreateLock("managerItemsLock", sizeof("managerItemsLock"));
-  managerItems = CreateQueue();
-        for( i = 0; i < numCashiers; i++){
-          cashierTotals[i] = 0;
-        }
-        for( i = 0;i < numDepartments; i++){
-          numSalesmenOnBreak[i] = 0;
-        }
+	int i;
+	managerLock = CreateLock("managerLock", sizeof("managerLock"));
+	managerCV = CreateCondition("managerCV", sizeof("managerCV"));
+	managerItemsLock = CreateLock("managerItemsLock", sizeof("managerItemsLock"));
+	managerItems = CreateQueue();
+	for( i = 0; i < numCashiers; i++){
+		cashierTotals[i] = 0;
+		cashierFlags[i] = -1;
+	}
+	for( i = 0;i < numDepartments; i++){
+		numSalesmenOnBreak[i] = 0;
+	}
 	NPrint("Finished initializing manager arrays\n", sizeof("Finished initializing manager arrays\n"));
 }
 
-void initCustomerArrays(){
+void initCustomerArrays(int numberOfCustomers){
   int i, j;
-  customerIndexLock = CreateLock("customerIndexLock", sizeof("customerIndexLock"));
-  trollyLock  = CreateLock("trollyLock", sizeof("trollyLock"));
-  trollyCount = numTrollies;
-  trollyCV = CreateCondition("trollyCV", sizeof("trollyCV"));
-  displacedTrollyLock = CreateLock("displacedTrollyLock", sizeof("displacedTrollyLock"));
-  NPrint("finished initializing customer arrays\n", sizeof("finished initializing customer arrays\n"));
+  custNumber = numberOfCustomers;
+	customerIndexLock = CreateLock("customerIndexLock", sizeof("customerIndexLock"));
+	trollyLock  = CreateLock("trollyLock", sizeof("trollyLock"));
+	trollyCount = numTrollies;
+	trollyCV = CreateCondition("trollyCV", sizeof("trollyCV"));
+	displacedTrollyLock = CreateLock("displacedTrollyLock", sizeof("displacedTrollyLock"));
+	NPrint("finished initializing customer arrays\n", sizeof("finished initializing customer arrays\n"));
 }
 
 
@@ -337,11 +340,11 @@ void deconstructSalesArg(int val, int target[2]) {
 /*
 /* Creates salesmen threads given the total number of departments in the store, and the number of salesmen per department */
 void createSalesmen() {
-  /* cout << "starting to create salesmen" << endl; */
-  int i, j;
+	/* cout << "starting to create salesmen" << endl; */
+	int i, j;
 	for(i = 0; i < MAX_DEPARTMENTS; i++) {
 		for(j = 0; j < MAX_SALESMEN; j++) {
-		  Fork(Salesman, "Salesman", sizeof("Salesman"));
+			Fork(Salesman, "Salesman", sizeof("Salesman"));
 		}
 	}
 }
@@ -350,29 +353,29 @@ void createSalesmen() {
 /*Customer's function		/* __CUST__*/ 
 void Customer(){
 
-  int myID, r, targetDepartment, currentDepartment, mySalesIndex, someoneIsFree,
-    i, j, k, shelfNum, mySalesID, myCashier, minLineValue, minCashierID,
-    *linesIAmLookingAt, *linesIAmLookingAtCV, amountOwed;
-  int numItemsToBuy = 3;
-  int itemsToBuy[MAX_ITEMS_TO_BUY];
-  int qtyItemsToBuy[MAX_ITEMS_TO_BUY];
-  int itemsInCart[MAX_ITEMS_TO_BUY];
-  int qtyItemsInCart[MAX_ITEMS_TO_BUY];
-  int myCash, type;
- 
-   
-   
-   Acquire(customerIndexLock);
-   myID = nextCustomerIndex;
-   nextCustomerIndex++;
-   Release(customerIndexLock);
-   for(i = 0; i < MAX_ITEMS_TO_BUY; i++){
-	   itemsToBuy[i] = -1;
-	   qtyItemsToBuy[i] = -1;
-	   itemsInCart[i] = -1;
-	   qtyItemsInCart[i] = -1;
-   }
-   /*choose the items we want to buy */
+	int myID, r, targetDepartment, currentDepartment, mySalesIndex, someoneIsFree,
+	i, j, k, shelfNum, mySalesID, myCashier, minLineValue, minCashierID,
+	*linesIAmLookingAt, *linesIAmLookingAtCV, amountOwed;
+	int numItemsToBuy = 3;
+	int itemsToBuy[MAX_ITEMS_TO_BUY];
+	int qtyItemsToBuy[MAX_ITEMS_TO_BUY];
+	int itemsInCart[MAX_ITEMS_TO_BUY];
+	int qtyItemsInCart[MAX_ITEMS_TO_BUY];
+	int myCash, type;
+
+
+
+	Acquire(customerIndexLock);
+	myID = nextCustomerIndex;
+	nextCustomerIndex++;
+	Release(customerIndexLock);
+	for(i = 0; i < MAX_ITEMS_TO_BUY; i++){
+		itemsToBuy[i] = -1;
+		qtyItemsToBuy[i] = -1;
+		itemsInCart[i] = -1;
+		qtyItemsInCart[i] = -1;
+	}
+	/*choose the items we want to buy */
 
 	/* setup some initialization for specific tests */
 	if(testNumber == 8 || testNumber ==10){
@@ -385,18 +388,17 @@ void Customer(){
 	}
 	else{
 		numItemsToBuy = (NRand() % numItems);
-		/* myCash = NRand() % 200; */
-		myCash = 10000;
+		myCash = NRand() % 200;
 	}
 
 	/* ---------NRandomly generate whether this customer is privileged-------------- */
 	NSrand(myID + NTime(NULL));
 	r = NRand() % 10; /* NRandom value to set Customer either as privileged or unprivileged */
 	if(r < 2){				/* 30% chance customer is privileged */
-           type = 1;
+		type = 1;
 	}
 	else /*privileged = 0;	/* 70% chance this customer is unprivileged*/
-           type = 0;
+		type = 0;
 
 	/* set char array for I/O purposes */
 	/* --------------End of privileged/unprivileged decion-------------------------- */
@@ -404,7 +406,7 @@ void Customer(){
 	/* Decide what to buy */
 	if(testNumber != -1){
 		for( i = 0; i < numItemsToBuy; i++) {
-		  itemsToBuy[i] = i;
+			itemsToBuy[i] = i;
 			qtyItemsToBuy[i] = 2;
 			itemsInCart[i] = -1;
 			qtyItemsInCart[i] = 0;
@@ -412,79 +414,79 @@ void Customer(){
 	}
 	else{
 		for ( i = 0; i < numItemsToBuy; i++){
-                  itemsToBuy[i] = getDepartmentFromItem(NRand() % numItems);
+			itemsToBuy[i] = getDepartmentFromItem(NRand() % numItems);
 			qtyItemsToBuy[i] = (NRand()% numItems);
 			itemsInCart[i] = -1;
 			qtyItemsInCart[i] = 0;
 		}
 	}
 	if(type){
-	  NPrint("Privileged Customer [%d] will be buying:\n", sizeof("Privileged Customer [%d] will be buying:\n"), myID, 0);
+		NPrint("Privileged Customer [%d] will be buying:\n", sizeof("Privileged Customer [%d] will be buying:\n"), myID, 0);
 	}
 	else{
-	  NPrint("Customer [%d] will be buying:\n", sizeof("Customer [%d] will be buying:\n"), myID, 0);
+		NPrint("Customer [%d] will be buying:\n", sizeof("Customer [%d] will be buying:\n"), myID, 0);
 	}
 	NPrint("Item - Qty\n", sizeof("Item - Qty\n"), 0, 0);
 	for(j = 0; j < numItemsToBuy; j++){
-	  NPrint("  %d - %d\n", sizeof("  %d - %d\n"), NEncode2to1(itemsToBuy[j], qtyItemsToBuy[j]), 0);
+		NPrint("  %d - %d\n", sizeof("  %d - %d\n"), NEncode2to1(itemsToBuy[j], qtyItemsToBuy[j]), 0);
 	}
 
 	/* ENTERS STORE */
 
 
 	if(type){
-	  NPrint("Privileged Customer [%d] enters the SuperMarket\n", sizeof("Privileged Customer [%d] enters the SuperMarket\n"), myID, 0);
-	  NPrint("Privileged Customer [%d] wants to buy [%d] no. of items\n", sizeof("Privileged Customer [%d] wants to buy [%d] no. of items\n"), NEncode2to1(myID, numItemsToBuy), 0);
+		NPrint("Privileged Customer [%d] enters the SuperMarket\n", sizeof("Privileged Customer [%d] enters the SuperMarket\n"), myID, 0);
+		NPrint("Privileged Customer [%d] wants to buy [%d] no. of items\n", sizeof("Privileged Customer [%d] wants to buy [%d] no. of items\n"), NEncode2to1(myID, numItemsToBuy), 0);
 	}
 	else{
-	  NPrint("Customer [%d] enters the SuperMarket\n", sizeof("Customer [%d] enters the SuperMarket\n"), myID, 0);
-	  NPrint("Customer [%d] wants to buy [%d] no. of items\n", sizeof("Customer [%d] wants to buy [%d] no. of items\n"), NEncode2to1(myID, numItemsToBuy), 0);
+		NPrint("Customer [%d] enters the SuperMarket\n", sizeof("Customer [%d] enters the SuperMarket\n"), myID, 0);
+		NPrint("Customer [%d] wants to buy [%d] no. of items\n", sizeof("Customer [%d] wants to buy [%d] no. of items\n"), NEncode2to1(myID, numItemsToBuy), 0);
 	}
-	  
-	
-       Acquire(trollyLock);
-       while(trollyCount == 0){
-	 if(type){
-	   NPrint("Privileged Customer [%d] gets in line or a trolly\n", sizeof("Privileged Customer [%d] gets in line or a trolly\n"), myID, 0);
-	 }
-	 else{
-	   NPrint("Customer [%d], gets in line for a trolly\n", sizeof("Customer [%d], gets in line for a trolly\n"), myID, 0);
-	 }
-           Wait(trollyCV, trollyLock);
-       }
-       if(type){
-	 NPrint("Privileged Customer [%d] has a trolly for shopping\n", sizeof("Privileged Customer [%d] has a trolly for shopping\n"), myID, 0);
-       }
-       else{
-	 NPrint("Customer [%d] has a trolly for shopping\n", sizeof("Customer [%d] has a trolly for shopping\n"), myID, 0);
-       }
-       
-       trollyCount--;
-       Release(trollyLock);
 
-	 targetDepartment = -1;
-	 currentDepartment = -1;
 
-	 for( i = 0; i < numItemsToBuy; i++) {	/* goes through everything on our grocery list */
+	Acquire(trollyLock);
+	while(trollyCount == 0){
+		if(type){
+			NPrint("Privileged Customer [%d] gets in line or a trolly\n", sizeof("Privileged Customer [%d] gets in line or a trolly\n"), myID, 0);
+		}
+		else{
+			NPrint("Customer [%d], gets in line for a trolly\n", sizeof("Customer [%d], gets in line for a trolly\n"), myID, 0);
+		}
+		Wait(trollyCV, trollyLock);
+	}
+	if(type){
+		NPrint("Privileged Customer [%d] has a trolly for shopping\n", sizeof("Privileged Customer [%d] has a trolly for shopping\n"), myID, 0);
+	}
+	else{
+		NPrint("Customer [%d] has a trolly for shopping\n", sizeof("Customer [%d] has a trolly for shopping\n"), myID, 0);
+	}
+
+	trollyCount--;
+	Release(trollyLock);
+
+	targetDepartment = -1;
+	currentDepartment = -1;
+
+	for( i = 0; i < numItemsToBuy; i++) {	/* goes through everything on our grocery list */
 
 		targetDepartment = getDepartmentFromItem(itemsToBuy[i]);	/* selects a department */
 
 		/* if necessary, change departments */
 		if(targetDepartment != currentDepartment) {
-		  if(type){
-		    NPrint("Privileged Customer [%d] has finished shopping in department [%d]\n", sizeof("Privileged Customer [%d] has finished shopping in department [%d]\n"), NEncode2to1(myID, currentDepartment), 0);
-		    NPrint("Privileged Customer [%d] wants to shop in department [%d]\n", sizeof("Privileged Customer [%d] wants to shop in department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
-		  }
-		  else{
-		    NPrint("Customer [%d] has finished shopping in department [%d]\n", sizeof("Customer [%d] has finished shopping in department [%d]\n"), NEncode2to1(myID, currentDepartment), 0);
-		    NPrint("Customer [%d] wants to shop in department [%d]\n", sizeof("Customer [%d] wants to shop in department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
-		  }
-                       Acquire(salesLock[targetDepartment]);
-			 mySalesIndex = -1;
+			if(type){
+				NPrint("Privileged Customer [%d] has finished shopping in department [%d]\n", sizeof("Privileged Customer [%d] has finished shopping in department [%d]\n"), NEncode2to1(myID, currentDepartment), 0);
+				NPrint("Privileged Customer [%d] wants to shop in department [%d]\n", sizeof("Privileged Customer [%d] wants to shop in department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
+			}
+			else{
+				NPrint("Customer [%d] has finished shopping in department [%d]\n", sizeof("Customer [%d] has finished shopping in department [%d]\n"), NEncode2to1(myID, currentDepartment), 0);
+				NPrint("Customer [%d] wants to shop in department [%d]\n", sizeof("Customer [%d] wants to shop in department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
+			}
+			Acquire(salesLock[targetDepartment]);
+			mySalesIndex = -1;
 
 
 			/* Selects a salesman */
-			 someoneIsFree = -1;
+			someoneIsFree = -1;
 			for( j = 0; j < numSalesmen; j++) {
 				if(currentSalesStatus[targetDepartment][j] == SALES_NOT_BUSY) {
 					someoneIsFree = j;
@@ -498,12 +500,12 @@ void Customer(){
 			if(someoneIsFree == -1){	/* no one is free, so wait in the greeting line */
 				greetingCustWaitingLineCount[targetDepartment]++;
 				if(type){
-				  NPrint("Privileged Customer [%d] gets in line for the Department [%d]\n", sizeof("Privileged Customer [%d] gets in line for the Department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
+					NPrint("Privileged Customer [%d] gets in line for the Department [%d]\n", sizeof("Privileged Customer [%d] gets in line for the Department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
 				}
 				else{				
-				  NPrint("Customer [%d] gets in line for the Department [%d]\n", sizeof("Customer [%d] gets in line for the Department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
+					NPrint("Customer [%d] gets in line for the Department [%d]\n", sizeof("Customer [%d] gets in line for the Department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
 				}
-                               Wait(greetingCustCV[targetDepartment], salesLock[targetDepartment]);
+				Wait(greetingCustCV[targetDepartment], salesLock[targetDepartment]);
 				for( j = 0; j < numSalesmen; j++){
 					if(currentSalesStatus[targetDepartment][j] == SALES_READY_TO_TALK){
 						mySalesIndex = j;
@@ -514,19 +516,19 @@ void Customer(){
 				}
 			}
 
-                       Acquire(individualSalesmanLock[targetDepartment][mySalesIndex]);
-		       if(type){
-			 NPrint("Privileged Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n", sizeof("Privileged Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n"), NEncode2to1(myID, mySalesIndex), targetDepartment);
-		       }
-		       else{
-			 NPrint("Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n", sizeof("Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n"), NEncode2to1(myID, mySalesIndex), targetDepartment);
-		       }
-                       Release(salesLock[targetDepartment]);
+			Acquire(individualSalesmanLock[targetDepartment][mySalesIndex]);
+			if(type){
+				NPrint("Privileged Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n", sizeof("Privileged Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n"), NEncode2to1(myID, mySalesIndex), targetDepartment);
+			}
+			else{
+				NPrint("Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n", sizeof("Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n"), NEncode2to1(myID, mySalesIndex), targetDepartment);
+			}
+			Release(salesLock[targetDepartment]);
 			salesCustNumber[targetDepartment][mySalesIndex] = myID; /* Sets the customer number of the salesman to this customer's index */
 
-                       Signal(salesmanCV[targetDepartment][mySalesIndex], individualSalesmanLock[targetDepartment][mySalesIndex]);
-                       Wait(salesmanCV[targetDepartment][mySalesIndex], individualSalesmanLock[targetDepartment][mySalesIndex]);
-                       Release(individualSalesmanLock[targetDepartment][mySalesIndex]);
+			Signal(salesmanCV[targetDepartment][mySalesIndex], individualSalesmanLock[targetDepartment][mySalesIndex]);
+			Wait(salesmanCV[targetDepartment][mySalesIndex], individualSalesmanLock[targetDepartment][mySalesIndex]);
+			Release(individualSalesmanLock[targetDepartment][mySalesIndex]);
 
 
 		}
@@ -541,40 +543,40 @@ void Customer(){
 			}
 
 			if(type){
-			  NPrint("Privileged Customer [%d] wants to buy [%d]-[%d]\n", sizeof("Privileged Customer [%d] wants to buy [%d]-[%d]\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
+				NPrint("Privileged Customer [%d] wants to buy [%d]-[%d]\n", sizeof("Privileged Customer [%d] wants to buy [%d]-[%d]\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
 			}
 			else{
-			  NPrint("Customer [%d] wants to buy [%d]-[%d]\n", sizeof("Customer [%d] wants to buy [%d]-[%d]\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
+				NPrint("Customer [%d] wants to buy [%d]-[%d]\n", sizeof("Customer [%d] wants to buy [%d]-[%d]\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
 			}
 			while(qtyItemsInCart[i] < qtyItemsToBuy[i]) {
-                           Acquire(shelfLock[currentDepartment][shelfNum]);
+				Acquire(shelfLock[currentDepartment][shelfNum]);
 
 				if(shelfInventory[currentDepartment][shelfNum] > qtyItemsToBuy[i]) {	/* if there are enough items, take what i need */
-				  if(type){
-				    NPrint("Privileged Customer [%d] has found [%d] and placed [%d] in the trolly\n", sizeof("Privileged Customer [%d] has found [%d] and placed [%d] in the trolly\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
-				  }
-				  else{
-				    NPrint("Customer [%d] has found [%d] and placed [%d] in the trolly\n", sizeof("Customer [%d] has found [%d] and placed [%d] in the trolly\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
-				  }
-				  if(testNumber == 8)
-				    NPrint("There were %d before Customer %d took the item(s).\n", sizeof("There were %d before Customer %d took the item(s).\n"), NEncode2to1(shelfInventory[currentDepartment][shelfNum], myID), 0);
+					if(type){
+						NPrint("Privileged Customer [%d] has found [%d] and placed [%d] in the trolly\n", sizeof("Privileged Customer [%d] has found [%d] and placed [%d] in the trolly\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
+					}
+					else{
+						NPrint("Customer [%d] has found [%d] and placed [%d] in the trolly\n", sizeof("Customer [%d] has found [%d] and placed [%d] in the trolly\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
+					}
+					if(testNumber == 8)
+						NPrint("There were %d before Customer %d took the item(s).\n", sizeof("There were %d before Customer %d took the item(s).\n"), NEncode2to1(shelfInventory[currentDepartment][shelfNum], myID), 0);
 
 					shelfInventory[currentDepartment][shelfNum] -= qtyItemsToBuy[i];
 					itemsInCart[i] = shelfNum;
 					qtyItemsInCart[i] += qtyItemsToBuy[i];
-                                       Release(shelfLock[currentDepartment][shelfNum]);
+					Release(shelfLock[currentDepartment][shelfNum]);
 				}
 				else {	/* We are out of this item, go tell sales! */
-				  if(type){
-				    NPrint("Privileged Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Privileged Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
-				  }
-				  else{
-				    NPrint("Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
-				  }
-                                       Release(shelfLock[currentDepartment][shelfNum]);
-                                       Acquire(salesLock[currentDepartment]);
+					if(type){
+						NPrint("Privileged Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Privileged Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
+					}
+					else{
+						NPrint("Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
+					}
+					Release(shelfLock[currentDepartment][shelfNum]);
+					Acquire(salesLock[currentDepartment]);
 
-					 mySalesID = -1;
+					mySalesID = -1;
 
 					for( j = 0; j < numSalesmen; j++) {	/* see if there is a free salesman to go to */
 						/* nobody waiting, sales free */
@@ -585,7 +587,7 @@ void Customer(){
 					}
 					if(mySalesID == -1) {	/* no salesmen are free, I have to wait in line */
 						complainingCustWaitingLineCount[currentDepartment]++;
-                                               Wait(complainingCustCV[currentDepartment], salesLock[currentDepartment]);
+						Wait(complainingCustCV[currentDepartment], salesLock[currentDepartment]);
 
 						/* find the salesman who just signalled me */
 						for( k = 0; k < numSalesmen; k++) {
@@ -598,15 +600,15 @@ void Customer(){
 
 					/* I'm now talking to a salesman */
 					currentSalesStatus[currentDepartment][mySalesID] = SALES_BUSY;
-                                       Release(salesLock[currentDepartment]);
-                                       Acquire(individualSalesmanLock[currentDepartment][mySalesID]);
+					Release(salesLock[currentDepartment]);
+					Acquire(individualSalesmanLock[currentDepartment][mySalesID]);
 
-				       if(type){
-					 NPrint("Privileged Customer [%d] is asking for assistance from DepartmentSalesmen[%d]", sizeof("Privileged Customer [%d] is asking for assistance from DepartmentSalesman[%d]"), NEncode2to1(myID, mySalesID) , 0);
-				       }
-				       else{
-					 NPrint("Customer [%d] is asking for assistance from DepartmentSalesmen[%d]", sizeof("Customer [%d] is asking for assistance from DepartmentSalesman[%d]"), NEncode2to1(myID, mySalesID) , 0);
-				       }
+					if(type){
+						NPrint("Privileged Customer [%d] is asking for assistance from DepartmentSalesmen[%d]", sizeof("Privileged Customer [%d] is asking for assistance from DepartmentSalesman[%d]"), NEncode2to1(myID, mySalesID) , 0);
+					}
+					else{
+						NPrint("Customer [%d] is asking for assistance from DepartmentSalesmen[%d]", sizeof("Customer [%d] is asking for assistance from DepartmentSalesman[%d]"), NEncode2to1(myID, mySalesID) , 0);
+					}
 
 					salesCustNumber[currentDepartment][mySalesID] = myID;
 
@@ -615,28 +617,28 @@ void Customer(){
 					currentlyTalkingTo[currentDepartment][mySalesID] = COMPLAINING;
 					salesDesk[currentDepartment][mySalesID] = shelfNum;
 
-                                       Signal(salesmanCV[currentDepartment][mySalesID], individualSalesmanLock[currentDepartment][mySalesID]);
-                                       Wait(salesmanCV[currentDepartment][mySalesID], individualSalesmanLock[currentDepartment][mySalesID]);
-                                       Acquire(shelfLock[currentDepartment][shelfNum]);
-                                       Release(individualSalesmanLock[currentDepartment][mySalesID]);
+					Signal(salesmanCV[currentDepartment][mySalesID], individualSalesmanLock[currentDepartment][mySalesID]);
+					Wait(salesmanCV[currentDepartment][mySalesID], individualSalesmanLock[currentDepartment][mySalesID]);
+					Acquire(shelfLock[currentDepartment][shelfNum]);
+					Release(individualSalesmanLock[currentDepartment][mySalesID]);
 
 					/* now i go wait on the shelf */
-                                       Wait(shelfCV[currentDepartment][shelfNum], shelfLock[currentDepartment][shelfNum]);
-				       if(type){
-					 NPrint("DepartmentSalesman [%d] informs the Privileged Customer [%d] that [%d] is restocked.\n", sizeof("DepartmentSalesman [%d] informs the Privileged Customer [%d] that [%d] is restocked.\n"), NEncode2to1(mySalesID, myID), shelfNum);
-				       }
-				       else{
-					 NPrint("DepartmentSalesman [%d] informs the Customer [%d] that [%d] is restocked.\n", sizeof("DepartmentSalesman [%d] informs the Customer [%d] that [%d] is restocked.\n"), NEncode2to1(mySalesID, myID), shelfNum);					 
-				       }
+					Wait(shelfCV[currentDepartment][shelfNum], shelfLock[currentDepartment][shelfNum]);
+					if(type){
+						NPrint("DepartmentSalesman [%d] informs the Privileged Customer [%d] that [%d] is restocked.\n", sizeof("DepartmentSalesman [%d] informs the Privileged Customer [%d] that [%d] is restocked.\n"), NEncode2to1(mySalesID, myID), shelfNum);
+					}
+					else{
+						NPrint("DepartmentSalesman [%d] informs the Customer [%d] that [%d] is restocked.\n", sizeof("DepartmentSalesman [%d] informs the Customer [%d] that [%d] is restocked.\n"), NEncode2to1(mySalesID, myID), shelfNum);
+					}
 
 					/* now restocked, continue looping until I have all of what I need */
-				       if(type){
-					 NPrint("Privileged Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n", sizeof("Privileged Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n"), NEncode2to1(myID, shelfNum), mySalesID);
-				       }
-				       else{
-					 NPrint("Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n", sizeof("Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n"), NEncode2to1(myID, shelfNum), mySalesID);
-				       }
-                                       Release(shelfLock[currentDepartment][shelfNum]);
+					if(type){
+						NPrint("Privileged Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n", sizeof("Privileged Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n"), NEncode2to1(myID, shelfNum), mySalesID);
+					}
+					else{
+						NPrint("Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n", sizeof("Customer [%d] has received assistance about restocking of item [%d] from DepartmentSalesman [%d]\n"), NEncode2to1(myID, shelfNum), mySalesID);
+					}
+					Release(shelfLock[currentDepartment][shelfNum]);
 				}
 			}	/* end while loop to get enough of a given item */
 		}	/* end looking through shelves */
@@ -645,29 +647,29 @@ void Customer(){
 
 	/* ======================================================== */
 
-	 
+
 	/* --------------Begin looking for a cashier------------------------------------- */
-       Acquire(cashierLinesLock);
+	Acquire(cashierLinesLock);
 	do{		/* loop allows us to rechoose a line if our cashier goes on break */
-	  if(type){
-	    NPrint("Privileged Customer [%d] is looking for the Cashier.\n", sizeof("Privileged Customer [%d] is looking for the Cashier.\n"), myID, 0);
-	  }
-	  else{
-	    NPrint("Customer [%d] is looking for the Cashier.\n", sizeof("Customer [%d] is looking for the Cashier.\n"), myID, 0);
-	  }
- 
+		if(type){
+			NPrint("Privileged Customer [%d] is looking for the Cashier.\n", sizeof("Privileged Customer [%d] is looking for the Cashier.\n"), myID, 0);
+		}
+		else{
+			NPrint("Customer [%d] is looking for the Cashier.\n", sizeof("Customer [%d] is looking for the Cashier.\n"), myID, 0);
+		}
+
 		/* Find if a cashier is free (if one is, customer doesn't need to wait in line) */
 		for( i = 0; i < cashierNumber; i++ ){
 			/* if I find a cashier who is free, I will: */
 			if(cashierStatus[i] == CASH_NOT_BUSY){
 				myCashier = i; /* remember who he is */
-                               Acquire(cashierLock[i]);
+				Acquire(cashierLock[i]);
 				cashierStatus[i] = CASH_BUSY; /* prevent others from thinking he's free */
 				if(type){
-				  NPrint("Privileged Customer [%d] chose cashier [%d] with line of length [0].\n", sizeof("Privileged Customer [%d] chose cashier [%d] with line of length [0].\n"), NEncode2to1(myID, myCashier), 0);
+					NPrint("Privileged Customer [%d] chose cashier [%d] with line of length [0].\n", sizeof("Privileged Customer [%d] chose cashier [%d] with line of length [0].\n"), NEncode2to1(myID, myCashier), 0);
 				}
 				else{
-				  NPrint("Customer [%d] chose cashier [%d] with line of length [0].\n", sizeof("Customer [%d] chose cashier [%d] with line of length [0].\n"), NEncode2to1(myID, myCashier), 0);
+					NPrint("Customer [%d] chose cashier [%d] with line of length [0].\n", sizeof("Customer [%d] chose cashier [%d] with line of length [0].\n"), NEncode2to1(myID, myCashier), 0);
 				}
 
 				break; /* stop searching through lines */
@@ -676,7 +678,7 @@ void Customer(){
 
 			/* ---------------Find shortest line--------------------------- */
 			else if (i == cashierNumber - 1){
-			  /* set the pointers depending on which customer type i am dealing with */
+				/* set the pointers depending on which customer type i am dealing with */
 				if(type){
 					linesIAmLookingAt = privilegedLineCount;
 					linesIAmLookingAtCV= privilegedCashierLineCV;
@@ -701,13 +703,13 @@ void Customer(){
 				}
 				myCashier = minCashierID;
 				if(type){
-				  NPrint("Privileged Customer [%d] chose Cashier [%d] of line length [%d].\n", sizeof("Privileged Customer [%d] chose Cashier [%d] of line length [%d].\n"), NEncode2to1(myID, myCashier), linesIAmLookingAt[minCashierID]);
+					NPrint("Privileged Customer [%d] chose Cashier [%d] of line length [%d].\n", sizeof("Privileged Customer [%d] chose Cashier [%d] of line length [%d].\n"), NEncode2to1(myID, myCashier), linesIAmLookingAt[minCashierID]);
 				}
 				else{
-				  NPrint("Customer [%d] chose Cashier [%d] of line length [%d].\n", sizeof("Customer [%d] chose Cashier [%d] of line length [%d].\n"), NEncode2to1(myID, myCashier), linesIAmLookingAt[minCashierID]);
+					NPrint("Customer [%d] chose Cashier [%d] of line length [%d].\n", sizeof("Customer [%d] chose Cashier [%d] of line length [%d].\n"), NEncode2to1(myID, myCashier), linesIAmLookingAt[minCashierID]);
 				}
 				linesIAmLookingAt[minCashierID]++;
-                                Wait(linesIAmLookingAtCV[minCashierID], cashierLinesLock);
+				Wait(linesIAmLookingAtCV[minCashierID], cashierLinesLock);
 				linesIAmLookingAt[myCashier]--; /* i have been woken up, remove myself from line */
 			}
 			/* -------------End find shortest line---------------------- */
@@ -719,21 +721,21 @@ void Customer(){
 
 
 	/* code after this means I have been woken up after getting to the front of the line */
-       Acquire(cashierLock[myCashier]);
+	Acquire(cashierLock[myCashier]);
 	/* allow others to view monitor variable now that I've */
-       /* my claim on this cashier*/ 
-       Release(cashierLinesLock);
-       cashierDesk[myCashier] = myID;	/* tell cashier who I am */
+	/* my claim on this cashier*/
+	Release(cashierLinesLock);
+	cashierDesk[myCashier] = myID;	/* tell cashier who I am */
 	/* signal cashier I am at his desk*/ 
-       Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+	Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	/* wait for his acknowlegdment*/
-       Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
+	Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	cashierDesk[myCashier] = type; /* now tell him that whether or not I am privileged */
 	/* signal cashier I've passed this information*/
 	NPrint("My type i put on the cashieDesk is %d\n", sizeof("My type i put on the cashieDesk is %d\n"), type);
-       Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+	Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	/* wait for his acknowledgment*/ 
-       Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
+	Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 
 	/* When I get here, the cashier is ready for items */
 
@@ -742,14 +744,14 @@ void Customer(){
 	for( i = 0; i < numItemsToBuy; i++){ /* cycle through all types of items */
 		for( j = 0; j < qtyItemsInCart[i]; j++){ /* be sure we report how many of each type */
 			cashierDesk[myCashier] = itemsInCart[i]; /* tells the cashier what type of item */
-                       Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
-                       Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
+			Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+			Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		}
 	}
 	cashierDesk[myCashier] = -1; /* Tells cashier that I have reached the last item in my inventory */
-        Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+	Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	NPrint("Customer %d is signalling cashier %d before he gets the total\n", sizeof("Customer %d is signalling cashier %d before he gets the total\n"), NEncode2to1(myID, myCashier));
-        Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
+	Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	NPrint("Customer %d is is going to get his total from cashier %d\n", sizeof("Customer %d is going to get his total from cashier %d\n"), NEncode2to1(myID, myCashier));
 
 	/* ------------------------End passing items to cashier-------------------------------- */
@@ -758,24 +760,24 @@ void Customer(){
 	/* when I get here, the cashier has loaded my total */
 	/* If I don't have enough money, leave the error flag -1 on the cashier's desk */
 	if(cashierDesk[myCashier] > myCash){
-	  if(type){
-	    NPrint("Privileged Customer [%d] cannot pay [%d]\n", sizeof("Privileged Customer [%d] cannot pay [%d]\n"), NEncode2to1(myID, cashierDesk[myCashier]), 0);
-	  }
-	  else{
-	    NPrint("Customer [%d] cannot pay [%d]\n", sizeof("Customer [%d] cannot pay [%d]\n"), NEncode2to1(myID, cashierDesk[myCashier]), 0);
-	  }
-		cashierDesk[myCashier] = -1;
-                Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
-                Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
-                Acquire(managerLock);
-                Release(cashierLock[myCashier]);
 		if(type){
-		  NPrint("Privileged Customer [%d] is waiting for Manager negotiations\n", sizeof("Privileged Customer [%d] is waiting for Manager negotiations\n"), myID, 0);
+			NPrint("Privileged Customer [%d] cannot pay [%d]\n", sizeof("Privileged Customer [%d] cannot pay [%d]\n"), NEncode2to1(myID, cashierDesk[myCashier]), 0);
 		}
 		else{
-		  NPrint("Customer [%d] is waiting for Manager negotiations\n", sizeof("Customer [%d] is waiting for Manager negotiations\n"), myID, 0);
+			NPrint("Customer [%d] cannot pay [%d]\n", sizeof("Customer [%d] cannot pay [%d]\n"), NEncode2to1(myID, cashierDesk[myCashier]), 0);
 		}
-                Wait(managerCV, managerLock);
+		cashierDesk[myCashier] = -1;
+		Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+		Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
+		Acquire(managerLock);
+		Release(cashierLock[myCashier]);
+		if(type){
+			NPrint("Privileged Customer [%d] is waiting for Manager negotiations\n", sizeof("Privileged Customer [%d] is waiting for Manager negotiations\n"), myID, 0);
+		}
+		else{
+			NPrint("Customer [%d] is waiting for Manager negotiations\n", sizeof("Customer [%d] is waiting for Manager negotiations\n"), myID, 0);
+		}
+		Wait(managerCV, managerLock);
 
 		/* -----------------------Begin passing items to manager--------------------- */
 		for( i = 0; i < numItemsToBuy; i++){
@@ -786,34 +788,34 @@ void Customer(){
 				qtyItemsInCart[i] --;
 				managerDesk = itemsInCart[i];
 				if(type){
-				  NPrint("Privileged Customer [%d] tells manager to remove [%d] from trolly.\n", sizeof("Privileged Customer [%d] tells manager to remove [%d] from trolly.\n"), NEncode2to1(myID, itemsInCart[i]), 0);
+					NPrint("Privileged Customer [%d] tells manager to remove [%d] from trolly.\n", sizeof("Privileged Customer [%d] tells manager to remove [%d] from trolly.\n"), NEncode2to1(myID, itemsInCart[i]), 0);
 				}
 				else{
-				  NPrint("Customer [%d] tells manager to remove [%d] from trolly.\n", sizeof("Customer [%d] tells manager to remove [%d] from trolly.\n"), NEncode2to1(myID, itemsInCart[i]), 0);
+					NPrint("Customer [%d] tells manager to remove [%d] from trolly.\n", sizeof("Customer [%d] tells manager to remove [%d] from trolly.\n"), NEncode2to1(myID, itemsInCart[i]), 0);
 				}
-                                Signal(managerCV, managerLock);
-                                Wait(managerCV, managerLock);
+				Signal(managerCV, managerLock);
+				Wait(managerCV, managerLock);
 			}
 		}
 		managerDesk = -1; /* notifies the manager I'm done */
-                Signal(managerCV, managerLock);
-                Wait(managerCV, managerLock);
+		Signal(managerCV, managerLock);
+		Wait(managerCV, managerLock);
 		/* --------------------End of passing items to manager--------------- */
 
 		amountOwed = managerDesk;	/* if I still can't afford anything, amountOwed will be 0 */
 		myCash -= amountOwed;	/* updating my cash amount because I am paying manager */
 		managerDesk = amountOwed;	/* technically redundant, but represents me paying money */
 		if(type){
-		  NPrint("Privileged Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Privileged Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
+			NPrint("Privileged Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Privileged Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
 		}
 		else{
-		  NPrint("Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
+			NPrint("Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
 		}
 		/* need receipt */
-                Signal(managerCV, managerLock);
-                Wait(managerCV, managerLock);
+		Signal(managerCV, managerLock);
+		Wait(managerCV, managerLock);
 		/* got receipt, I can now leave */
-                Release(managerLock);
+		Release(managerLock);
 		NPrint("Customer [%d] got receipt from Manager and is now leaving.\n", sizeof("Customer [%d] got receipt from Manager and is now leaving.\n"), myID, 0);
 	}
 	/* if I do have money, I just need to update my cash and leave the money there */
@@ -821,35 +823,34 @@ void Customer(){
 		myCash -= cashierDesk[myCashier];
 		/* Now I wait for my receipt */
 		/*printf("%s [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", type, myID, cashierDesk[myCashier], myCashier);*/
-		Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		/* now I've received my receipt and should release the cashier */
-                Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+		Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		if(type){
-		  NPrint("Privileged Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Privileged Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
+			NPrint("Privileged Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Privileged Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
 		}
 		else{
-		  NPrint("Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
+			NPrint("Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
 		}  
-                Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
+		Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		if(type){
-		  NPrint("Privileged Customer [%d] got receipt from Cashier [%d] and is now leaving.\n", sizeof("Privileged Customer [%d] got receipt from Cashier [%d] and is now leaving.\n"), NEncode2to1(myID, myCashier), 0);
+			NPrint("Privileged Customer [%d] got receipt from Cashier [%d] and is now leaving.\n", sizeof("Privileged Customer [%d] got receipt from Cashier [%d] and is now leaving.\n"), NEncode2to1(myID, myCashier), 0);
 		}
 		else{
-		  NPrint("Customer [%d] got receipt from Cashier [%d] and is now leaving.\n", sizeof("Customer [%d] got receipt from Cashier [%d] and is now leaving.\n"), NEncode2to1(myID, myCashier), 0);
+			NPrint("Customer [%d] got receipt from Cashier [%d] and is now leaving.\n", sizeof("Customer [%d] got receipt from Cashier [%d] and is now leaving.\n"), NEncode2to1(myID, myCashier), 0);
 		}
 		NPrint("csahierLock[myCashier] = %d\n", sizeof("csahierLock[myCashier] = %d\n"),cashierLock[myCashier] );
 		NPrint("cashierToCustCV[myCashier] = %d\n", sizeof("cashierToCustCV[myCashier] = %d\n"), cashierToCustCV[myCashier]);
 
-                Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
-                Release(cashierLock[myCashier]);
+		Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
+		Release(cashierLock[myCashier]);
 		myCashier = -1; /* so I can't accidentally tamper with the cashier I chose anymore */
 	}
 
 	/* ------------------------------Begin replace trolly-------------- */
 	/* no need for CV since sequencing doesn't matter */
-        Acquire(displacedTrollyLock);
-        displacedTrollyCount++;
-        Release(displacedTrollyLock);
+	Acquire(displacedTrollyLock);
+	displacedTrollyCount++;
+	Release(displacedTrollyLock);
 	/* -----------------------------End replace trolly---------------------- */
 
 	customersDone++;	/* increment the total customers done count */
@@ -857,7 +858,7 @@ void Customer(){
 	/* some cleanup */
 	/*delete itemsToBuy;*/
 	Exit(0);
-        
+
 }
 
 /*gets the prices for each type of item*/
@@ -881,8 +882,8 @@ void manager(){
 	int totalRevenue = 0; /* will track the total sales of the day */
 	int counter = 0;
 	int i, numFullLines, numAnyLines, wakeCashier, chance, r, dept, arg,
-	  wakeSalesman, targets[2], customerID, cashierID, amountOwed, custTypeID,
-	  managerCustType;
+	wakeSalesman, targets[2], customerID, cashierID, amountOwed, custTypeID,
+	managerCustType;
 
 	salesmenOnBreak = CreateQueue();
 	cashiersOnBreak = CreateQueue();
@@ -894,13 +895,13 @@ void manager(){
 
 	NSrand(NTime(NULL));
 	while(1){
-	  NPrint("manager - 1\n", sizeof("manager - 1\n"));
+		NPrint("manager - 1\n", sizeof("manager - 1\n"));
 		/* ------------------Check if all customers have left store---------------- */
 		/* if all customers have left, print out totals and terminate simulation since manager will be the only */
 		/* ready thread */
 		if(customersDone == custNumber){
 			for( i = 0; i < cashierNumber; i++){
-                          Acquire(cashierLock[i]);
+				Acquire(cashierLock[i]);
 				/* -----------------------------Start empty cashier drawers------------------------------------ */
 				if(cashRegister[i] > 0){
 					totalRevenue += cashRegister[i];
@@ -908,11 +909,11 @@ void manager(){
 					NPrint("Manager emptied Counter %d draw.\n", sizeof("Manager emptied Counter %d draw.\n"), i, 0);
 					cashRegister[i] = 0;
 					NPrint("Manager has total sale of $%d.\n", sizeof("Manager has total sale of $%d.\n"), totalRevenue, 0);
-                                        Release(cashierLock[i]);
+					Release(cashierLock[i]);
 				}
 			}
 			for(i = 0; i < cashierNumber; i++){
-			  NPrint("Total Sale from Counter [%d] is $[%d].\n", sizeof("Total Sale from Counter [%d] is $[%d].\n"), NEncode2to1(i, cashierTotals[i]), 0);
+				NPrint("Total Sale from Counter [%d] is $[%d].\n", sizeof("Total Sale from Counter [%d] is $[%d].\n"), NEncode2to1(i, cashierTotals[i]), 0);
 			}
 			NPrint("Total Sale of the entire store is $[%d].\n", sizeof("Total Sale of the entire store is $[%d].\n"), totalRevenue, 0);
 			break;
@@ -920,8 +921,8 @@ void manager(){
 		/* ------------------End check if all customers have left store------------ */
 
 		/* -----------------Have loader check trolleys--------------------------- */
-                Acquire(inactiveLoaderLock);
-                Signal(inactiveLoaderCV, inactiveLoaderLock);
+		Acquire(inactiveLoaderLock);
+		Signal(inactiveLoaderCV, inactiveLoaderLock);
 		Release(inactiveLoaderLock);
 		if(counter != 100000000) counter ++;
 		/* I don't need to acquire a lock because I never go to sleep */
@@ -932,10 +933,10 @@ void manager(){
 			/*if(testNumber != 5 && testNumber != 6 && testNumber != 10) cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;*/
 		}
 
-                Acquire(cashierLinesLock);
-        
-		 numFullLines = 0; /* will be used to figure out whether to bring cashiers back from break */
-		 numAnyLines = 0;
+		Acquire(cashierLinesLock);
+
+		numFullLines = 0; /* will be used to figure out whether to bring cashiers back from break */
+		numAnyLines = 0;
 		for ( i = 0; i < cashierNumber; i++){
 			if(privilegedLineCount[i]) numAnyLines++;
 			if(unprivilegedLineCount[i]) numAnyLines++;
@@ -948,24 +949,24 @@ void manager(){
 		NPrint("Manager - 2\n", sizeof("Manager - 2\n"));
 		NPrint("Cashiers on break: %d\n", sizeof("Cashiers on break: %d\n"), cashiersOnBreak);
 		if(numFullLines > (cashierNumber - numCashiersOnBreak) && QueueSize(cashiersOnBreak)){
-		  /* bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break*/ 
-		  wakeCashier = QueueFront(cashiersOnBreak);
-		  if(cashierStatus[wakeCashier] == CASH_ON_BREAK){
-		    Release(cashierLinesLock);
-		    Acquire(cashierLock[wakeCashier]);
-		    if (numAnyLines)/*cout << "Manager brings back Cashier " << wakeCashier << " from break." << endl;*/
-		      NPrint("Manager brings back Cashier %d from break.\n", sizeof("Manager brings back Cashier %d from break.\n"), wakeCashier, 0);
-		    Signal(cashierToCustCV[wakeCashier], cashierLock[wakeCashier]);
-		    Release(cashierLock[wakeCashier]);
-		    /* bookkeeping */
-		    numCashiersOnBreak--;
-		    QueuePop(cashiersOnBreak);
-		  }
+			/* bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break*/
+			wakeCashier = QueueFront(cashiersOnBreak);
+			if(cashierStatus[wakeCashier] == CASH_ON_BREAK){
+				Release(cashierLinesLock);
+				Acquire(cashierLock[wakeCashier]);
+				if (numAnyLines)/*cout << "Manager brings back Cashier " << wakeCashier << " from break." << endl;*/
+					NPrint("Manager brings back Cashier %d from break.\n", sizeof("Manager brings back Cashier %d from break.\n"), wakeCashier, 0);
+				Signal(cashierToCustCV[wakeCashier], cashierLock[wakeCashier]);
+				Release(cashierLock[wakeCashier]);
+				/* bookkeeping */
+				numCashiersOnBreak--;
+				QueuePop(cashiersOnBreak);
+			}
 
 
 		}
 		else
-		  Release(cashierLinesLock);
+			Release(cashierLinesLock);
 
 		Acquire(cashierLinesLock);
 
@@ -973,15 +974,15 @@ void manager(){
 		/* ---------------------------End Bring cashier back from break-------------------------- */
 
 		/* ---------------------------Begin send cashiers on break------------------------------- */
-		 chance = NRand() %10;
-		 NPrint("Manager - 3\n", sizeof("Manager - 3\n"));
+		chance = NRand() %10;
+		NPrint("Manager - 3\n", sizeof("Manager - 3\n"));
 
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ /* .001% chance of sending cashier on break */
 			/* generate cashier index */
-			 r = NRand() % cashierNumber;
+			r = NRand() % cashierNumber;
 			if(cashierStatus[r] != CASH_ON_BREAK && cashierStatus[r] != CASH_GO_ON_BREAK){
 				if(cashierStatus[r] == CASH_NOT_BUSY) {
-				  Acquire(cashierLock[r]);
+					Acquire(cashierLock[r]);
 					cashierDesk[r] = -2;
 					cashierStatus[r] = CASH_GO_ON_BREAK;
 					Signal(cashierToCustCV[r], cashierLock[r]);
@@ -1003,13 +1004,13 @@ void manager(){
 
 		/* __SALES_BREAK__ */
 		/* -----------------------------Begin bringing salesmen back from break------------- */
-		 dept = 0;
-		 if(QueueSize(salesmenOnBreak)){
+		dept = 0;
+		if(QueueSize(salesmenOnBreak)){
 
-		  arg = QueueFront(salesmenOnBreak);
-			 targets[2];
+			arg = QueueFront(salesmenOnBreak);
+			targets[2];
 			deconstructSalesArg(arg, targets);
-			 wakeSalesman = targets[0];
+			wakeSalesman = targets[0];
 			dept = targets[1];
 			QueuePop(salesmenOnBreak);
 			Acquire(salesLock[dept]);
@@ -1020,7 +1021,7 @@ void manager(){
 				numSalesmenOnBreak[dept]--;
 			}
 			else{
-			  QueuePush(salesmenOnBreak);
+				QueuePush(salesmenOnBreak);
 			}
 			Release(salesLock[dept]);
 		}
@@ -1031,21 +1032,21 @@ void manager(){
 		dept = NRand() % numDepartments;
 		Acquire(salesLock[dept]);
 		if (chance == 1 && numSalesmenOnBreak[dept] < numSalesmen -1) {
-			 r = NRand() % numSalesmen;
+			r = NRand() % numSalesmen;
 			if(!salesBreakBoard[dept][r] && currentSalesStatus[dept][r] != SALES_ON_BREAK && currentSalesStatus[dept][r] != SALES_GO_ON_BREAK) {
 				salesBreakBoard[dept][r] = 1;
 				NPrint("Manager sends Salesman [%d] of dept [%d] on break.\n", sizeof("Manager sends Salesman [%d] of dept [%d] on break.\n"), NEncode2to1(r, dept), 0);
 				Acquire(individualSalesmanLock[dept][r]);
 				if(currentSalesStatus[dept][r] == SALES_NOT_BUSY){
-				  Signal(salesmanCV[dept][r], individualSalesmanLock[dept][r]);
-				  currentSalesStatus[dept][r] = SALES_ON_BREAK;
+					Signal(salesmanCV[dept][r], individualSalesmanLock[dept][r]);
+					currentSalesStatus[dept][r] = SALES_ON_BREAK;
 				}
 				Release(individualSalesmanLock[dept][r]);
 				/* function that uses bit operations to store dept and salesman index*/ 
 				/* in one int so I can get it from my queue later when I take a Salesman off break */
 
-				 arg = constructSalesArg(dept, r);
-				 QueuePush(salesmenOnBreak, arg);
+				arg = constructSalesArg(dept, r);
+				QueuePush(salesmenOnBreak, arg);
 				numSalesmenOnBreak[dept]++;
 			}
 		}
@@ -1054,8 +1055,8 @@ void manager(){
 
 		for(i = 0; i < cashierNumber; i++){
 
-										/* only manager and cashier i ever attempt to grab this lock */
-		  Acquire(cashierLock[i]);
+			/* only manager and cashier i ever attempt to grab this lock */
+			Acquire(cashierLock[i]);
 			/* -----------------------------Start empty cashier drawers------------------------------------ */
 			if(cashRegister[i] > 0){
 				totalRevenue += cashRegister[i];
@@ -1070,14 +1071,15 @@ void manager(){
 
 			/* ------------------------------Start deal with broke customers------------------------- */
 			else if(cashierFlags[i] != -1){ /* cashier flags is [i] is change to the Customre at the i-th */
-											/* cashier desk so I know who to go to and deal with */
-			  /*cout <<"Manager got a call from Cashier [" << i << "]." << endl;*/
-			  NPrint("Manager got a call from Cashier [%d].\n", sizeof("Manager got a call from Cashier [%d].\n"), i, 0);
+				/* cashier desk so I know who to go to and deal with */
+				/*cout <<"Manager got a call from Cashier [" << i << "]." << endl;*/
+				NPrint("Manager got a call from Cashier [%d].\n", sizeof("Manager got a call from Cashier [%d].\n"), i, 0);
+				NPrint("cashierFlag[%d] is %d\n", sizeof("cashierFlag[%d] is %d\n"), NEncode2to1(i, cashierFlags[i]));
 				customerID = cashierFlags[i];
 				cashierID = i;
 
 				Acquire(managerLock);
-
+				Signal(cashierToCustCV[cashierID], cashierLock[cashierID]);
 				Signal(cashierToCustCV[cashierID], cashierLock[cashierID]);
 				Release(cashierLock[i]);
 				Wait(managerCV, managerLock);
@@ -1089,7 +1091,7 @@ void manager(){
 					managerCustType = 0;
 				}
 				else{
-				  managerCustType = 1;
+					managerCustType = 1;
 				}
 				managerDesk = amountOwed;
 				Signal(managerCV, managerLock);
@@ -1100,17 +1102,20 @@ void manager(){
 					QueuePush(managerItems, managerDesk);
 					Release(managerItemsLock);
 					if(managerCustType){
-					  NPrint("Manager removes [%d] from the trolly PrivilegedCustomer [%d].\n", sizeof("Manager removes [%d] from the trolly PrivilegedCustomer [%d].\n"), NEncode2to1(managerDesk, customerID), 0);
+						NPrint("Manager removes [%d] from the trolly PrivilegedCustomer [%d].\n", sizeof("Manager removes [%d] from the trolly PrivilegedCustomer [%d].\n"), NEncode2to1(managerDesk, customerID), 0);
 					}
 					else{
-					  NPrint("Manager removes [%d] from the trolly Customer [%d].\n", sizeof("Manager removes [%d] from the trolly Customer [%d].\n"), NEncode2to1(managerDesk, customerID), 0);
+						NPrint("Manager removes [%d] from the trolly Customer [%d].\n", sizeof("Manager removes [%d] from the trolly Customer [%d].\n"), NEncode2to1(managerDesk, customerID), 0);
 					}
 					managerDesk = amountOwed; /* giving customer new subtotal */
-									/* customer will put back -1 if out of items */
-									/*  or if they can now afford */
+					/* customer will put back -1 if out of items */
+					/*  or if they can now afford */
 					Signal(managerCV, managerLock);
 					Wait(managerCV, managerLock);
 				}
+				Acquire(inactiveLoaderLock);
+				Signal(inactiveLoaderCV, inactiveLoaderLock);
+				Release(inactiveLoaderLock);
 				/* now customer has reached end of items or has enough money */
 				/* I give him total */
 				managerDesk = amountOwed;
@@ -1121,10 +1126,10 @@ void manager(){
 
 				/* Now give the customer his receipt */
 				if(managerCustType){
-				  NPrint("Manager gives receipt to PrivilegedCustomer [%d].\n", sizeof("Manager gives receipt to PrivilegedCustomer [%d].\n"), customerID, 0);
+					NPrint("Manager gives receipt to PrivilegedCustomer [%d].\n", sizeof("Manager gives receipt to PrivilegedCustomer [%d].\n"), customerID, 0);
 				}
 				else{
-				  NPrint("Manager gives receipt to Customer [%d].\n", sizeof("Manager gives receipt to Customer [%d].\n"), customerID, 0);				  
+					NPrint("Manager gives receipt to Customer [%d].\n", sizeof("Manager gives receipt to Customer [%d].\n"), customerID, 0);
 				}
 				managerDesk = -1;
 				Signal(managerCV, managerLock);
@@ -1136,7 +1141,7 @@ void manager(){
 			}
 			/* ----------------------------End deal with broke customers-------------------- */
 			else
-			  Release(cashierLock[i]);
+				Release(cashierLock[i]);
 		}
 	}
 	Exit(0);
@@ -1148,7 +1153,7 @@ void manager(){
 /* cashier code */
 
 void cashier(){
-  int myCounter;
+	int myCounter;
 	/*set the cashier's counter*/
 	Acquire(cashierIndexLock);
 	myCounter = nextCashierIndex;
@@ -1160,140 +1165,134 @@ void cashier(){
 		Acquire(cashierLinesLock);
 		/* check my status to see if I've already been set to busy by a customer */
 		if(cashierStatus[myCounter] == CASH_GO_ON_BREAK){
-		  NPrint("Cashier [%d] is going on break.\n", sizeof("Cashier [%d] is going on break.\n"), myCounter, 0);
-		cashierStatus[myCounter] = CASH_ON_BREAK;
-		Broadcast(unprivilegedCashierLineCV[myCounter], cashierLinesLock);
-		Broadcast(privilegedCashierLineCV[myCounter], cashierLinesLock);
+			NPrint("Cashier [%d] is going on break.\n", sizeof("Cashier [%d] is going on break.\n"), myCounter, 0);
+			cashierStatus[myCounter] = CASH_ON_BREAK;
+			Broadcast(unprivilegedCashierLineCV[myCounter], cashierLinesLock);
+			Broadcast(privilegedCashierLineCV[myCounter], cashierLinesLock);
 
-		Acquire(cashierLock[myCounter]);
-		Release(cashierLinesLock);
+			Acquire(cashierLock[myCounter]);
+			Release(cashierLinesLock);
 
-		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-		cashierStatus[myCounter] = CASH_NOT_BUSY;
-		NPrint("Cashier [%d] was called from break by Manager to work.\n", sizeof("Cashier [%d] was called from break by Manager to work.\n"), myCounter, 0);
-	}
-	/* check if my lines have anyone in it */
-	/* set my state so approaching Customers can wait in or engage me, as apropriate */
-	if(privilegedLineCount[myCounter]){
-          Signal(privilegedCashierLineCV[myCounter], cashierLinesLock);
-		custType[myCounter] = PRIVILEGED_CUSTOMER;
-	}
-	else if(unprivilegedLineCount[myCounter]){
-          Signal(unprivilegedCashierLineCV[myCounter], cashierLinesLock);
-		custType[myCounter] = CUSTOMER;
-	}
-	else{
-		cashierStatus[myCounter] = CASH_NOT_BUSY; /* means I can be approached without it being necessary to wait in line */
-	}
-	/* whether or not I'm ready for a customer, I can get my lock and go to sleep */
-	Acquire(cashierLock[myCounter]);
-	Release(cashierLinesLock);
-	Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	/* the next Time I'm woken up (assuming it is by a customer, not a manager */
-	/* I will be totaling items */
-	/* when I get here, there will be an item to scan */
-	total[myCounter] = 0;
-	custID[myCounter] = cashierDesk[myCounter];
-	if(custID[myCounter] == -2){
-		Release(cashierLock[myCounter]);
-		continue;
-	}
-	Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-
-	/* NPrint("The type that was put on my counter is %d\n", sizeof("The type that was put on my counter is %d\n"), cashierDesk[myCounter]); */
-	
-	/* if(cashierDesk[myCounter] == 1){ */
-	/*   custType[myCounter] = PRIVILEGED_CUSTOMER; */
-	/* } */
-	/* else{ */
-	/*   custType[myCounter] = CUSTOMER; */
-	/* } */
-
-	Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-		NPrint("The type that was put on my counter is %d\n", sizeof("The type that was put on my counter is %d\n"), cashierDesk[myCounter]);
-	
-	if(cashierDesk[myCounter] == 1){
-	  custType[myCounter] = PRIVILEGED_CUSTOMER;
-	}
-	else{
-	  custType[myCounter] = CUSTOMER;
-	}
-
-	while(cashierDesk[myCounter] != -1){ /* -1 means we're done scanning */
-
-
-	  if(custType[myCounter] == PRIVILEGED_CUSTOMER){
-	    NPrint("Cashier [%d] got [%d] from trolly of Privileged Customer [%d].\n", sizeof("Cashier [%d] got [%d] from trolly of Privileged Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
-	    }
-	  else{
-	    NPrint("Cashier [%d] got [%d] from trolly of Customer [%d].\n", sizeof("Cashier [%d] got [%d] from trolly of Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
-	  }
-		total[myCounter] += scan(cashierDesk[myCounter]);
-		Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
-		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	}
-	/* now I'm done scanning, so I tell the customer the total */
-	  if(custType[myCounter] == PRIVILEGED_CUSTOMER){
-	    NPrint("Cashier [%d] tells Privileged Customer [%d] total cost is $[%d].\n", sizeof("Cashier [%d] tells Privileged Customer [%d] total cost is $[%d].\n"), NEncode2to1(myCounter, custID[myCounter]), total[myCounter]);
-	    }
-	  else{
-	    NPrint("Cashier [%d] tells Customer [%d] total cost is $[%d].\n", sizeof("Cashier [%d] tells Customer [%d] total cost is $[%d].\n"), NEncode2to1(myCounter, custID[myCounter]), total[myCounter]);
-	    }
-	cashierDesk[myCounter] = total[myCounter];
-	Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	if(cashierDesk[myCounter] == -1){
-	  if(custType[myCounter] == PRIVILEGED_CUSTOMER){
-	    NPrint("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID), 0);
-	    NPrint("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID), 0);
-	    }
-	  else{
-	    NPrint("Cashier [%d] asks Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID), 0);
-	    NPrint("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID), 0);
-	    }
-		cashierFlags[myCounter] = custID[myCounter];
-		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-		/* Set the manager desk to 0 or 1 to tell the manager which type of */
-		/* customer he is dealing with */
-		if(custType[myCounter] == PRIVILEGED_CUSTOMER){
-			managerDesk = 1;
+			Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
+			Acquire(cashierLinesLock);
+			cashierStatus[myCounter] = CASH_NOT_BUSY;
+			NPrint("Cashier [%d] was called from break by Manager to work.\n", sizeof("Cashier [%d] was called from break by Manager to work.\n"), myCounter, 0);
 		}
-		/* if(!strcmp(custType, "Customer")){ */
-		if(custType[myCounter] == CUSTOMER){
-			managerDesk = 0;
+		/* check if my lines have anyone in it */
+		/* set my state so approaching Customers can wait in or engage me, as apropriate */
+		if(privilegedLineCount[myCounter]){
+			Signal(privilegedCashierLineCV[myCounter], cashierLinesLock);
+			custType[myCounter] = PRIVILEGED_CUSTOMER;
 		}
-		cashierFlags[myCounter] = total[myCounter]; /* inform manager of the total the customer owes */
-		Acquire(managerLock);
-		Signal(managerCV, managerLock);
-		Release(managerLock);
-		/* when I am woken up, the manager has taken over so I can free myself for my */
-		/* next customer */
-	}
-	else{
-		/* add value to cash register */
-		cashRegister[myCounter] += cashierDesk[myCounter];
-		if(custType[myCounter] == PRIVILEGED_CUSTOMER){
-		  NPrint("Cashier [%d] got money $[%d] from Privileged Customer [%d].\n", sizeof("Cashier [%d] got money $[%d] from Privileged Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
-		  NPrint("Cashier [%d] gave the receipt to Privileged Customer [%d] and tells him to leave.\n", sizeof("Cashier [%d] gave the receipt to Privileged Customer [%d] and tells him to leave.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
+		else if(unprivilegedLineCount[myCounter]){
+			Signal(unprivilegedCashierLineCV[myCounter], cashierLinesLock);
+			custType[myCounter] = CUSTOMER;
 		}
 		else{
-		  NPrint("Cashier [%d] got money $[%d] from Customer [%d].\n", sizeof("Cashier [%d] got money $[%d] from Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
-		  NPrint("Cashier [%d] gave the receipt to Customer [%d] and tells him to leave.\n", sizeof("Cashier [%d] gave the receipt to Customer [%d] and tells him to leave.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);		  
+			cashierStatus[myCounter] = CASH_NOT_BUSY; /* means I can be approached without it being necessary to wait in line */
 		}
-		/* giving the customer a receipt */
+		/* whether or not I'm ready for a customer, I can get my lock and go to sleep */
+		Acquire(cashierLock[myCounter]);
+		Release(cashierLinesLock);
 		Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
-		/* wait for customer to acknowledge getting receipt and release lock */
 		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
-	}
-	cashierDesk[myCounter] = 0;
-	Release(cashierLock[myCounter]);
+		/* the next Time I'm woken up (assuming it is by a customer, not a manager */
+		/* I will be totaling items */
+		/* when I get here, there will be an item to scan */
+		total[myCounter] = 0;
+		custID[myCounter] = cashierDesk[myCounter];
+		if(custID[myCounter] == -2){
+			Release(cashierLock[myCounter]);
+			continue;
+		}
+		Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
+		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
 
-	/* done, just need to loop back and check for more customers */
-	custType[myCounter] = CUSTOMER;
-	}
+		NPrint("The type that was put on my counter is %d\n", sizeof("The type that was put on my counter is %d\n"), cashierDesk[myCounter]);
+
+		if(cashierDesk[myCounter] == 1){
+			custType[myCounter] = PRIVILEGED_CUSTOMER;
+		}
+		else{
+			custType[myCounter] = CUSTOMER;
+		}
+
+		Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
+		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
+
+		while(cashierDesk[myCounter] != -1){ /* -1 means we're done scanning */
+
+
+			if(custType[myCounter] == PRIVILEGED_CUSTOMER){
+				NPrint("Cashier [%d] got [%d] from trolly of Privileged Customer [%d].\n", sizeof("Cashier [%d] got [%d] from trolly of Privileged Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
+			}
+			else{
+				NPrint("Cashier [%d] got [%d] from trolly of Customer [%d].\n", sizeof("Cashier [%d] got [%d] from trolly of Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
+			}
+			total[myCounter] += scan(cashierDesk[myCounter]);
+			Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
+			Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
+		}
+		/* now I'm done scanning, so I tell the customer the total */
+		if(custType[myCounter] == PRIVILEGED_CUSTOMER){
+			NPrint("Cashier [%d] tells Privileged Customer [%d] total cost is $[%d].\n", sizeof("Cashier [%d] tells Privileged Customer [%d] total cost is $[%d].\n"), NEncode2to1(myCounter, custID[myCounter]), total[myCounter]);
+		}
+		else{
+			NPrint("Cashier [%d] tells Customer [%d] total cost is $[%d].\n", sizeof("Cashier [%d] tells Customer [%d] total cost is $[%d].\n"), NEncode2to1(myCounter, custID[myCounter]), total[myCounter]);
+		}
+		cashierDesk[myCounter] = total[myCounter];
+		Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
+		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
+		if(cashierDesk[myCounter] == -1){
+			if(custType[myCounter] == PRIVILEGED_CUSTOMER){
+				NPrint("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID), 0);
+				NPrint("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID), 0);
+			}
+			else{
+				NPrint("Cashier [%d] asks Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID), 0);
+				NPrint("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID), 0);
+			}
+			NPrint("LSKDJFLDSJF\n", sizeof("LSKDJFLDSJF\n"));
+				cashierFlags[myCounter] = custID[myCounter];
+				Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
+				/* Set the manager desk to 0 or 1 to tell the manager which type of */
+				/* customer he is dealing with */
+				if(custType[myCounter] == PRIVILEGED_CUSTOMER){
+					managerDesk = 1;
+				}
+				/* if(!strcmp(custType, "Customer")){ */
+				if(custType[myCounter] == CUSTOMER){
+					managerDesk = 0;
+				}
+				cashierFlags[myCounter] = total[myCounter]; /* inform manager of the total the customer owes */
+				Acquire(managerLock);
+				Signal(managerCV, managerLock);
+				Release(managerLock);
+				/* when I am woken up, the manager has taken over so I can free myself for my */
+				/* next customer */
+			}
+			else{
+				/* add value to cash register */
+				cashRegister[myCounter] += cashierDesk[myCounter];
+				if(custType[myCounter] == PRIVILEGED_CUSTOMER){
+					NPrint("Cashier [%d] got money $[%d] from Privileged Customer [%d].\n", sizeof("Cashier [%d] got money $[%d] from Privileged Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
+					NPrint("Cashier [%d] gave the receipt to Privileged Customer [%d] and tells him to leave.\n", sizeof("Cashier [%d] gave the receipt to Privileged Customer [%d] and tells him to leave.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
+				}
+				else{
+					NPrint("Cashier [%d] got money $[%d] from Customer [%d].\n", sizeof("Cashier [%d] got money $[%d] from Customer [%d].\n"), NEncode2to1(myCounter, cashierDesk[myCounter]), custID[myCounter]);
+					NPrint("Cashier [%d] gave the receipt to Customer [%d] and tells him to leave.\n", sizeof("Cashier [%d] gave the receipt to Customer [%d] and tells him to leave.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
+				}
+				/* giving the customer a receipt */
+				Signal(cashierToCustCV[myCounter], cashierLock[myCounter]);
+				/* wait for customer to acknowledge getting receipt and release lock */
+				Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
+			}
+			cashierDesk[myCounter] = 0;
+			Release(cashierLock[myCounter]);
+
+			/* done, just need to loop back and check for more customers */
+			custType[myCounter] = CUSTOMER;
+		}
 	Exit(0);
 }
 
@@ -1301,29 +1300,29 @@ void cashier(){
 
 /* Salesman Code		__SALESMAN__ */
 void Salesman() {
-  int myIndex, myCustNumber, itemOutOfStock, itemRestocked, loaderNumber, myLoaderID,
-    i, myDept;
-  SalesmanStatus prev;
-    Acquire(departmentIndexLock);
+	int myIndex, myCustNumber, itemOutOfStock, itemRestocked, loaderNumber, myLoaderID,
+	i, myDept;
+	SalesmanStatus prev;
+	Acquire(departmentIndexLock);
 
-  Acquire(salesmanIndexLock);
-  myIndex = nextSalesmanIndex;
-  nextSalesmanIndex++;
-  myDept = nextDepartmenIndex;
-  if(nextSalesmanIndex == MAX_SALESMEN){
-    nextSalesmanIndex = 0;
-    nextDepartmenIndex++;
-    if(nextDepartmenIndex == MAX_DEPARTMENTS){
-      nextDepartmenIndex = 0;
-    }
-  }
-    Release(salesmanIndexLock);
+	Acquire(salesmanIndexLock);
+	myIndex = nextSalesmanIndex;
+	nextSalesmanIndex++;
+	myDept = nextDepartmenIndex;
+	if(nextSalesmanIndex == MAX_SALESMEN){
+		nextSalesmanIndex = 0;
+		nextDepartmenIndex++;
+		if(nextDepartmenIndex == MAX_DEPARTMENTS){
+			nextDepartmenIndex = 0;
+		}
+	}
+	Release(salesmanIndexLock);
 
-  Release(departmentIndexLock);
+	Release(departmentIndexLock);
 
-  NPrint("Salesman created with index: %d, in department: %d\n", sizeof("Salesman created with index: %d, in department: %d\n"), NEncode2to1(myIndex, myDept));
+	NPrint("Salesman created with index: %d, in department: %d\n", sizeof("Salesman created with index: %d, in department: %d\n"), NEncode2to1(myIndex, myDept));
 	while(1) {
-          Acquire(salesLock[myDept]);
+		Acquire(salesLock[myDept]);
 
 		/* go on break if the manager has left me a note saying to */
 		if(salesBreakBoard[myDept][myIndex] == 1) {
@@ -1347,7 +1346,7 @@ void Salesman() {
 		}
 		else if(complainingCustWaitingLineCount[myDept] > 0) {	/* complaining */
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK;
-                        Signal(complainingCustCV[myDept], salesLock[myDept]);
+			Signal(complainingCustCV[myDept], salesLock[myDept]);
 			complainingCustWaitingLineCount[myDept]--;
 		}
 
@@ -1356,72 +1355,72 @@ void Salesman() {
 			currentSalesStatus[myDept][myIndex] = SALES_NOT_BUSY;
 		}
 
-                Acquire(individualSalesmanLock[myDept][myIndex]);
-                Release(salesLock[myDept]);
-                Wait (salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+		Acquire(individualSalesmanLock[myDept][myIndex]);
+		Release(salesLock[myDept]);
+		Wait (salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 
 		if(currentlyTalkingTo[myDept][myIndex] == GREETING) {	/* a greeting customer came up to me */
 			myCustNumber = salesCustNumber[myDept][myIndex];
 			if(privCustomers[myCustNumber] == 1){
-			  NPrint("DepartmentSalesman [%d] welcomes PrivilegedCustomer [%d] to Department [%d].\n", sizeof("DepartmentSalesman [%d] welcomes PrivilegedCustomer [%d] to Department [%d].\n"), NEncode2to1(myIndex, myCustNumber), myDept);
+				NPrint("DepartmentSalesman [%d] welcomes PrivilegedCustomer [%d] to Department [%d].\n", sizeof("DepartmentSalesman [%d] welcomes PrivilegedCustomer [%d] to Department [%d].\n"), NEncode2to1(myIndex, myCustNumber), myDept);
 			}
 			else{
-			  NPrint("DepartmentSalesman [%d] welcomes Customer [%d] to Department [%d].\n", sizeof("DepartmentSalesman [%d] welcomes Customer [%d] to Department [%d].\n"), NEncode2to1(myIndex, myCustNumber), myDept);			  
+				NPrint("DepartmentSalesman [%d] welcomes Customer [%d] to Department [%d].\n", sizeof("DepartmentSalesman [%d] welcomes Customer [%d] to Department [%d].\n"), NEncode2to1(myIndex, myCustNumber), myDept);
 			}
-                        Signal (salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
-                        Release(individualSalesmanLock[myDept][myIndex]);
+			Signal (salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Release(individualSalesmanLock[myDept][myIndex]);
 		}
 		else if(currentlyTalkingTo[myDept][myIndex] == COMPLAINING) {	/* a complaining customer came up to me */
 			myCustNumber = salesCustNumber[myDept][myIndex];
 			itemOutOfStock = salesDesk[myDept][myIndex];
 
 			if(privCustomers[myCustNumber] == 1){
-			  NPrint("DepartmentSalesman [%d] is informed by PrivilegedCustomer [%d] that [%d] is out of stock.\n", sizeof("DepartmentSalesman [%d] is informed by PrivilegedCustomer [%d] that [%d] is out of stock.\n"), NEncode2to1(myIndex, myCustNumber), itemOutOfStock);
+				NPrint("DepartmentSalesman [%d] is informed by PrivilegedCustomer [%d] that [%d] is out of stock.\n", sizeof("DepartmentSalesman [%d] is informed by PrivilegedCustomer [%d] that [%d] is out of stock.\n"), NEncode2to1(myIndex, myCustNumber), itemOutOfStock);
 			}
 			else{
-			  NPrint("DepartmentSalesman [%d] is informed by Customer [%d] that [%d] is out of stock.\n", sizeof("DepartmentSalesman [%d] is informed by Customer [%d] that [%d] is out of stock.\n"), NEncode2to1(myIndex, myCustNumber), itemOutOfStock);
+				NPrint("DepartmentSalesman [%d] is informed by Customer [%d] that [%d] is out of stock.\n", sizeof("DepartmentSalesman [%d] is informed by Customer [%d] that [%d] is out of stock.\n"), NEncode2to1(myIndex, myCustNumber), itemOutOfStock);
 			}
-                        Acquire(individualSalesmanLock[myDept][myIndex]);
-                        Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Acquire(individualSalesmanLock[myDept][myIndex]);
+			Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 
 			/* tell goods loader */
-                        Acquire(salesLock[myDept]);
+			Acquire(salesLock[myDept]);
 			salesDesk[myDept][myIndex] = itemOutOfStock;	/* Might not be necessary, because we never really took it off the desk */
 
 			if(loaderWaitingLineCount[myDept] > 0) {	/* if we can, get a loader from line */
 				loaderWaitingLineCount[myDept]--;
 				currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK_TO_LOADER;
-                                Signal(loaderCV[myDept], salesLock[myDept]);
-                                Release(salesLock[myDept]);
+				Signal(loaderCV[myDept], salesLock[myDept]);
+				Release(salesLock[myDept]);
 			}
 			else {	/*  no one was in line, so go to the inactive loaders */
 				currentSalesStatus[myDept][myIndex] = SALES_SIGNALLING_LOADER;
-                                Release(salesLock[myDept]);
+				Release(salesLock[myDept]);
 
-                                Acquire(inactiveLoaderLock);
-                                Signal(inactiveLoaderCV, inactiveLoaderLock);
-                                Release(inactiveLoaderLock);
+				Acquire(inactiveLoaderLock);
+				Signal(inactiveLoaderCV, inactiveLoaderLock);
+				Release(inactiveLoaderLock);
 			}
 
-                        Wait(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Wait(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 
 			/* check to see if a loader already restocked something */
 			if(salesDesk[myDept][myIndex] != -1) {		/* loader had finished stocking something and tells me about it */
 				itemRestocked = salesDesk[myDept][myIndex];
-                                Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
-                                Wait(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+				Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+				Wait(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 				loaderNumber = salesDesk[myDept][myIndex];
-                                Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+				Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 				NPrint("DepartmentSalesman [%d] is informed by the GoodsLoader [%d] that [%d] is restocked.\n", sizeof("DepartmentSalesman [%d] is informed by the GoodsLoader [%d] that [%d] is restocked.\n"), NEncode2to1(myIndex, loaderNumber), itemRestocked);
-                                Acquire(shelfLock[myDept][itemRestocked]);
-                                Broadcast(shelfCV[myDept][itemRestocked], shelfLock[myDept][itemRestocked]);
-                                Release(shelfLock[myDept][itemRestocked]);
+				Acquire(shelfLock[myDept][itemRestocked]);
+				Broadcast(shelfCV[myDept][itemRestocked], shelfLock[myDept][itemRestocked]);
+				Release(shelfLock[myDept][itemRestocked]);
 				/* can't know the cust number, becaue we broadcast here! */
 				/* DepartmentSalesman [identifier] informs the Customer/PrivilegeCustomer [identifier] that [item] is restocked. */
 			}
 
 
-                        Acquire(inactiveLoaderLock);
+			Acquire(inactiveLoaderLock);
 			myLoaderID = -1;
 
 			for(i = 0; i < numLoaders; i++) {	/* find the loader who i just sent off to restock and change his status */
@@ -1432,30 +1431,30 @@ void Salesman() {
 				}
 			}
 
-                        Release(inactiveLoaderLock);
+			Release(inactiveLoaderLock);
 
 			NPrint("DepartmentSalesman [%d] informs the GoodsLoader [%d] that [%d] is out of stock.\n", sizeof("DepartmentSalesman [%d] informs the GoodsLoader [%d] that [%d] is out of stock.\n"), NEncode2to1(myIndex, myLoaderID), itemOutOfStock);
-		   
-                        Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
-                        Release(individualSalesmanLock[myDept][myIndex]);
+
+			Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Release(individualSalesmanLock[myDept][myIndex]);
 
 		}
 		else if(currentlyTalkingTo[myDept][myIndex] == GOODSLOADER) {	/* a loader came up to talk to me */
 			itemRestocked = salesDesk[myDept][myIndex];
-                        Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
-                        Wait(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Wait(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 			loaderNumber = salesDesk[myDept][myIndex];
-                        Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
+			Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 			NPrint("DepartmentSalesman [%d] is informed by the GoodsLoader [%d] that [%d] is restocked.\n", sizeof("DepartmentSalesman [%d] is informed by the GoodsLoader [%d] that [%d] is restocked.\n"), NEncode2to1(myIndex, myLoaderID), itemRestocked);
-                        Acquire(shelfLock[myDept][itemRestocked]);
-                        Broadcast(shelfCV[myDept][itemRestocked], shelfLock[myDept][itemRestocked]);
-                        Release(shelfLock[myDept][itemRestocked]);
-                        Release(individualSalesmanLock[myDept][myIndex]);
+			Acquire(shelfLock[myDept][itemRestocked]);
+			Broadcast(shelfCV[myDept][itemRestocked], shelfLock[myDept][itemRestocked]);
+			Release(shelfLock[myDept][itemRestocked]);
+			Release(individualSalesmanLock[myDept][myIndex]);
 			/* can't know the cust number, becaue we broadcast here! */
 			/* DepartmentSalesman [identifier] informs the Customer/PrivilegeCustomer [identifier] that [item] is restocked. */
 		}
 		else{
-                  Release(individualSalesmanLock[myDept][myIndex]);
+			Release(individualSalesmanLock[myDept][myIndex]);
 		}
 	}
 	Exit(0);
@@ -1470,7 +1469,7 @@ void GoodsLoader() {
 	int shelf = -1;			/* the shelf i am dealing with */
 	int foundNewOrder = 0;
 	int i, j, inHands, restoreTrollies, qtyInHands, newShelfToStock;
-	
+
 	Acquire(loaderIndexLock);
 	myID = nextLoaderIndex;
 	nextLoaderIndex++;
@@ -1485,7 +1484,7 @@ void GoodsLoader() {
 			loaderStatus[myID] = LOAD_NOT_BUSY;
 			if(mySalesID != -1){
 				/*cout << "GoodsLoader [" << myID << "] is waiting for orders to restock." << endl;*/
-			  NPrint("GoodsLoader [%d] is waiting for orders to restock.\n", sizeof("GoodsLoader [%d] is waiting for orders to restock.\n"), myID, 0);
+				NPrint("GoodsLoader [%d] is waiting for orders to restock.\n", sizeof("GoodsLoader [%d] is waiting for orders to restock.\n"), myID, 0);
 			}
 			Wait(inactiveLoaderCV, inactiveLoaderLock);
 			/* at this point, I have just been woken up from the inactive loaders waiting area */
@@ -1520,8 +1519,8 @@ void GoodsLoader() {
 			i = 0;
 			while(!QueueEmpty(managerItems)){
 				/* simulates the manager putting the items in the stockroom */
-			  inHands = QueueFront(managerItems);
-			  QueuePop(managerItems);
+				inHands = QueueFront(managerItems);
+				QueuePop(managerItems);
 				i++;
 				Acquire(stockRoomLock);
 				NPrint("Goodsloader [%d] put item [%d] back in the stock room from the manager\n", sizeof("Goodsloader [%d] put item [%d] back in the stock room from the manager\n"), NEncode2to1(myID, inHands), 0);
@@ -1567,7 +1566,7 @@ void GoodsLoader() {
 
 				Acquire(currentLoaderInStockLock);
 				if(currentLoaderInStock != -1 || waitingForStockRoomCount > 0){/* if either someone is in line or there is a loader in the stock room... */
-				  NPrint("GoodsLoader [%d] is waiting for GoodsLoader[%d] to leave the StockRoom.\n", sizeof("GoodsLoader [%d] is waiting for GoodsLoader[%d] to leave the StockRoom.\n"), NEncode2to1(myID, currentLoaderInStock), 0);
+					NPrint("GoodsLoader [%d] is waiting for GoodsLoader[%d] to leave the StockRoom.\n", sizeof("GoodsLoader [%d] is waiting for GoodsLoader[%d] to leave the StockRoom.\n"), NEncode2to1(myID, currentLoaderInStock), 0);
 					waitingForStockRoomCount++;
 					Wait(currentLoaderInStockCV, currentLoaderInStockLock);
 				}
@@ -1600,17 +1599,17 @@ void GoodsLoader() {
 				}
 				Release(stockRoomLock);
 				for(j = 0; j < 5; j++) {
-				  Yield();
+					Yield();
 				}
 
 				/* check the shelf i am going to restock */
 				Acquire(shelfLock[currentDept][shelf]);
 				if(testNumber == 8){
-				  NPrint("GoodsLoader [%d] is in the act of restocking shelf [%d] in Department [%d].\n", sizeof("GoodsLoader [%d] is in the act of restocking shelf [%d] in Department [%d].\n"), NEncode2to1(myID, shelf), currentDept);
-				  NPrint("The shelf had [%d] but GoodsLoader [%d] has added one more.\n", sizeof("The shelf had [%d] but GoodsLoader [%d] has added one more.\n"), NEncode2to1(shelfInventory[currentDept][shelf]), currentDept);
-				  }
+					NPrint("GoodsLoader [%d] is in the act of restocking shelf [%d] in Department [%d].\n", sizeof("GoodsLoader [%d] is in the act of restocking shelf [%d] in Department [%d].\n"), NEncode2to1(myID, shelf), currentDept);
+					NPrint("The shelf had [%d] but GoodsLoader [%d] has added one more.\n", sizeof("The shelf had [%d] but GoodsLoader [%d] has added one more.\n"), NEncode2to1(shelfInventory[currentDept][shelf]), currentDept);
+				}
 				if(shelfInventory[currentDept][shelf] == maxShelfQty) {	/* check to see if a shelf needs more items */
-				  NPrint("GoodsLoader [%d] has restocked [%d] in Department [%d].\n", sizeof("GoodsLoader [%d] has restocked [%d] in Department [%d].\n"), NEncode2to1(myID, shelf), currentDept);
+					NPrint("GoodsLoader [%d] has restocked [%d] in Department [%d].\n", sizeof("GoodsLoader [%d] has restocked [%d] in Department [%d].\n"), NEncode2to1(myID, shelf), currentDept);
 					qtyInHands = 0;
 					break;
 				}
@@ -1674,7 +1673,7 @@ void GoodsLoader() {
 
 
 			if(!foundNewOrder) {	/* i have to get in line, because i didn't find a new order someone signalling */
-									/* (i would have given them my information when i took their order) */
+				/* (i would have given them my information when i took their order) */
 				if(mySalesID == -50) {	/* if i have STILL not found anyone, then i do need to get in line */
 					loaderWaitingLineCount[currentDept]++;
 
@@ -1731,96 +1730,96 @@ void GoodsLoader() {
 
 
 void initSalesmen(){
-  int i, j;
-  for(i = 0; i < numDepartments; i++){
-    greetingCustWaitingLineCount[i] = 0;
-    complainingCustWaitingLineCount[i] = 0;
-    loaderWaitingLineCount[i] = 0;
-    for(j = 0; j < numSalesmen; j++){
-      currentSalesStatus[i][j] = SALES_BUSY;
-      currentlyTalkingTo[i][j] = UNKNOWN;
-      salesCustNumber[i][j] = 0;
-      salesBreakBoard[i][j] = 0;
-      individualSalesmanLock[i][j] = CreateLock("Individual Salesman Lock", sizeof("Individual Salesman Lock"));
-      salesmanCV[i][j] = CreateCondition("Salesman CV", sizeof("Salesman CV"));
-      salesBreakCV[i][j] = CreateCondition("Sales Break CV", sizeof("Sales Break CV"));
-    }
-  }
+	int i, j;
+	for(i = 0; i < numDepartments; i++){
+		greetingCustWaitingLineCount[i] = 0;
+		complainingCustWaitingLineCount[i] = 0;
+		loaderWaitingLineCount[i] = 0;
+		for(j = 0; j < numSalesmen; j++){
+			currentSalesStatus[i][j] = SALES_BUSY;
+			currentlyTalkingTo[i][j] = UNKNOWN;
+			salesCustNumber[i][j] = 0;
+			salesBreakBoard[i][j] = 0;
+			individualSalesmanLock[i][j] = CreateLock("Individual Salesman Lock", sizeof("Individual Salesman Lock"));
+			salesmanCV[i][j] = CreateCondition("Salesman CV", sizeof("Salesman CV"));
+			salesBreakCV[i][j] = CreateCondition("Sales Break CV", sizeof("Sales Break CV"));
+		}
+	}
 }
 
 void initLoaders(){
-  int i;
-  inactiveLoaderLock = CreateLock("Inactive Loader Lock", sizeof("Inactive Loader Lock"));
-  inactiveLoaderCV = CreateCondition("inactive loader CV", sizeof("inactive loader CV"));
-  currentLoaderInStock = -1;
-  currentLoaderInStockLock = CreateLock("current loader in stock lock", sizeof("current loader in stock lock"));
-  currentLoaderInStockCV = CreateCondition("Current loader in stock CV", sizeof("Current loader in stock CV"));
-  stockRoomCV = CreateCondition("stock room CV", sizeof("stock room CV"));
-  waitingForStockRoomCount = 0;
-  for(i = 0; i < numLoaders; i++){
-    loaderStatus[i] = LOAD_NOT_BUSY;
-  }
+	int i;
+	inactiveLoaderLock = CreateLock("Inactive Loader Lock", sizeof("Inactive Loader Lock"));
+	inactiveLoaderCV = CreateCondition("inactive loader CV", sizeof("inactive loader CV"));
+	currentLoaderInStock = -1;
+	currentLoaderInStockLock = CreateLock("current loader in stock lock", sizeof("current loader in stock lock"));
+	currentLoaderInStockCV = CreateCondition("Current loader in stock CV", sizeof("Current loader in stock CV"));
+	stockRoomCV = CreateCondition("stock room CV", sizeof("stock room CV"));
+	waitingForStockRoomCount = 0;
+	for(i = 0; i < numLoaders; i++){
+		loaderStatus[i] = LOAD_NOT_BUSY;
+	}
 }
 
 void initCustomerCashier(){
-  int i;
+	int i;
 
-  for(i = 0; i < custNumber; i++){
-    privCustomers[i] = 0;
-  }
-  customersDone = 0;
-  cashierLinesLock = CreateLock("cashier line lock", sizeof("cashier line lock"));
-  managerItemsLock = CreateLock("Manager Items Lock", sizeof("Manager Items Lock"));
-  managerLock = CreateLock("Manager Lock", sizeof("Manager Lock"));
-  managerCV = CreateCondition("Manager CV", sizeof("Manager CV"));
-  inactiveLoaderCV = CreateCondition("Inactive Loader CV", sizeof("Inactive Loader CV"));
-  inactiveLoaderLock = CreateLock("Inactive Loader Lock", sizeof("Inactive Loader Lock"));
-  displacedTrollyCount = 0;
-  displacedTrollyLock = CreateLock("Displaced Trolly Lock", sizeof("Displaced Trolly Lock"));
-  trollyLock = CreateLock("trolly lock", sizeof("trolly lock"));
-  trollyCV = CreateCondition("trolly CV", sizeof("trolly CV"));
-  trollyCount = numTrollies;
-  for(i = 0; i < cashierNumber; i++){
-    privilegedCashierLineCV[i] = CreateCondition("privileged cashier line cv", sizeof("privileged cashier line cv"));
-    unprivilegedCashierLineCV[i] = CreateCondition("unprivileged cashier line cv", sizeof("unprivileged cashier line cv"));
-    cashierLock[i] = CreateLock("cashier lock", sizeof("cashier lock"));
-    cashierToCustCV[i] = CreateCondition("cashier to cust cv", sizeof("cashier to cust cv"));
-    cashierStatus[i] = CASH_BUSY;
-    privilegedLineCount[i] = 0;
-    unprivilegedLineCount[i] = 0;
-    cashierFlags[i] = -1;
-    cashierDesk[i] = -2;
-    cashRegister[i] = 0;
-  }
+	for(i = 0; i < custNumber; i++){
+		privCustomers[i] = 0;
+	}
+	customersDone = 0;
+	cashierLinesLock = CreateLock("cashier line lock", sizeof("cashier line lock"));
+	managerItemsLock = CreateLock("Manager Items Lock", sizeof("Manager Items Lock"));
+	managerLock = CreateLock("Manager Lock", sizeof("Manager Lock"));
+	managerCV = CreateCondition("Manager CV", sizeof("Manager CV"));
+	inactiveLoaderCV = CreateCondition("Inactive Loader CV", sizeof("Inactive Loader CV"));
+	inactiveLoaderLock = CreateLock("Inactive Loader Lock", sizeof("Inactive Loader Lock"));
+	displacedTrollyCount = 0;
+	displacedTrollyLock = CreateLock("Displaced Trolly Lock", sizeof("Displaced Trolly Lock"));
+	trollyLock = CreateLock("trolly lock", sizeof("trolly lock"));
+	trollyCV = CreateCondition("trolly CV", sizeof("trolly CV"));
+	trollyCount = numTrollies;
+	for(i = 0; i < cashierNumber; i++){
+		privilegedCashierLineCV[i] = CreateCondition("privileged cashier line cv", sizeof("privileged cashier line cv"));
+		unprivilegedCashierLineCV[i] = CreateCondition("unprivileged cashier line cv", sizeof("unprivileged cashier line cv"));
+		cashierLock[i] = CreateLock("cashier lock", sizeof("cashier lock"));
+		cashierToCustCV[i] = CreateCondition("cashier to cust cv", sizeof("cashier to cust cv"));
+		cashierStatus[i] = CASH_BUSY;
+		privilegedLineCount[i] = 0;
+		unprivilegedLineCount[i] = 0;
+		cashierFlags[i] = -1;
+		cashierDesk[i] = -2;
+		cashRegister[i] = 0;
+	}
 }
 
 void initShelvesWithQty(int q){
-  int i, j;
-  stockRoomLock = CreateLock("Stock Room Lock", sizeof("Stock Room Lock"));
-  for(i = 0; i < numDepartments; i++){
-    for(j = 0; j < numItems; j++){
-      shelfLock[i][j] = CreateLock("Shelf Lock", sizeof("Shelf Lock"));
-      shelfCV[i][j] = CreateCondition("ShelfCV", sizeof("ShelfCV"));
-      shelfInventory[i][j] = q;
-    }
-  }
+	int i, j;
+	stockRoomLock = CreateLock("Stock Room Lock", sizeof("Stock Room Lock"));
+	for(i = 0; i < numDepartments; i++){
+		for(j = 0; j < numItems; j++){
+			shelfLock[i][j] = CreateLock("Shelf Lock", sizeof("Shelf Lock"));
+			shelfCV[i][j] = CreateCondition("ShelfCV", sizeof("ShelfCV"));
+			shelfInventory[i][j] = q;
+		}
+	}
 }
 
 void printInitialConditions() {
-  int i;
-  NPrint("Test %d beginning with initial conditions: \n", sizeof("Test %d beginning with initial conditions: \n"), testNumber, 0);
-  NPrint("Number of Cashiers = [%d]\n", sizeof("Number of Cashiers = [%d]\n"), cashierNumber, 0);
-  NPrint("Number of GoodsLoaders = [%d]\n", sizeof("Number of GoodsLoaders = [%d]\n"), numLoaders, 0);
-  NPrint("Number of PrivilegedCustomers = [NRandomly generated, 30%% chance]\n", sizeof("Number of PrivilegedCustomers = [NRandomly generated, 30% chance]\n"), 0, 0);
-  NPrint("Number of Customers = [%d]\n", sizeof("Number of Customers = [%d]\n"), custNumber, 0);
-  NPrint("Number of Managers [1]\n", sizeof("Number of Managers [1]\n"), 0,0);
-  NPrint("Number of DepartmentSalesmen = [%d]\n", sizeof("Number of DepartmentSalesmen = [%d]\n"), numSalesmen, 0);
-  NPrint("Items:\n", sizeof("Items:\n"), 0,0);
-  NPrint("  Number - Price\n", sizeof("  Number - Price\n"), 0,0);
-  for(i = 0; i < numItems; i++) {
-    NPrint("  %d - %d\n", sizeof("  %d - %d\n"), NEncode2to1(i, scan(i)), 0);
-  }
-  NPrint("\n", sizeof("\n"), 0, 0);
+	int i;
+	NPrint("Test %d beginning with initial conditions: \n", sizeof("Test %d beginning with initial conditions: \n"), testNumber, 0);
+	NPrint("Number of Cashiers = [%d]\n", sizeof("Number of Cashiers = [%d]\n"), cashierNumber, 0);
+	NPrint("Number of GoodsLoaders = [%d]\n", sizeof("Number of GoodsLoaders = [%d]\n"), numLoaders, 0);
+	NPrint("Number of PrivilegedCustomers = [NRandomly generated, 30%% chance]\n", sizeof("Number of PrivilegedCustomers = [NRandomly generated, 30% chance]\n"), 0, 0);
+	NPrint("Number of Customers = [%d]\n", sizeof("Number of Customers = [%d]\n"), custNumber, 0);
+	NPrint("Number of Managers [1]\n", sizeof("Number of Managers [1]\n"), 0,0);
+	NPrint("Number of DepartmentSalesmen = [%d]\n", sizeof("Number of DepartmentSalesmen = [%d]\n"), numSalesmen, 0);
+	NPrint("Items:\n", sizeof("Items:\n"), 0,0);
+	NPrint("  Number - Price\n", sizeof("  Number - Price\n"), 0,0);
+	for(i = 0; i < numItems; i++) {
+		NPrint("  %d - %d\n", sizeof("  %d - %d\n"), NEncode2to1(i, scan(i)), 0);
+	}
+	NPrint("\n", sizeof("\n"), 0, 0);
 
 }
 
@@ -1830,7 +1829,7 @@ void Problem2(){
 
 
 void testCustomerGettingInLine(){
-  int i;
+	int i;
 	testNumber = 1;
 	customerCash = 100000;
 	cashierNumber = 5;
@@ -1863,8 +1862,8 @@ void testCustomerGettingInLine(){
 
 int main(int argv, char** argc){
 
-  int choice;
-        NPrint("Menu: \n", sizeof("Menu: \n"), 0, 0);
+	int choice;
+	NPrint("Menu: \n", sizeof("Menu: \n"), 0, 0);
 	NPrint("1. Test customer choosing from cashier lines\n", sizeof("1. Test customer choosing from cashier lines\n"), 0, 0);
 	NPrint("2. Test manager only interacting with one customer or cashier at a Time.\n", sizeof("2. Test manager only interacting with one customer or cashier at a Time.\n"), 0, 0);
 	NPrint("3. Test cashier receipt reception and cashier waiting for cusotmer to leave\n", sizeof("3. Test cashier receipt reception and cashier waiting for cusotmer to leave\n"), 0, 0);
@@ -1882,44 +1881,73 @@ int main(int argv, char** argc){
 	choice = ReadInt("> ", sizeof("> "));
 
 	switch(choice){
-	  case 1:
+	case 1:
 		printInitialConditions();
-	    testCustomerGettingInLine();
-	    break;
-	  case 2:
-	    initCustomerArrays();
-	    initLoaderArrays();
-	    initCashierArrays(1);
-	    initSalesmanArrays();
-	    initManagerArrays();
-	    NPrint("Customer index lock is: %d\n", sizeof("Customer index lock is: %d\n"), customerIndexLock);
-	    createSalesmen();
-	    Fork(manager, "MANGR", sizeof("MANGR"));
-	    Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));
-	    Fork(Customer, "ACUST", sizeof("ACUST"));
-	    Fork(Customer, "BCUST", sizeof("BCUST"));
-	    Fork(cashier, "CASHIER", sizeof("CASHIER"));
-	    break;
-	  case 3:
-	    break;
-	  case 4:
-	    break;
-	  case 5:
-	    break;
-	  case 6:
-	    break;
-	  case 7:
-	    break;
-	  case 8:
-	    break;
-	  case 9:
-	    break;
-	  case 10:
-	    break;
-	  case 11:
-	    break;
-	  case 12:
-	    break;
+		testCustomerGettingInLine();
+		break;
+	case 2:
+		initCustomerArrays(9);
+		initLoaderArrays();
+		initCashierArrays(1);
+		initSalesmanArrays();
+		initManagerArrays();
+		NPrint("Customer index lock is: %d\n", sizeof("Customer index lock is: %d\n"), customerIndexLock);
+		createSalesmen();
+		Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));
+		Fork(Customer, "ACUST", sizeof("ACUST"));
+		Fork(Customer, "BCUST", sizeof("BCUST"));
+		Fork(Customer, "CCUST", sizeof("CCUST"));
+		Fork(Customer, "CUST4", sizeof("CUST4"));
+		Fork(Customer, "CUST5", sizeof("CUST5"));
+		Fork(Customer, "CUST6", sizeof("CUST6"));
+		Fork(Customer, "CUST7", sizeof("CUST7"));
+		Fork(Customer, "CUST8", sizeof("CUST8"));
+		Fork(Customer, "CUST9", sizeof("CUST9"));
+		/* Fork(Customer, "CUST10", sizeof("CUST10")); */
+		/* Fork(Customer, "CUST11", sizeof("CUST11")); */
+		/* Fork(Customer, "CUST12", sizeof("CUST12")); */
+		/* Fork(Customer, "CUST13", sizeof("CUST13")); */
+		/* Fork(Customer, "CUST14", sizeof("CUST14")); */
+		/* Fork(Customer, "CUST15", sizeof("CUST15")); */
+		/* Fork(Customer, "CUST16", sizeof("CUST16")); */
+		/* Fork(Customer, "CUST17", sizeof("CUST17")); */
+		/* Fork(Customer, "CUST18", sizeof("CUST18")); */
+		/* Fork(Customer, "CUST19", sizeof("CUST19")); */
+		/* Fork(Customer, "CUST20", sizeof("CUST20")); */
+		/* Fork(Customer, "CUST21", sizeof("CUST21")); */
+		/* Fork(Customer, "CUST22", sizeof("CUST22")); */
+		/* Fork(Customer, "CUST23", sizeof("CUST23")); */
+		/* Fork(Customer, "CUST24", sizeof("CUST24")); */
+		/* Fork(Customer, "CUST25", sizeof("CUST25")); */
+		/* Fork(Customer, "CUST26", sizeof("CUST26")); */
+		/* Fork(Customer, "CUST27", sizeof("CUST27")); */
+		/* Fork(Customer, "CUST28", sizeof("CUST28")); */
+		/* Fork(Customer, "CUST29", sizeof("CUST29")); */
+		/* Fork(Customer, "CUST30", sizeof("CUST30")); */
+		Fork(cashier, "CASHIER", sizeof("CASHIER"));
+		cashierFlags[0] = -1;
+		Fork(manager, "MANGR", sizeof("MANGR"));
+		break;
+	case 3:
+		break;
+	case 4:
+		break;
+	case 5:
+		break;
+	case 6:
+		break;
+	case 7:
+		break;
+	case 8:
+		break;
+	case 9:
+		break;
+	case 10:
+		break;
+	case 11:
+		break;
+	case 12:
+		break;
 	}
 	Exit(0);
 
