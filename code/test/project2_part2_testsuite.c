@@ -107,6 +107,12 @@ void permaYield() {
 	Exit(0);
 }
 
+void permaLoop() {
+	NPrint("Perma Loop Running...\n", sizeof("Perma Loop Running...\n"), 0, 0);
+	while(1);
+	Exit(0);
+}
+
 void immediatelyExit() {
 	Exit(0);
 }
@@ -115,7 +121,7 @@ void testMaxForks() {
 	int i = 0;
 	while(1) {
 		NPrint("Looping, Forking thread #%d\n", sizeof("Looping, Forking thread #%d\n"), i, 0);
-		Fork(immediatelyExit, "test thread, max fork test", sizeof("test thread, max fork test"));
+		Fork(permaLoop, "test thread, max fork test", sizeof("test thread, max fork test"));
 		i++;
 	}
 }
