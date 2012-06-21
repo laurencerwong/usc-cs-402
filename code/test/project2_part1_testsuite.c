@@ -308,6 +308,19 @@ void testAddressSpaceVerification(){
 	}
 }
 
+void testCreatingTooManyLocks(){
+	int i;
+	for(i = 0; i < 1000; i++){
+		CreateLock();
+	}
+}
+
+void testCreatingTooManyConditions(){
+	int i;
+	for(i = 0; i < 1000; i++){
+		CreateCondition();
+	}
+}
 
 int main(int argc, char** argv) {
 	int choice;
@@ -324,7 +337,9 @@ int main(int argc, char** argv) {
 	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"), 0, 0);
 	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"), 0, 0);
 	NPrint("9. Test yield\n", sizeof("9. Test yield\n"));
-	NPrint("10. Test address space verification in both locks and conditions\n", sizeof("0. Test address space verification in both locks and conditions\n"));
+	NPrint("10. Test address space verification in both locks and conditions\n", sizeof("10. Test address space verification in both locks and conditions\n"));
+	NPrint("11. Test creating too many locks\n", sizeof("11. Test creating too many locks\n"));
+	NPrint("12. Test creating too many conditions\n", sizeof("12. Test creating too many conditions\n"));
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
 	NPrint("Choice: %d\n", sizeof("Choice: %d\n"), choice, 0);
@@ -358,6 +373,12 @@ int main(int argc, char** argv) {
 		break;
 	case 10:
 		testAddressSpaceVerification();
+		break;
+	case 11:
+		testCreatingTooManyLocks();
+		break;
+	case 12:
+		testCreatingTooManyConditions();
 		break;
 	default:
 		NPrint("No Choice?\n", sizeof("No Choice?\n"), 0, 0);
