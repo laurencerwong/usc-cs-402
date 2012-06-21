@@ -9,9 +9,9 @@ void GoodsLoader();
 
 
 
-#define MAX_CASHIERS 3
+#define MAX_CASHIERS 5
 #define MAX_SALESMEN 3
-#define MAX_LOADERS 3
+#define MAX_LOADERS 5
 #define MAX_DEPARTMENTS 3
 #define MAX_CUSTOMERS 30
 #define MAX_MANAGER_ITEMS 30
@@ -1021,7 +1021,7 @@ void manager(){
 				numSalesmenOnBreak[dept]--;
 			}
 			else{
-				QueuePush(salesmenOnBreak);
+			  QueuePush(salesmenOnBreak, wakeSalesman);
 			}
 			Release(salesLock[dept]);
 		}
@@ -1886,14 +1886,18 @@ int main(int argv, char** argc){
 		testCustomerGettingInLine();
 		break;
 	case 2:
-		initCustomerArrays(9);
+		initCustomerArrays(30);
 		initLoaderArrays();
-		initCashierArrays(1);
+		initCashierArrays(10);
 		initSalesmanArrays();
 		initManagerArrays();
 		NPrint("Customer index lock is: %d\n", sizeof("Customer index lock is: %d\n"), customerIndexLock);
 		createSalesmen();
 		Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));
+		Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));
+		Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));
+		Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));
+		Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));		
 		Fork(Customer, "ACUST", sizeof("ACUST"));
 		Fork(Customer, "BCUST", sizeof("BCUST"));
 		Fork(Customer, "CCUST", sizeof("CCUST"));
@@ -1903,29 +1907,37 @@ int main(int argv, char** argc){
 		Fork(Customer, "CUST7", sizeof("CUST7"));
 		Fork(Customer, "CUST8", sizeof("CUST8"));
 		Fork(Customer, "CUST9", sizeof("CUST9"));
-		/* Fork(Customer, "CUST10", sizeof("CUST10")); */
-		/* Fork(Customer, "CUST11", sizeof("CUST11")); */
-		/* Fork(Customer, "CUST12", sizeof("CUST12")); */
-		/* Fork(Customer, "CUST13", sizeof("CUST13")); */
-		/* Fork(Customer, "CUST14", sizeof("CUST14")); */
-		/* Fork(Customer, "CUST15", sizeof("CUST15")); */
-		/* Fork(Customer, "CUST16", sizeof("CUST16")); */
-		/* Fork(Customer, "CUST17", sizeof("CUST17")); */
-		/* Fork(Customer, "CUST18", sizeof("CUST18")); */
-		/* Fork(Customer, "CUST19", sizeof("CUST19")); */
-		/* Fork(Customer, "CUST20", sizeof("CUST20")); */
-		/* Fork(Customer, "CUST21", sizeof("CUST21")); */
-		/* Fork(Customer, "CUST22", sizeof("CUST22")); */
-		/* Fork(Customer, "CUST23", sizeof("CUST23")); */
-		/* Fork(Customer, "CUST24", sizeof("CUST24")); */
-		/* Fork(Customer, "CUST25", sizeof("CUST25")); */
-		/* Fork(Customer, "CUST26", sizeof("CUST26")); */
-		/* Fork(Customer, "CUST27", sizeof("CUST27")); */
-		/* Fork(Customer, "CUST28", sizeof("CUST28")); */
-		/* Fork(Customer, "CUST29", sizeof("CUST29")); */
-		/* Fork(Customer, "CUST30", sizeof("CUST30")); */
-		Fork(cashier, "CASHIER", sizeof("CASHIER"));
-		cashierFlags[0] = -1;
+		Fork(Customer, "CUST10", sizeof("CUST10"));
+		Fork(Customer, "CUST11", sizeof("CUST11"));
+		Fork(Customer, "CUST12", sizeof("CUST12"));
+		Fork(Customer, "CUST13", sizeof("CUST13"));
+		Fork(Customer, "CUST14", sizeof("CUST14"));
+		Fork(Customer, "CUST15", sizeof("CUST15"));
+		Fork(Customer, "CUST16", sizeof("CUST16"));
+		Fork(Customer, "CUST17", sizeof("CUST17"));
+		Fork(Customer, "CUST18", sizeof("CUST18"));
+		Fork(Customer, "CUST19", sizeof("CUST19"));
+		Fork(Customer, "CUST20", sizeof("CUST20"));
+		Fork(Customer, "CUST21", sizeof("CUST21"));
+		Fork(Customer, "CUST22", sizeof("CUST22"));
+		Fork(Customer, "CUST23", sizeof("CUST23"));
+		Fork(Customer, "CUST24", sizeof("CUST24"));
+		Fork(Customer, "CUST25", sizeof("CUST25"));
+		Fork(Customer, "CUST26", sizeof("CUST26"));
+		Fork(Customer, "CUST27", sizeof("CUST27"));
+		Fork(Customer, "CUST28", sizeof("CUST28"));
+		Fork(Customer, "CUST29", sizeof("CUST29"));
+		Fork(Customer, "CUST30", sizeof("CUST30"));
+		Fork(cashier, "CASHIER0", sizeof("CASHIER0"));
+		Fork(cashier, "CASHIER1", sizeof("CASHIER1"));
+		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));
+		Fork(cashier, "CASHIER0", sizeof("CASHIER0"));
+		Fork(cashier, "CASHIER1", sizeof("CASHIER1"));
+		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));		
+		Fork(cashier, "CASHIER0", sizeof("CASHIER0"));
+		Fork(cashier, "CASHIER1", sizeof("CASHIER1"));
+		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));		
+		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));				
 		Fork(manager, "MANGR", sizeof("MANGR"));
 		break;
 	case 3:
