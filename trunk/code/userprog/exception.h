@@ -17,6 +17,7 @@ typedef struct Lock_Entry{
 	Lock *lock;
 	AddrSpace *lockSpace;
 	bool isToBeDeleted;
+	int acquireCount;
 } LockEntry;
 
 typedef struct Condition_Entry{
