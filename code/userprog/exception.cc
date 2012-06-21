@@ -404,6 +404,8 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	}
 	//validation done, ok to perform operation
 	conditionTable[conditionIndex].condition->Wait(lockTable[lockIndex].lock);
+	//need to check if the condition has been marked for deletion.  if it has,
+	//okay to delete if no one is currently in the condition's queue (this is an atomic operation, so no thread is in the middle of calling wait right now either)
 	if(conditionTable[conditionIndex].isToBeDeleted){
 		if(!(conditionTable[conditionIndex].condition->hasWaiting())){
 			delete conditionTable[conditionIndex].condition;
@@ -431,11 +433,11 @@ void DestroyLock_Syscall(int lockIndex){
 		return;
 	}
 	//validation done, ok to perform operation
-	if(!(lockTable[lockIndex].lock->isBusy() && lockTable[lockIndex].acquireCount == 0)){
+	if(!(lockTable[lockIndex].lock->isBusy() && lockTable[lockIndex].acquireCount == 0)){ //delete now if no one has called an Acquire syscall without a Release syscall
 		delete lockTable[lockIndex].lock;
 		lockMap->Clear(lockIndex);
 	}
-	else{
+	else{ //some thread is depending on the thread being there, so just defer deletion
 		lockTable[lockIndex].isToBeDeleted = true;
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
@@ -459,11 +461,11 @@ void DestroyCondition_Syscall(int conditionIndex){
 		return;
 	}
 	//validation done, ok to perform operation
-	if(!(conditionTable[conditionIndex].condition->hasWaiting())){ //the lock at this index belongs to another process
+	if(!(conditionTable[conditionIndex].condition->hasWaiting())){ //okay to delete if no threads in condition's queue
 		delete conditionTable[conditionIndex].condition;
 		conditionMap->Clear(conditionIndex);
 	}
-	else{
+	else{ //if someone is in condition's queue, defer deletion
 		conditionTable[conditionIndex].isToBeDeleted = true;
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
@@ -492,7 +494,7 @@ void Acquire_Syscall(int lockIndex){
 		return;
 	}
 	//validation done, ok to perform operation
-	lockTable[lockIndex].acquireCount++;
+	lockTable[lockIndex].acquireCount++; //marks this lock as being held by a user thread, protects lock from deletion til same thread call Release syscall
 	lockTable[lockIndex].lock->Acquire();
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 }
@@ -515,9 +517,9 @@ void Release_Syscall(int lockIndex){
 		return;
 	}
 	//validation done, ok to perform operation
-	lockTable[lockIndex].acquireCount--;
+	lockTable[lockIndex].acquireCount--; //decrease count since currentThread no longer depends on lock
 	lockTable[lockIndex].lock->Release();
-	if(lockTable[lockIndex].isToBeDeleted && lockTable[lockIndex].acquireCount == 0){
+	if(lockTable[lockIndex].isToBeDeleted && lockTable[lockIndex].acquireCount == 0){ //check if needs to be deleted, delete if no one is waiting
 		if(!(lockTable[lockIndex].lock->isBusy())){
 			delete lockTable[lockIndex].lock;
 			lockMap->Clear(lockIndex);
