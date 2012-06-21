@@ -9,7 +9,7 @@ void GoodsLoader();
 
 
 
-#define MAX_CASHIERS 5
+#define MAX_CASHIERS 3
 #define MAX_SALESMEN 3
 #define MAX_LOADERS 5
 #define MAX_DEPARTMENTS 3
@@ -24,7 +24,7 @@ void GoodsLoader();
 int maxShelfQty = 15;
 int numTrollies = 40;
 int numSalesmen = 3;
-int numLoaders = 10;
+int numLoaders = 5;
 int numItems = 10;
 int numDepartments = 3;
 
@@ -91,7 +91,7 @@ int cashierIndexLock;
 int customerCash = 20;
 
 /* number of cashiers */
-int cashierNumber = 5;
+int cashierNumber = 3;
 
 /* number of customers */
 int custNumber = 20;
@@ -481,6 +481,7 @@ void Customer(){
 				NPrint("Customer [%d] has finished shopping in department [%d]\n", sizeof("Customer [%d] has finished shopping in department [%d]\n"), NEncode2to1(myID, currentDepartment), 0);
 				NPrint("Customer [%d] wants to shop in department [%d]\n", sizeof("Customer [%d] wants to shop in department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
 			}
+			NPrint("Customer [%d] is acquiring SalesLock[target department]: %d", sizeof("Customer [%d] is acquiring SalesLock[target department]: %d"), NEncode2to1(myID, targetDepartment));
 			Acquire(salesLock[targetDepartment]);
 			mySalesIndex = -1;
 
@@ -505,6 +506,7 @@ void Customer(){
 				else{				
 					NPrint("Customer [%d] gets in line for the Department [%d]\n", sizeof("Customer [%d] gets in line for the Department [%d]\n"), NEncode2to1(myID, targetDepartment), 0);
 				}
+			NPrint("Customer [%d] is is waiting on greetingCustCV[target depratment with salesLock[target department] %d", sizeof("Customer [%d] is is waiting on greetingCustCV[target depratment with salesLock[target department] %d"), NEncode2to1(myID, targetDepartment));				
 				Wait(greetingCustCV[targetDepartment], salesLock[targetDepartment]);
 				for( j = 0; j < numSalesmen; j++){
 					if(currentSalesStatus[targetDepartment][j] == SALES_READY_TO_TALK){
@@ -523,6 +525,7 @@ void Customer(){
 			else{
 				NPrint("Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n", sizeof("Customer [%d] is interacting with DepartmentSalesmen[%d] of Department[%d]\n"), NEncode2to1(myID, mySalesIndex), targetDepartment);
 			}
+			NPrint("Customer [%d] is releasing SalesLock[target department]: %d", sizeof("Customer [%d] is releasing SalesLock[target department]: %d"), NEncode2to1(myID, targetDepartment));			
 			Release(salesLock[targetDepartment]);
 			salesCustNumber[targetDepartment][mySalesIndex] = myID; /* Sets the customer number of the salesman to this customer's index */
 
@@ -574,6 +577,7 @@ void Customer(){
 						NPrint("Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
 					}
 					Release(shelfLock[currentDepartment][shelfNum]);
+			NPrint("Customer [%d] is acquiring SalesLock[current department]: %d", sizeof("Customer [%d] is acquiring SalesLock[current department]: %d"), NEncode2to1(myID, currentDepartment));					
 					Acquire(salesLock[currentDepartment]);
 
 					mySalesID = -1;
@@ -587,6 +591,7 @@ void Customer(){
 					}
 					if(mySalesID == -1) {	/* no salesmen are free, I have to wait in line */
 						complainingCustWaitingLineCount[currentDepartment]++;
+			NPrint("Customer [%d] is waiting on complainingCV with saleslock[target department]: %d", sizeof("Customer [%d] is waiting on complainingCV with saleslock[target department]: %d"), NEncode2to1(myID, targetDepartment)); 						
 						Wait(complainingCustCV[currentDepartment], salesLock[currentDepartment]);
 
 						/* find the salesman who just signalled me */
@@ -600,6 +605,7 @@ void Customer(){
 
 					/* I'm now talking to a salesman */
 					currentSalesStatus[currentDepartment][mySalesID] = SALES_BUSY;
+			NPrint("Customer [%d] is releasing SalesLock[target department]: %d", sizeof("Customer [%d] is releasing SalesLock[target department]: %d"), NEncode2to1(myID, targetDepartment));					
 					Release(salesLock[currentDepartment]);
 					Acquire(individualSalesmanLock[currentDepartment][mySalesID]);
 
@@ -838,8 +844,6 @@ void Customer(){
 		else{
 			NPrint("Customer [%d] got receipt from Cashier [%d] and is now leaving.\n", sizeof("Customer [%d] got receipt from Cashier [%d] and is now leaving.\n"), NEncode2to1(myID, myCashier), 0);
 		}
-		NPrint("csahierLock[myCashier] = %d\n", sizeof("csahierLock[myCashier] = %d\n"),cashierLock[myCashier] );
-		NPrint("cashierToCustCV[myCashier] = %d\n", sizeof("cashierToCustCV[myCashier] = %d\n"), cashierToCustCV[myCashier]);
 
 		Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		Release(cashierLock[myCashier]);
@@ -1013,6 +1017,7 @@ void manager(){
 			wakeSalesman = targets[0];
 			dept = targets[1];
 			QueuePop(salesmenOnBreak);
+			NPrint("Manager is acquiring salesLock[dept]: %d", sizeof("Manager is acquiring salesLock[dept]: %d"), dept);
 			Acquire(salesLock[dept]);
 			if((greetingCustWaitingLineCount[dept] + complainingCustWaitingLineCount[dept] + loaderWaitingLineCount[dept]) > 0 && currentSalesStatus[dept][wakeSalesman] == SALES_ON_BREAK){
 				salesBreakBoard[dept][wakeSalesman] = 0;
@@ -1023,6 +1028,7 @@ void manager(){
 			else{
 			  QueuePush(salesmenOnBreak, wakeSalesman);
 			}
+						NPrint("Manager is releasing salesLock[dept]: %d", sizeof("Manager is releasing salesLock[dept]: %d"), dept);
 			Release(salesLock[dept]);
 		}
 
@@ -1030,18 +1036,13 @@ void manager(){
 
 		/* ------------------------------Begin putting salesmen on break------------------ */
 		dept = NRand() % numDepartments;
+			NPrint("Manager is acquiring salesLock[dept]: %d", sizeof("Manager is acquiring salesLock[dept]: %d"), dept);		
 		Acquire(salesLock[dept]);
 		if (chance == 1 && numSalesmenOnBreak[dept] < numSalesmen -1) {
 			r = NRand() % numSalesmen;
 			if(!salesBreakBoard[dept][r] && currentSalesStatus[dept][r] != SALES_ON_BREAK && currentSalesStatus[dept][r] != SALES_GO_ON_BREAK) {
 				salesBreakBoard[dept][r] = 1;
 				NPrint("Manager sends Salesman [%d] of dept [%d] on break.\n", sizeof("Manager sends Salesman [%d] of dept [%d] on break.\n"), NEncode2to1(r, dept), 0);
-				Acquire(individualSalesmanLock[dept][r]);
-				if(currentSalesStatus[dept][r] == SALES_NOT_BUSY){
-					Signal(salesmanCV[dept][r], individualSalesmanLock[dept][r]);
-					currentSalesStatus[dept][r] = SALES_ON_BREAK;
-				}
-				Release(individualSalesmanLock[dept][r]);
 				/* function that uses bit operations to store dept and salesman index*/ 
 				/* in one int so I can get it from my queue later when I take a Salesman off break */
 
@@ -1050,6 +1051,7 @@ void manager(){
 				numSalesmenOnBreak[dept]++;
 			}
 		}
+			NPrint("Manager is releasing salesLock[dept]: %d", sizeof("Manager is releasing salesLock[dept]: %d"), dept);		
 		Release(salesLock[dept]);
 		/* -----------------------------End send salesmen on break */
 
@@ -1322,6 +1324,7 @@ void Salesman() {
 
 	NPrint("Salesman created with index: %d, in department: %d\n", sizeof("Salesman created with index: %d, in department: %d\n"), NEncode2to1(myIndex, myDept));
 	while(1) {
+	  NPrint("Salesman #[%d]-d[%d] is acquiring saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is acquiring saleslock of his department\n"), NEncode2to1(myIndex, myDept));
 		Acquire(salesLock[myDept]);
 
 		/* go on break if the manager has left me a note saying to */
@@ -1329,6 +1332,7 @@ void Salesman() {
 			prev = currentSalesStatus[myDept][myIndex];
 			currentSalesStatus[myDept][myIndex] = SALES_ON_BREAK;
 			salesBreakBoard[myDept][myIndex] = 0;
+				  NPrint("Salesman #[%d]-d[%d] is waiting on salesbreakcv with saleslock[mydept] saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is waiting on salesbreakcv with saleslock[mydept] saleslock of his department\n"), NEncode2to1(myIndex, myDept));
 			Wait (salesBreakCV[myDept][myIndex],salesLock[myDept]);
 			currentSalesStatus[myDept][myIndex] = prev;
 		}
@@ -1336,16 +1340,19 @@ void Salesman() {
 		/* Check if there is someone in a line and wake them up */
 		if(greetingCustWaitingLineCount[myDept] > 0){	/* greeting */
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK;
+	  NPrint("Salesman #[%d]-d[%d] is signalling greetingcustcv with  saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is signalling greetingcustcv with  saleslock of his department\n"), NEncode2to1(myIndex, myDept));			
 			Signal(greetingCustCV[myDept], salesLock[myDept]);
 			greetingCustWaitingLineCount[myDept]--;
 		}
 		else if(loaderWaitingLineCount[myDept] > 0) {	/* loader */
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK_TO_LOADER;
+	  NPrint("Salesman #[%d]-d[%d] is signalling loaderwaitingcv with saleslock[my department] saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is signalling loaderwaitingcv with saleslock[my department] saleslock of his department\n"), NEncode2to1(myIndex, myDept));			
 			Signal(loaderCV[myDept], salesLock[myDept]);
 			loaderWaitingLineCount[myDept]--;
 		}
 		else if(complainingCustWaitingLineCount[myDept] > 0) {	/* complaining */
 			currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK;
+	  NPrint("Salesman #[%d]-d[%d] is signalling complainignCust cv with saleslock[my dept] saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is signalling complainignCust cv with saleslock[my dept] saleslock of his department\n"), NEncode2to1(myIndex, myDept));			
 			Signal(complainingCustCV[myDept], salesLock[myDept]);
 			complainingCustWaitingLineCount[myDept]--;
 		}
@@ -1356,6 +1363,7 @@ void Salesman() {
 		}
 
 		Acquire(individualSalesmanLock[myDept][myIndex]);
+	  NPrint("Salesman #[%d]-d[%d] is relesaing saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is relesaing saleslock of his department\n"), NEncode2to1(myIndex, myDept));		
 		Release(salesLock[myDept]);
 		Wait (salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 
@@ -1384,6 +1392,7 @@ void Salesman() {
 			Signal(salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
 
 			/* tell goods loader */
+	  NPrint("Salesman #[%d]-d[%d] is acquiring saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is acquiring saleslock of his department\n"), NEncode2to1(myIndex, myDept));			
 			Acquire(salesLock[myDept]);
 			salesDesk[myDept][myIndex] = itemOutOfStock;	/* Might not be necessary, because we never really took it off the desk */
 
@@ -1391,10 +1400,12 @@ void Salesman() {
 				loaderWaitingLineCount[myDept]--;
 				currentSalesStatus[myDept][myIndex] = SALES_READY_TO_TALK_TO_LOADER;
 				Signal(loaderCV[myDept], salesLock[myDept]);
+	  NPrint("Salesman #[%d]-d[%d] is releasing saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is releasing saleslock of his department\n"), NEncode2to1(myIndex, myDept));				
 				Release(salesLock[myDept]);
 			}
 			else {	/*  no one was in line, so go to the inactive loaders */
 				currentSalesStatus[myDept][myIndex] = SALES_SIGNALLING_LOADER;
+	  NPrint("Salesman #[%d]-d[%d] is realisings saleslock of his department\n", sizeof("Salesman #[%d]-d[%d] is realisings saleslock of his department\n"), NEncode2to1(myIndex, myDept));				
 				Release(salesLock[myDept]);
 
 				Acquire(inactiveLoaderLock);
@@ -1497,6 +1508,7 @@ void GoodsLoader() {
 
 		/* look through all departments to find out who signalled me */
 		for(j = 0; j < numDepartments; j++) {
+		  NPrint("Goodsloader %d is acquiring salesLock[%d]", sizeof("Goodsloader %d is acquiring salesLock[%d]"), NEncode2to1(myID, j));
 			Acquire(salesLock[j]);
 			for(i = 0; i < numSalesmen; i++) {
 				if(currentSalesStatus[j][i] == SALES_SIGNALLING_LOADER) {	/* i found a person who was signalling for a loader! */
@@ -1506,6 +1518,7 @@ void GoodsLoader() {
 					break;
 				}
 			}
+		  NPrint("Goodsloader %d is releasing salesLock[%d]", sizeof("Goodsloader %d is releasing salesLock[%d]"), NEncode2to1(myID, j));			
 			Release(salesLock[j]);
 			if(mySalesID != -50) {	/* used to break the second level of for loop if i found a salesman who needs me */
 				break;
@@ -1620,6 +1633,7 @@ void GoodsLoader() {
 
 
 			/* We have finished restocking.  now wait in line/inform sales */
+			NPrint("Goodsloader %d is acquiring lock on saleslock[currentdept] %d", sizeof("Goodsloader %d is acquiring lock on saleslock[currentdept] %d"), NEncode2to1(myID, currentDept));
 			Acquire(salesLock[currentDept]);
 
 			mySalesID = -50;
@@ -1634,6 +1648,7 @@ void GoodsLoader() {
 
 					currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
 					currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
+			NPrint("Goodsloader %d is releasing lock on saleslock[currentdept] %d", sizeof("Goodsloader %d is releasing lock on saleslock[currentdept] %d"), NEncode2to1(myID, currentDept));					
 					Release(salesLock[currentDept]);
 					Acquire(individualSalesmanLock[currentDept][mySalesID]);
 					salesDesk[currentDept][mySalesID] = shelf;
@@ -1658,6 +1673,7 @@ void GoodsLoader() {
 						/* Ready to go talk to sales */
 						currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
 						currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
+			NPrint("Goodsloader %d is releasing lock on saleslock[currentdept] %d", sizeof("Goodsloader %d is releasing lock on saleslock[currentdept] %d"), NEncode2to1(myID, currentDept));						
 						Release(salesLock[currentDept]);
 						Acquire(individualSalesmanLock[currentDept][mySalesID]);
 						salesDesk[currentDept][mySalesID] = shelf;
@@ -1676,7 +1692,7 @@ void GoodsLoader() {
 				/* (i would have given them my information when i took their order) */
 				if(mySalesID == -50) {	/* if i have STILL not found anyone, then i do need to get in line */
 					loaderWaitingLineCount[currentDept]++;
-
+			NPrint("Goodsloader %d is waiting lock on saleslock[currentdept] %d", sizeof("Goodsloader %d is waiting lock on saleslock[currentdept] %d"), NEncode2to1(myID, currentDept));
 					Wait(loaderCV[currentDept], salesLock[currentDept]);
 
 					for(i = 0; i < numSalesmen; i++) {	/* find the salesman who signalled me out of line */
@@ -1686,7 +1702,7 @@ void GoodsLoader() {
 							/* Ready to go talk to a salesman */
 							currentlyTalkingTo[currentDept][mySalesID] = GOODSLOADER;
 							currentSalesStatus[currentDept][mySalesID] = SALES_BUSY;
-
+			NPrint("Goodsloader %d is releasing lock on saleslock[currentdept] %d", sizeof("Goodsloader %d is releasing lock on saleslock[currentdept] %d"), NEncode2to1(myID, currentDept));
 							Release(salesLock[currentDept]);
 							Acquire(individualSalesmanLock[currentDept][mySalesID]);
 							salesDesk[currentDept][mySalesID] = shelf;
@@ -1706,6 +1722,7 @@ void GoodsLoader() {
 		/* Look at all depts to see if anyone else has a job that i should be aware of */
 		Acquire(inactiveLoaderLock);
 		for(j = 0; j < numDepartments; j++) {
+		  			NPrint("Goodsloader %d is acquiring lock on saleslock[j] %d", sizeof("Goodsloader %d is acquiring lock on saleslock[j] %d"), NEncode2to1(myID, j));
 			Acquire(salesLock[j]);
 			for(i = 0; i < numSalesmen; i++) {
 				if(currentSalesStatus[j][i] == SALES_SIGNALLING_LOADER) {
@@ -1713,6 +1730,7 @@ void GoodsLoader() {
 					break;
 				}
 			}
+!			NPrint("Goodsloader %d is releasing lock on saleslock[j] %d", sizeof("Goodsloader %d is releasing lock on saleslock[j] %d"), NEncode2to1(myID, j));			
 			Release(salesLock[j]);
 			if(foundNewOrder) {	/* break out of the outer loop if we did in fact find someone */
 				break;
@@ -1862,33 +1880,102 @@ void testCustomerGettingInLine(){
 
 int main(int argv, char** argc){
 
-	int choice;
-	NPrint("Menu: \n", sizeof("Menu: \n"), 0, 0);
-	NPrint("1. Test customer choosing from cashier lines\n", sizeof("1. Test customer choosing from cashier lines\n"), 0, 0);
-	NPrint("2. Test manager only interacting with one customer or cashier at a Time.\n", sizeof("2. Test manager only interacting with one customer or cashier at a Time.\n"), 0, 0);
-	NPrint("3. Test cashier receipt reception and cashier waiting for cusotmer to leave\n", sizeof("3. Test cashier receipt reception and cashier waiting for cusotmer to leave\n"), 0, 0);
-	NPrint("4. Test cashiers scan all items\n", sizeof("4. Test cashiers scan all items\n"), 0, 0);
-	NPrint("5. Test cashiers being sent on break\n", sizeof("5. Test cashiers being sent on break\n"), 0, 0);
-	NPrint("6. Test cashiers being brough back from break\n", sizeof("6. Test cashiers being brough back from break\n"), 0, 0);
-	NPrint("7. Test sales never suffering a race condition\n", sizeof("7. Test sales never suffering a race condition\n"), 0, 0);
-	NPrint("8. Test Goods Loaders don't restock when a Customer is trying to get an item\n", sizeof("8. Test Goods Loaders don't restock when a Customer is trying to get an item\n"), 0, 0);
-	NPrint("9. Test only one Goods Loader enters the stock room at a Time\n", sizeof("9. Test only one Goods Loader enters the stock room at a Time\n"), 0, 0);
-	NPrint("10. Test Customrs wait for items to be restocked\n", sizeof("10. Test Customrs wait for items to be restocked\n"), 0, 0);
-	NPrint("11. Run full simulation\n", sizeof("11. Run full simulation\n"), 0, 0);
-	NPrint("12. Run full simulation with some predetermined values\n", sizeof("12. Run full simulation with some predetermined values\n"), 0, 0);
-	NPrint("Please input the number option you wish to take: \n", sizeof("Please input the number option you wish to take: \n"), 0, 0);
+	/* int choice; */
+	/* NPrint("Menu: \n", sizeof("Menu: \n"), 0, 0); */
+	/* NPrint("1. Test customer choosing from cashier lines\n", sizeof("1. Test customer choosing from cashier lines\n"), 0, 0); */
+	/* NPrint("2. Test manager only interacting with one customer or cashier at a Time.\n", sizeof("2. Test manager only interacting with one customer or cashier at a Time.\n"), 0, 0); */
+	/* NPrint("3. Test cashier receipt reception and cashier waiting for cusotmer to leave\n", sizeof("3. Test cashier receipt reception and cashier waiting for cusotmer to leave\n"), 0, 0); */
+	/* NPrint("4. Test cashiers scan all items\n", sizeof("4. Test cashiers scan all items\n"), 0, 0); */
+	/* NPrint("5. Test cashiers being sent on break\n", sizeof("5. Test cashiers being sent on break\n"), 0, 0); */
+	/* NPrint("6. Test cashiers being brough back from break\n", sizeof("6. Test cashiers being brough back from break\n"), 0, 0); */
+	/* NPrint("7. Test sales never suffering a race condition\n", sizeof("7. Test sales never suffering a race condition\n"), 0, 0); */
+	/* NPrint("8. Test Goods Loaders don't restock when a Customer is trying to get an item\n", sizeof("8. Test Goods Loaders don't restock when a Customer is trying to get an item\n"), 0, 0); */
+	/* NPrint("9. Test only one Goods Loader enters the stock room at a Time\n", sizeof("9. Test only one Goods Loader enters the stock room at a Time\n"), 0, 0); */
+	/* NPrint("10. Test Customrs wait for items to be restocked\n", sizeof("10. Test Customrs wait for items to be restocked\n"), 0, 0); */
+	/* NPrint("11. Run full simulation\n", sizeof("11. Run full simulation\n"), 0, 0); */
+	/* NPrint("12. Run full simulation with some predetermined values\n", sizeof("12. Run full simulation with some predetermined values\n"), 0, 0); */
+	/* NPrint("Please input the number option you wish to take: \n", sizeof("Please input the number option you wish to take: \n"), 0, 0); */
 
-	choice = ReadInt("> ", sizeof("> "));
+	/* choice = ReadInt("> ", sizeof("> ")); */
 
-	switch(choice){
-	case 1:
-		printInitialConditions();
-		testCustomerGettingInLine();
-		break;
-	case 2:
-		initCustomerArrays(30);
+	/* switch(choice){ */
+	/* case 1: */
+	/* 	printInitialConditions(); */
+	/* 	testCustomerGettingInLine(); */
+	/* 	break; */
+	/* case 2: */
+	/* 	initCustomerArrays(30); */
+	/* 	initLoaderArrays(); */
+	/* 	initCashierArrays(3); */
+	/* 	initSalesmanArrays(); */
+	/* 	initManagerArrays(); */
+	/* 	NPrint("Customer index lock is: %d\n", sizeof("Customer index lock is: %d\n"), customerIndexLock); */
+	/* 	createSalesmen(); */
+	/* 	Fork(GoodsLoader, "GLOADER", sizeof("GLOADER")); */
+	/* 	Fork(GoodsLoader, "GLOADER", sizeof("GLOADER")); */
+	/* 	Fork(GoodsLoader, "GLOADER", sizeof("GLOADER")); */
+	/* 	Fork(GoodsLoader, "GLOADER", sizeof("GLOADER")); */
+	/* 	Fork(GoodsLoader, "GLOADER", sizeof("GLOADER"));		 */
+	/* 	Fork(Customer, "ACUST", sizeof("ACUST")); */
+	/* 	Fork(Customer, "BCUST", sizeof("BCUST")); */
+	/* 	Fork(Customer, "CCUST", sizeof("CCUST")); */
+	/* 	Fork(Customer, "CUST4", sizeof("CUST4")); */
+	/* 	Fork(Customer, "CUST5", sizeof("CUST5")); */
+	/* 	Fork(Customer, "CUST6", sizeof("CUST6")); */
+	/* 	Fork(Customer, "CUST7", sizeof("CUST7")); */
+	/* 	Fork(Customer, "CUST8", sizeof("CUST8")); */
+	/* 	Fork(Customer, "CUST9", sizeof("CUST9")); */
+	/* 	Fork(Customer, "CUST10", sizeof("CUST10")); */
+	/* 	Fork(Customer, "CUST11", sizeof("CUST11")); */
+	/* 	Fork(Customer, "CUST12", sizeof("CUST12")); */
+	/* 	Fork(Customer, "CUST13", sizeof("CUST13")); */
+	/* 	Fork(Customer, "CUST14", sizeof("CUST14")); */
+	/* 	Fork(Customer, "CUST15", sizeof("CUST15")); */
+	/* 	Fork(Customer, "CUST16", sizeof("CUST16")); */
+	/* 	Fork(Customer, "CUST17", sizeof("CUST17")); */
+	/* 	Fork(Customer, "CUST18", sizeof("CUST18")); */
+	/* 	Fork(Customer, "CUST19", sizeof("CUST19")); */
+	/* 	Fork(Customer, "CUST20", sizeof("CUST20")); */
+	/* 	Fork(Customer, "CUST21", sizeof("CUST21")); */
+	/* 	Fork(Customer, "CUST22", sizeof("CUST22")); */
+	/* 	Fork(Customer, "CUST23", sizeof("CUST23")); */
+	/* 	Fork(Customer, "CUST24", sizeof("CUST24")); */
+	/* 	Fork(Customer, "CUST25", sizeof("CUST25")); */
+	/* 	Fork(Customer, "CUST26", sizeof("CUST26")); */
+	/* 	Fork(Customer, "CUST27", sizeof("CUST27")); */
+	/* 	Fork(Customer, "CUST28", sizeof("CUST28")); */
+	/* 	Fork(Customer, "CUST29", sizeof("CUST29")); */
+	/* 	Fork(Customer, "CUST30", sizeof("CUST30")); */
+	/* 	Fork(cashier, "CASHIER0", sizeof("CASHIER0")); */
+	/* 	Fork(cashier, "CASHIER1", sizeof("CASHIER1")); */
+	/* 	Fork(cashier, "CASHIER2", sizeof("CASHIER2"));		 */
+	/* 	Fork(manager, "MANGR", sizeof("MANGR")); */
+	/* 	break; */
+	/* case 3: */
+	/* 	break; */
+	/* case 4: */
+	/* 	break; */
+	/* case 5: */
+	/* 	break; */
+	/* case 6: */
+	/* 	break; */
+	/* case 7: */
+	/* 	break; */
+	/* case 8: */
+	/* 	break; */
+	/* case 9: */
+	/* 	break; */
+	/* case 10: */
+	/* 	break; */
+	/* case 11: */
+	/* 	break; */
+	/* case 12: */
+	/* 	break; */
+	/* } */
+
+  		initCustomerArrays(30);
 		initLoaderArrays();
-		initCashierArrays(10);
+		initCashierArrays(3);
 		initSalesmanArrays();
 		initManagerArrays();
 		NPrint("Customer index lock is: %d\n", sizeof("Customer index lock is: %d\n"), customerIndexLock);
@@ -1930,37 +2017,9 @@ int main(int argv, char** argc){
 		Fork(Customer, "CUST30", sizeof("CUST30"));
 		Fork(cashier, "CASHIER0", sizeof("CASHIER0"));
 		Fork(cashier, "CASHIER1", sizeof("CASHIER1"));
-		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));
-		Fork(cashier, "CASHIER0", sizeof("CASHIER0"));
-		Fork(cashier, "CASHIER1", sizeof("CASHIER1"));
 		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));		
-		Fork(cashier, "CASHIER0", sizeof("CASHIER0"));
-		Fork(cashier, "CASHIER1", sizeof("CASHIER1"));
-		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));		
-		Fork(cashier, "CASHIER2", sizeof("CASHIER2"));				
 		Fork(manager, "MANGR", sizeof("MANGR"));
-		break;
-	case 3:
-		break;
-	case 4:
-		break;
-	case 5:
-		break;
-	case 6:
-		break;
-	case 7:
-		break;
-	case 8:
-		break;
-	case 9:
-		break;
-	case 10:
-		break;
-	case 11:
-		break;
-	case 12:
-		break;
-	}
+
 	Exit(0);
 
 }
