@@ -72,9 +72,11 @@ void testFork()
 
 void print1() {
 	NPrint("Printing %d!\n", sizeof("Printing %d!\n"), 1, 0);
+	Exit(0);
 }
 void print2() {
 	NPrint("Printing %d!\n", sizeof("Printing %d!\n"), 2, 0);
+	Exit(0);
 }
 
 void testForkInExec() {
@@ -97,8 +99,29 @@ void testInfiniteExecs() {
 	}
 }
 
+void permaYield() {
+	NPrint("Perma Yield Running...\n", sizeof("Perma Yield Running...\n"), 0, 0);
+	while(1) {
+		Yield();
+	}
+	Exit(0);
+}
+
+void immediatelyExit() {
+	Exit(0);
+}
+
+void testMaxForks() {
+	int i = 0;
+	while(1) {
+		NPrint("Looping, Forking thread #%d\n", sizeof("Looping, Forking thread #%d\n"), i, 0);
+		Fork(immediatelyExit, "test thread, max fork test", sizeof("test thread, max fork test"));
+		i++;
+	}
+}
+
 void testClearingLocksAndCVsOnExit() {
-	Exec("../test/MaxThreadMaker", sizeof("../test/MaxThreadMaker"), "MaxThreadMaker main", sizeof("MaxThreadMaker main"));
+	Exec("../test/MaxLockCVMaker", sizeof("../test/MaxLockCVMaker"), "MaxLockCVMaker main", sizeof("MaxLockCVMaker main"));
 }
 
 int main(int argc, char** argv) {
@@ -114,6 +137,8 @@ int main(int argc, char** argv) {
 		NPrint("3. Test exec\n", sizeof("3. Test exec\n"), 0, 0);
 		NPrint("4. Test more complicated fork and exec\n", sizeof("4. Test more complicated fork and exec\n"), 0, 0);
 		NPrint("5. Test running out of memory\n", sizeof("5. Test running out of memory\n"), 0, 0);
+		NPrint("6. Test clearing locks and CVs on process exit\n", sizeof("6. Test clearing locks and CVs on process exit\n"), 0, 0);
+		NPrint("7. Test creating the maximum umber of threads\n", sizeof("7. Test creating the maximum umber of threads\n"), 0, 0);
 
 		choice = ReadInt("> ", sizeof("> "));
 		loop = 0;
@@ -134,6 +159,12 @@ int main(int argc, char** argv) {
 			break;
 		case 5:
 			testInfiniteExecs();
+			break;
+		case 6:
+			testClearingLocksAndCVsOnExit();
+			break;
+		case 7:
+			testMaxForks();
 			break;
 		default:
 			NPrint("Invalid menu option!\n", sizeof("Invalid menu option!\n"), 0, 0);
