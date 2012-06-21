@@ -604,10 +604,10 @@ void Customer(){
 					Acquire(individualSalesmanLock[currentDepartment][mySalesID]);
 
 					if(type){
-						NPrint("Privileged Customer [%d] is asking for assistance from DepartmentSalesmen[%d]", sizeof("Privileged Customer [%d] is asking for assistance from DepartmentSalesman[%d]"), NEncode2to1(myID, mySalesID) , 0);
+						NPrint("Privileged Customer [%d] is asking for assistance from DepartmentSalesmen[%d]\n", sizeof("Privileged Customer [%d] is asking for assistance from DepartmentSalesman[%d]\n"), NEncode2to1(myID, mySalesID) , 0);
 					}
 					else{
-						NPrint("Customer [%d] is asking for assistance from DepartmentSalesmen[%d]", sizeof("Customer [%d] is asking for assistance from DepartmentSalesman[%d]"), NEncode2to1(myID, mySalesID) , 0);
+						NPrint("Customer [%d] is asking for assistance from DepartmentSalesmen[%d]\n", sizeof("Customer [%d] is asking for assistance from DepartmentSalesman[%d]\n"), NEncode2to1(myID, mySalesID) , 0);
 					}
 
 					salesCustNumber[currentDepartment][mySalesID] = myID;
@@ -732,7 +732,6 @@ void Customer(){
 	Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	cashierDesk[myCashier] = type; /* now tell him that whether or not I am privileged */
 	/* signal cashier I've passed this information*/
-	NPrint("My type i put on the cashieDesk is %d\n", sizeof("My type i put on the cashieDesk is %d\n"), type);
 	Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 	/* wait for his acknowledgment*/ 
 	Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
@@ -750,9 +749,7 @@ void Customer(){
 	}
 	cashierDesk[myCashier] = -1; /* Tells cashier that I have reached the last item in my inventory */
 	Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
-	NPrint("Customer %d is signalling cashier %d before he gets the total\n", sizeof("Customer %d is signalling cashier %d before he gets the total\n"), NEncode2to1(myID, myCashier));
 	Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
-	NPrint("Customer %d is is going to get his total from cashier %d\n", sizeof("Customer %d is going to get his total from cashier %d\n"), NEncode2to1(myID, myCashier));
 
 	/* ------------------------End passing items to cashier-------------------------------- */
 
@@ -806,10 +803,10 @@ void Customer(){
 		myCash -= amountOwed;	/* updating my cash amount because I am paying manager */
 		managerDesk = amountOwed;	/* technically redundant, but represents me paying money */
 		if(type){
-			NPrint("Privileged Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Privileged Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
+			NPrint("Privileged Customer [%d] pays $[%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Privileged Customer [%d] pays $[%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
 		}
 		else{
-			NPrint("Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Customer [%d] pays [%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
+			NPrint("Customer [%d] pays $[%d] to Manager after removing items and is waiting for receipt from Manager.\n", sizeof("Customer [%d] pays $[%d] to Manager after removing items and is waiting for receipt from Manager.\n"), NEncode2to1(myID, amountOwed), 0);
 		}
 		/* need receipt */
 		Signal(managerCV, managerLock);
@@ -893,7 +890,6 @@ void manager(){
 
 	NSrand(NTime(NULL));
 	while(1){
-		NPrint("manager - 1\n", sizeof("manager - 1\n"));
 		/* ------------------Check if all customers have left store---------------- */
 		/* if all customers have left, print out totals and terminate simulation since manager will be the only */
 		/* ready thread */
@@ -944,7 +940,6 @@ void manager(){
 		}
 
 		/* --------------------------Begin bring cashier back from break-------------------- */
-		NPrint("Manager - 2\n", sizeof("Manager - 2\n"));
 		NPrint("Cashiers on break: %d\n", sizeof("Cashiers on break: %d\n"), cashiersOnBreak);
 		if(numFullLines > (cashierNumber - numCashiersOnBreak) && QueueSize(cashiersOnBreak)){
 			/* bring back cashier if there are more lines with 3 customers than there are cashiers and if there are cashiers on break*/
@@ -973,8 +968,6 @@ void manager(){
 
 		/* ---------------------------Begin send cashiers on break------------------------------- */
 		chance = NRand() %10;
-		NPrint("Manager - 3\n", sizeof("Manager - 3\n"));
-
 		if( chance == 1  && numCashiersOnBreak < cashierNumber -2){ /* .001% chance of sending cashier on break */
 			/* generate cashier index */
 			r = NRand() % cashierNumber;
@@ -1065,7 +1058,6 @@ void manager(){
 				/* cashier desk so I know who to go to and deal with */
 				/*cout <<"Manager got a call from Cashier [" << i << "]." << endl;*/
 				NPrint("Manager got a call from Cashier [%d].\n", sizeof("Manager got a call from Cashier [%d].\n"), i, 0);
-				NPrint("cashierFlag[%d] is %d\n", sizeof("cashierFlag[%d] is %d\n"), NEncode2to1(i, cashierFlags[i]));
 				customerID = cashierFlags[i];
 				cashierID = i;
 
@@ -1236,14 +1228,13 @@ void cashier(){
 		Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
 		if(cashierDesk[myCounter] == -1){
 			if(custType[myCounter] == PRIVILEGED_CUSTOMER){
-				NPrint("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID), 0);
-				NPrint("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID), 0);
+				NPrint("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Privileged Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
+				NPrint("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Privileged Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
 			}
 			else{
-				NPrint("Cashier [%d] asks Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID), 0);
-				NPrint("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID), 0);
+				NPrint("Cashier [%d] asks Customer [%d] to wait for Manager.\n", sizeof("Cashier [%d] asks Customer [%d] to wait for Manager.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
+				NPrint("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n", sizeof("Cashier [%d] informs the Manager that Customer [%d] does not have enough money.\n"), NEncode2to1(myCounter, custID[myCounter]), 0);
 			}
-			NPrint("LSKDJFLDSJF\n", sizeof("LSKDJFLDSJF\n"));
 				cashierFlags[myCounter] = custID[myCounter];
 				Wait(cashierToCustCV[myCounter], cashierLock[myCounter]);
 				/* Set the manager desk to 0 or 1 to tell the manager which type of */
