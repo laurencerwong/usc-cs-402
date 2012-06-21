@@ -636,24 +636,17 @@ void decode2to1(int v, int target[2]) {
 }
 
 void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVal2){
-	//cout << "In NPrint syscall... starting" << endl;
 	char *buf = new char[length + 1];
 	buf[length] = NULL;
 	copyin(outputString, length, buf);
-	//cout << "In NPrint syscall... allocated buffer" << endl;
-
-	//cout << "NPrint encoded values: " << encodedVal1 << " " << encodedVal2 << endl;
 
 	int t1[2];
 	int t2[2];
 	decode2to1(encodedVal1, t1);
 	decode2to1(encodedVal2, t2);
-	//cout << "In NPrint syscall... finished decoding" << endl;
-	//cout << (char*)buf << endl;
 	ioLock->Acquire();
 	printf(buf, t1[0], t1[1], t2[0], t2[1]);
 	ioLock->Release();
-	//cout << "In NPrint syscall... finished printing" << endl;
 }
 
 
@@ -663,29 +656,32 @@ void Exit_Syscall() {
 
 	if(numLivingProcesses == 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
 		//I am the last thread of the last process
-		//cout << "Exiting: Last thread of last process" << endl;
 		interrupt->Halt();
 	}
 	else if(numLivingProcesses > 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
 		//I am the last thread in a process, but there are other processes
-		//cout << "Exiting: Last thread of a process, more processes exist" << endl;
 		AddrSpace *currentSpace = currentThread->space;
-
-		for(int i = 0; i < lockArraySize; i++) {
+		lockTableLock->Acquire();
+		for(int i = 0; i < lockArraySize; i++) { //delete all locks so that other processes can use the space
 			if(lockTable[i].lockSpace == currentSpace) {
 				lockTable[i].lockSpace = NULL;
 				lockTable[i].isToBeDeleted = false;
 				delete lockTable[i].lock;
+				lockMap->Clear(i);
 			}
 		}
+		lockTableLock->Release();
 
-		for(int i = 0; i < conditionArraySize; i++) {
+		conditionTableLock->Acquire();
+		for(int i = 0; i < conditionArraySize; i++) { //delete all conditions so other processes can use the space
 			if(conditionTable[i].conditionSpace == currentSpace) {
 				conditionTable[i].conditionSpace = NULL;
 				conditionTable[i].isToBeDeleted = false;
 				delete conditionTable[i].condition;
+				conditionMap->Clear(i);
 			}
 		}
+		conditionTableLock->Release();
 
 		delete currentThread->space;
 		numLivingProcesses--;
@@ -693,7 +689,7 @@ void Exit_Syscall() {
 		processIDLock.Release();
 		currentThread->Finish();
 	}
-	else if(processTable[currentThread->space->processID].numThreadsAlive > 1) {
+	else if(processTable[currentThread->space->processID].numThreadsAlive > 1) { //other threads are alive in my process
 		//I am just a thread (not the last) in a process (also not the last)
 		//cout << "Exiting: a thread of a process, more processes and threads exist: " << endl;
 		//cout << processTable[currentThread->space->processID].numThreadsAlive << " threads remain in this process ("
@@ -705,7 +701,7 @@ void Exit_Syscall() {
 		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
 		//cout << "last stack page" << lastStackPage << endl;
 
-		for(int i = 0; i < 7; i++) {
+		for(int i = 0; i < UserStackSize; i++) { //clear each page of the thread stack so other process can grab them
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
 			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
