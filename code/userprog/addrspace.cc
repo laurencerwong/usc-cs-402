@@ -147,6 +147,8 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", numPages, size);
     // first, set up the translation
 
+    //remember this so we can allocate stacks later taking this into account
+    //also useful for an exiting process, so we can free the main memory physical pages we will allocate
     numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
 
     pageTable = new TranslationEntry[numPages];
@@ -158,7 +160,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     		interrupt->Halt();
     	}
     	else {
-    		//cout << "in addrspace constructor, assigning virtual page " << i << " to phys page " << newPhysPage << endl;
+    		//this is setting up the translation from virtual to physical page
     		pageTable[i].physicalPage = newPhysPage;
     	}
     	pageTable[i].valid = TRUE;
@@ -170,122 +172,16 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 
 
     	//copy executable over
-    	if(i < (unsigned int)numExecutablePages) {
+    	if(i < (unsigned int)numExecutablePages) { // copy executable page by page (if we are still have any executable left to copy)
     		int tempPhysAddr = pageTable[i].physicalPage * PageSize;
     		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.code.inFileAddr + i * PageSize);
     	}
     }
 
-// zero out the entire address space, to zero the unitialized data segment 
-// and the stack segment
-//    bzero(machine->mainMemory, size);
-
-// then, copy in the code and data segments into memory
-
-   /* int tempPhysAddr = 0;
-    i = 0;
-
-    int numCodePages = divRoundUp(noffH.code.size, PageSize);
-    for(i = 0; i < numCodePages; i++) {
-    	if (noffH.code.size > 0) {
-    		DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", noffH.code.virtualAddr, noffH.code.size);
-    		tempPhysAddr = pageTable[i].physicalPage * PageSize;
-    		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.code.inFileAddr + i * PageSize);
-    	}
-    }
-
-    int numInitDataPages = divRoundUp(noffH.initData.size, PageSize);
-    for(; i < numCodePages + numInitDataPages; i++) {
-    	if (noffH.initData.size > 0) {
-    		DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", noffH.initData.virtualAddr, noffH.initData.size);
-    		tempPhysAddr = pageTable[i].physicalPage * PageSize;
-    		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.initData.inFileAddr + i * PageSize);
-    	}
-    }*/
-
-    /*if (noffH.code.size > 0) {
-        DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]), PageSize, noffH.code.inFileAddr);
-        //executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]), noffH.code.size, noffH.code.inFileAddr);
-    }
-    if (noffH.initData.size > 0) {
-        DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", noffH.initData.virtualAddr, noffH.initData.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]), PageSize, noffH.initData.inFileAddr);
-    }*/
 }
 #endif
 
-/*
-void AddrSpace::TranslateForInitialPageTable(int virtAddr, int* physAddr, int size, bool writing)
-{
-    int i;
-    unsigned int vpn, offset;
-    TranslationEntry *entry;
-    unsigned int pageFrame;
 
-    DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "read");
-
-// check for alignment errors
-    if (((size == 4) && (virtAddr & 0x3)) || ((size == 2) && (virtAddr & 0x1))){
-	DEBUG('a', "alignment problem at %d, size %d!\n", virtAddr, size);
-	return AddressErrorException;
-    }
-
-    // we must have either a TLB or a page table, but not both!
-    ASSERT(tlb == NULL || pageTable == NULL);
-    ASSERT(tlb != NULL || pageTable != NULL);
-
-// calculate the virtual page number, and offset within the page,
-// from the virtual address
-    vpn = (unsigned) virtAddr / PageSize;
-    offset = (unsigned) virtAddr % PageSize;
-
-    if (tlb == NULL) {		// => page table => vpn is index into table
-	if (vpn >= pageTableSize) {
-	    DEBUG('a', "virtual page # %d too large for page table size %d!\n",
-			virtAddr, pageTableSize);
-	    return AddressErrorException;
-	} else if (!pageTable[vpn].valid) {
-	    DEBUG('a', "virtual page # %d too large for page table size %d!\n",
-			virtAddr, pageTableSize);
-	    return PageFaultException;
-	}
-	entry = &pageTable[vpn];
-    } else {
-        for (entry = NULL, i = 0; i < TLBSize; i++)
-    	    if (tlb[i].valid && ((unsigned) tlb[i].virtualPage == vpn)) {
-		entry = &tlb[i];			// FOUND!
-		break;
-	    }
-	if (entry == NULL) {				// not found
-    	    DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-    	    return PageFaultException;		// really, this is a TLB fault,
-						// the page may be in memory,
-						// but not in the TLB
-	}
-    }
-
-    if (entry->readOnly && writing) {	// trying to write to a read-only page
-	DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
-	return ReadOnlyException;
-    }
-    pageFrame = entry->physicalPage;
-
-    // if the pageFrame is too big, there is something really wrong!
-    // An invalid translation was loaded into the page table or TLB.
-    if (pageFrame >= NumPhysPages) {
-	DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
-	return BusErrorException;
-    }
-    entry->use = TRUE;		// set the use, dirty bits
-    if (writing)
-	entry->dirty = TRUE;
-    *physAddr = pageFrame * PageSize + offset;
-    ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
-    DEBUG('a', "phys addr = 0x%x\n", *physAddr);
-    return NoException;
-}
-*/
 
 
 //----------------------------------------------------------------------

@@ -240,7 +240,7 @@ void Close_Syscall(int fd) {
 //Create a lock to be stored in kernel array lockTable.
 //Can at most have MAX_LOCK_CONDITIONS number of locks, or abort
 int CreateLock_Syscall(unsigned int nameIndex, int length){
-	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
+	char* name = new char[length + 1]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
 	//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
