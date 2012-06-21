@@ -42,8 +42,6 @@ ConditionEntry *conditionTable;
 SemaphoreEntry *semaphoreTable;
 queue<int> *queueTable;
 
-Lock* lockTableLock;
-Lock* conditionTableLock;
 
 int lockArraySize = 0;
 int conditionArraySize = 0;

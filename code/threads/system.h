@@ -50,6 +50,8 @@ extern BitMap *mainMemoryBitmap;
 extern Lock *processTableLock;
 extern AddrSpace **pageOwners;
 extern Lock* ioLock;
+extern Lock* lockTableLock;
+extern Lock* conditionTableLock;
 
 #endif
 
