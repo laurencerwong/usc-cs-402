@@ -31,7 +31,8 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification HelloWorld Smily NumberCounter ExecAddingThings supermarket queueTest
+all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
+HelloWorld Smily NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket
 
 
 start.o: start.s ../userprog/syscall.h
@@ -86,6 +87,18 @@ Smily.o: Smily.c
 Smily: Smily.o start.o
 	$(LD) $(LDFLAGS) start.o Smily.o -o Smily.coff
 	../bin/coff2noff Smily.coff Smily
+
+MaxLockCVMaker.o: MaxLockCVMaker.c
+	$(CC) $(CFLAGS) -c MaxLockCVMaker.c
+MaxLockCVMaker: MaxLockCVMaker.o start.o
+	$(LD) $(LDFLAGS) start.o MaxLockCVMaker.o -o MaxLockCVMaker.coff
+	../bin/coff2noff MaxLockCVMaker.coff MaxLockCVMaker
+
+MakeSomeLocksAndCVs.o: MakeSomeLocksAndCVs.c
+	$(CC) $(CFLAGS) -c MakeSomeLocksAndCVs.c
+MakeSomeLocksAndCVs: MakeSomeLocksAndCVs.o start.o
+	$(LD) $(LDFLAGS) start.o MakeSomeLocksAndCVs.o -o MakeSomeLocksAndCVs.coff
+	../bin/coff2noff MakeSomeLocksAndCVs.coff MakeSomeLocksAndCVs
 
 NumberCounter.o: NumberCounter.c
 	$(CC) $(CFLAGS) -c NumberCounter.c
