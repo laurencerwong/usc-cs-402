@@ -642,17 +642,24 @@ void decode2to1(int v, int target[2]) {
 }
 
 void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVal2){
+	cout << "about to make array for nprint name" << endl;
 	char *buf = new char[length + 1];
 	buf[length] = NULL;
+	cout << "about to copyin for nprint name" << endl;
 	copyin(outputString, length, buf);
 
+	cout << "about to decode for nprint" << endl;
 	int t1[2];
 	int t2[2];
 	decode2to1(encodedVal1, t1);
 	decode2to1(encodedVal2, t2);
+	cout << "about to get iolock" << endl;
 	ioLock->Acquire();
+	cout << "iolock acq'ed" << endl;
 	printf(buf, t1[0], t1[1], t2[0], t2[1]);
+	cout << "printed" << endl;
 	ioLock->Release();
+	cout << "nprint done" << endl;
 }
 
 
