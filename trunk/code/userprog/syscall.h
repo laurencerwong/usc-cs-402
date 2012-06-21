@@ -61,6 +61,8 @@
 #define SC_ReadInt 37
 #define SC_RandInt 38
 
+#define MAX_LOCKS_CONDITIONS 500
+
 
 
 
