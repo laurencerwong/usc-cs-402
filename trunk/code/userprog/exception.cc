@@ -249,15 +249,8 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	}
 	int nextFreeIndex = lockMap->Find();
 	if(nextFreeIndex == -1){
-		lockMap->Resize();
-		LockEntry *temp = new LockEntry[lockArraySize *2];
-		for(int i = 0;i < lockArraySize; i++){
-			temp[i] = lockTable[i];
-		}
-		lockArraySize *= 2;
-		delete []lockTable;
-		lockTable = temp;
-		nextFreeIndex = lockMap->Find();
+		printf("We're all out of space for user program locks! Throwing away nachos!\n");
+		interrupt->Halt();
 	}
 	lockTableLock->Release();
 	ioLock->Acquire();
@@ -281,15 +274,8 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	}
 	int nextFreeIndex = conditionMap->Find();
 	if(nextFreeIndex == -1){
-		conditionMap->Resize();
-		ConditionEntry *temp = new ConditionEntry[conditionArraySize *2];
-		for(int i = 0;i < conditionArraySize; i++){
-			temp[i] = conditionTable[i];
-		}
-		conditionArraySize = conditionArraySize *2;
-		delete []conditionTable;
-		conditionTable = temp;
-		nextFreeIndex = conditionMap->Find();
+		printf("Fatal system error, too many condition variables! Shut it down!\n");
+		interrupt->Halt();
 	}
 	conditionTableLock->Release();
 	printf("creating %s CV of index of %d\n", name, nextFreeIndex);	
