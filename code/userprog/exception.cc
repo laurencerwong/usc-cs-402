@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <iostream>
 
+
 using namespace std;
 
 
@@ -242,9 +243,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	if(lockTableLock == NULL) lockTableLock = new Lock("Lock table lock");
 	lockTableLock->Acquire();
 	if(lockArraySize == 0){
-		lockTable = new LockEntry[500];
-		lockMap = new BitMap(500);
-		lockArraySize = 500;
+		lockTable = new LockEntry[MAX_LOCKS_CONDITIONS];
+		lockMap = new BitMap(MAX_LOCKS_CONDITIONS);
+		lockArraySize = MAX_LOCKS_CONDITIONS;
 	}
 	int nextFreeIndex = lockMap->Find();
 	if(nextFreeIndex == -1){
@@ -274,9 +275,9 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	if(conditionTableLock == NULL) conditionTableLock = new Lock("Condition table lock");
 	conditionTableLock->Acquire();
 	if(conditionArraySize == 0){
-		conditionTable = new ConditionEntry[500];
-		conditionMap = new BitMap(500);
-		conditionArraySize = 500;
+		conditionTable = new ConditionEntry[MAX_LOCKS_CONDITIONS];
+		conditionMap = new BitMap(MAX_LOCKS_CONDITIONS);
+		conditionArraySize = MAX_LOCKS_CONDITIONS;
 	}
 	int nextFreeIndex = conditionMap->Find();
 	if(nextFreeIndex == -1){
