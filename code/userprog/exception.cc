@@ -742,21 +742,14 @@ void Exit_Syscall() {
 
 int CreateQueue_Syscall(){
 	if(queueArraySize == 0){
-		queueTable = new queue<int>[5];
-		queueMap = new BitMap(5);
-		queueArraySize = 5;
+		queueTable = new queue<int>[8];
+		queueMap = new BitMap(8);
+		queueArraySize = 8;
 	}
 	int nextFreeIndex = queueMap->Find();
 	if(nextFreeIndex == -1){
-		queueMap->Resize();
-		queue<int> *tempQueueTable = new queue<int>[queueArraySize *2];
-		for(int i = 0; i < queueArraySize; i++){
-			tempQueueTable[i] = queueTable[i];
-		}
-		queueArraySize *= 2;
-		delete []queueTable;
-		queueTable = tempQueueTable;
-		nextFreeIndex = queueMap->Find();
+		printf("We're all out of space for user program locks! Throwing away nachos!\n");
+		interrupt->Halt();
 	}
 	return nextFreeIndex;
 }
