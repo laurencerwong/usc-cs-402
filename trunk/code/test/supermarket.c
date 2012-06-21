@@ -222,6 +222,7 @@ void initCashierArrays(int numCashiersIn){
 		cashierDesk[i] = 0;
 		cashRegister[i] = 0;
 	}
+	NPrint("Finished initializing cashier arrays\n", sizeof("Finished initializing cashier arrays\n"));
 }
 
 void initSalesmanArrays(){
@@ -247,6 +248,7 @@ void initSalesmanArrays(){
 			currentlyTalkingTo[i][j] = UNKNOWN;
 		}
 	}
+	NPrint("Finished initializing salesmen arrays\n", sizeof("Finished initializing salesmen arrays\n"));
 }
 
 void initLoaderArrays(){
@@ -265,6 +267,7 @@ void initLoaderArrays(){
       shelfInventory[i][j] = 10; /* default inventory */
     }
   }
+  NPrint("finished initializing loader arrays\n", sizeof("finished initializing loader arrays\n"));
 }
 
 void initLoaderArraysWithQty(){
@@ -276,6 +279,7 @@ void initLoaderArraysWithQty(){
 			shelfInventory[i][j] = 10; /* default inventory */
 		}
 	}
+	NPrint("Finished initializing loader arrays with qty\n", sizeof("Finished initializing loader arrays with qty\n"));
 }
 
 void initManagerArrays(){
@@ -290,6 +294,7 @@ void initManagerArrays(){
         for( i = 0;i < numDepartments; i++){
           numSalesmenOnBreak[i] = 0;
         }
+	NPrint("Finished initializing manager arrays\n", sizeof("Finished initializing manager arrays\n"));
 }
 
 void initCustomerArrays(){
@@ -1838,7 +1843,7 @@ int main(int argv, char** argc){
 	    break;
 	  case 2:
 	    initCustomerArrays();
-	    initShelvesWithQty(5);
+	    initLoaderArrays();
 	    initCashierArrays(1);
 	    initSalesmanArrays();
 	    initManagerArrays();
