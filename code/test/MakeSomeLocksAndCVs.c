@@ -11,13 +11,14 @@ int main() {
 	int v[2][10];
 	int i = 0;
 
+	NPrint("Creating some locks and CVs\n", sizeof("Creating some locks and CVs\n"), 0, 0);
 	for(i = 0; i < 10; i++) {
 		Yield();
 	}
 
 	for(i = 0; i < 10; i++) {
-		v[0][i] = CreateLock();
-		v[1][i] = CreateCondition();
+		v[0][i] = CreateLock("some lock", sizeof("some lock"));
+		v[1][i] = CreateCondition("some cv", sizeof("some cv"));
 	}
 
 	NPrint("Done creating some locks and CVs\n", sizeof("Done creating some locks and CVs\n"), 0, 0);

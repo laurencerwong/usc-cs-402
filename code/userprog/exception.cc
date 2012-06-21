@@ -552,6 +552,14 @@ void Create_Kernel_Thread_Exec() {
 //syscall a user accesses when they fork.  vaddr is logical address of function to be forked, and other two arguments are so
 //the new kernel Thread can be named by the user
 void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
+
+	processIDLock.Acquire();
+	if(processTable[currentThread->space->processID].nextThreadID == MAX_THREADS) {
+		cout << "Fatal Error, system has reached maximum number of threads.  Nachos terminating.\n" << endl;
+		interrupt->Halt();
+	}
+	processIDLock.Release();
+
 	char* name = new char[length + 1];
 	copyin(nameIndex, length, name); //retrieve name for thread
 	Thread* t = new Thread(name);
@@ -659,6 +667,16 @@ void Exit_Syscall() {
 	else if(numLivingProcesses > 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
 		//I am the last thread in a process, but there are other processes
 		AddrSpace *currentSpace = currentThread->space;
+
+		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
+
+		for(int i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
+			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
+		}
+		for(int i = 0; i < currentSpace->numExecutablePages; i++) {
+			mainMemoryBitmap->Clear(machine->pageTable[i].physicalPage);
+		}
+
 		lockTableLock->Acquire();
 		for(int i = 0; i < lockArraySize; i++) { //delete all locks so that other processes can use the space
 			if(lockTable[i].lockSpace == currentSpace) {
@@ -699,7 +717,7 @@ void Exit_Syscall() {
 		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
 		//cout << "last stack page" << lastStackPage << endl;
 
-		for(int i = 0; i < UserStackSize; i++) { //clear each page of the thread stack so other process can grab them
+		for(int i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
 			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
