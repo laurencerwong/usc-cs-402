@@ -237,24 +237,28 @@ void Close_Syscall(int fd) {
 
 //#ifdef CHANGED
 
+//Create a lock to be stored in kernel array lockTable.
+//Can at most have MAX_LOCK_CONDITIONS number of locks, or abort
 int CreateLock_Syscall(unsigned int nameIndex, int length){
-	char* name = new char[length];
+	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
-	if(lockTableLock == NULL) lockTableLock = new Lock("Lock table lock");
+	if(lockTableLock == NULL) lockTableLock = new Lock("Lock table lock"); // should execute only on the first call through.
+								//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
-	if(lockArraySize == 0){
+	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
 		lockTable = new LockEntry[MAX_LOCKS_CONDITIONS];
 		lockMap = new BitMap(MAX_LOCKS_CONDITIONS);
 		lockArraySize = MAX_LOCKS_CONDITIONS;
 	}
-	int nextFreeIndex = lockMap->Find();
-	if(nextFreeIndex == -1){
+	int nextFreeIndex = lockMap->Find(); //returns a free index in lockTable
+	if(nextFreeIndex == -1){ //error, kernel is out of memory for locks and should terminate
 		printf("We're all out of space for user program locks! Throwing away nachos!\n");
 		interrupt->Halt();
 	}
 	lockTableLock->Release();
-	ioLock->Acquire();
+	ioLock->Acquire(); //make sure our print is done atomically
 	printf("creating %s lock of index of %d\n", name, nextFreeIndex);
+	ioLock->Release();
 	lockTable[nextFreeIndex].lock = new Lock (name);
 	lockTable[nextFreeIndex].lockSpace = currentThread->space;
 	lockTable[nextFreeIndex].isToBeDeleted = false;
@@ -278,7 +282,9 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 		interrupt->Halt();
 	}
 	conditionTableLock->Release();
+	ioLock->Acquire();
 	printf("creating %s CV of index of %d\n", name, nextFreeIndex);	
+	ioLock->Release();
 	conditionTable[nextFreeIndex].condition = new Condition (name);
 	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
 	conditionTable[nextFreeIndex].isToBeDeleted = false;
