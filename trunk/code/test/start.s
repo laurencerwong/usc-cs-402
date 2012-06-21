@@ -257,15 +257,6 @@ NEncode2to1:
 	j	$31
 	.end NEncode2to1
 
-	.globl NDecode1to2
-	.ent	NDecode1to2
-
-NDecode1to2:
-	addiu $2,$0,SC_NDecode1to2
-	syscall
-	j	$31
-	.end NDecode1to2
-
 	.globl Wait
 	.ent	Wait
 
