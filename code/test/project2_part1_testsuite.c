@@ -245,7 +245,9 @@ void testDestroyCondition(){
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyLock(lock);
+	NPrint("Destroyed condition\n", sizeof("Destroyed condition\n"));
 	Signal(condition, lock);
+	NPrint("Releaseing lock\n", sizeof("Releasing lock\n"));
 	Release(lock);
 	Acquire(lock);
 	Exit(0);
