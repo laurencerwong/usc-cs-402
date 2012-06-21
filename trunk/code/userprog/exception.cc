@@ -242,8 +242,7 @@ void Close_Syscall(int fd) {
 int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
-	if(lockTableLock == NULL) lockTableLock = new Lock("Lock table lock"); // should execute only on the first call through.
-								//this lock protects the BitMap of free locks
+	//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
 	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
 		lockTable = new LockEntry[MAX_LOCKS_CONDITIONS];
@@ -272,7 +271,6 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
-	if(conditionTableLock == NULL) conditionTableLock = new Lock("Condition table lock"); //should execute only on the first call in a run of nachos
 	//this lock protects the BitMap and size for the conditionTable
 	conditionTableLock->Acquire();
 	if(conditionArraySize == 0){ //should only execute on first call to this function in a run of nachos

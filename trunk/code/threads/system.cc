@@ -15,6 +15,8 @@ BitMap *mainMemoryBitmap;
 AddrSpace **pageOwners;
 Lock *processTableLock;
 Lock *ioLock;
+Lock* lockTableLock;
+Lock* conditionTableLock;
 
 ProcessEntry processTable[MAX_PROCESSES];
 int nextProcessID = 0;
@@ -178,6 +180,8 @@ Initialize(int argc, char **argv)
     processTableLock = new Lock("Process Table Lock");
     mainMemoryBitmap = new BitMap(NumPhysPages);
     pageOwners = new AddrSpace*[NumPhysPages];
+    lockTableLock = new Lock("lockTable lock");
+    conditionTableLock = new Lock("conditionTable lock");
 
     for(int i = 0; i < MAX_PROCESSES; i++) {
     	processTable[i].numThreadsAlive = 0;
