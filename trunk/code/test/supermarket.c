@@ -568,10 +568,10 @@ void Customer(){
 				}
 				else {	/* We are out of this item, go tell sales! */
 					if(type){
-						NPrint("Privileged Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Privileged Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
+						NPrint("Privileged Customer [%d] is not able to find item [%d] and is searching for DepartmentSalesman[%d]\n", sizeof("Privileged Customer [%d] is not able to find item [%d] and is searching for DepartmentSalesman[%d]\n"), NEncode2to1(myID, shelfNum), currentDepartment);
 					}
 					else{
-						NPrint("Customer [%d] was not able to find item %d and is searching for department salesman %d\n", sizeof("Customer [%d] was not able to find item %d and is searching for department salesman %d\n"), NEncode2to1(myID, shelfNum), currentDepartment);
+						NPrint("Customer [%d] is not able to find item [%d] and is searching for DepartmentSalesman[%d]\n", sizeof("Customer [%d] is not able to find item [%d] and is searching for DepartmentSalesman[%d]\n"), NEncode2to1(myID, shelfNum), currentDepartment);
 					}
 					Release(shelfLock[currentDepartment][shelfNum]);
 					Acquire(salesLock[currentDepartment]);
@@ -823,10 +823,10 @@ void Customer(){
 		/* now I've received my receipt and should release the cashier */
 		Signal(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		if(type){
-			NPrint("Privileged Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Privileged Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
+			NPrint("Privileged Customer [%d] pays $[%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Privileged Customer [%d] pays $[%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
 		}
 		else{
-			NPrint("Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Customer [%d] pays [%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
+			NPrint("Customer [%d] pays $[%d] to Cashier [%d] and is now waiting for receipt.\n", sizeof("Customer [%d] pays $[%d] to Cashier [%d] and is now waiting for receipt.\n"), NEncode2to1(myID, cashierDesk[myCashier]), myCashier);
 		}  
 		Wait(cashierToCustCV[myCashier], cashierLock[myCashier]);
 		if(type){
