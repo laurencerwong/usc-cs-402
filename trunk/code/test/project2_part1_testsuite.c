@@ -109,23 +109,7 @@ void startTestMutex(){
 	}
 }
 
-/*We will fork many threads to this same function.  Basically, they will all try to acquire a lock and then print.
- * Only one print should ever happen, because we won't ever release the lock
- */
-void testAcquire(){
-	Acquire(lock);
-	NPrint("testAcquire now printing\n", sizeof("testAcquire now printing\n"), 0, 0);
 
-}
-
-void startTestAcquire(){
-	int i;
-	lock = CreateLock();
-	for(i = 0; i < 10; i++){
-		NPrint("startTestAcquire() forking a thread\n", sizeof("startTestAcquire() forking a thread\n"), 0, 0);
-		Fork(testAcquire, "testAcquire thread", sizeof("testAcquire thread"));
-	}
-}
 
 /*We will create some condition variables, but then try to access invalid locks in acquires, releases, and destroys
  * in order to exercise the validation in condition syscalls
@@ -333,13 +317,12 @@ int main(int argc, char** argv) {
 	NPrint("3. Test Condition array boundaries\n", sizeof("2. Test Condition array boundaries\n"), 0, 0);
 	NPrint("4. Test lock array boundaries in Condition operations\n", sizeof("4. Test lock array boundaries in Condition operations\n"), 0, 0);
 	NPrint("5. Test DestroyCondition()\n", sizeof("5. Test DestroyCondition()\n"), 0, 0);
-	NPrint("6. Test Acquire()\n", sizeof("6. Test Acquire()\n"), 0, 0);
-	NPrint("7. Test mutual exclusion with locks\n", sizeof("7. Test mutual exclusion with locks\n"), 0, 0);
-	NPrint("8. Test sequencing via condition variables\n", sizeof("8. Test sequencing via condition variables\n"), 0, 0);
-	NPrint("9. Test yield\n", sizeof("9. Test yield\n"));
-	NPrint("10. Test address space verification in both locks and conditions\n", sizeof("10. Test address space verification in both locks and conditions\n"));
-	NPrint("11. Test creating too many locks\n", sizeof("11. Test creating too many locks\n"));
-	NPrint("12. Test creating too many conditions\n", sizeof("12. Test creating too many conditions\n"));
+	NPrint("6. Test mutual exclusion with locks\n", sizeof("6. Test mutual exclusion with locks\n"), 0, 0);
+	NPrint("7. Test sequencing via condition variables\n", sizeof("7. Test sequencing via condition variables\n"), 0, 0);
+	NPrint("8. Test yield\n", sizeof("8. Test yield\n"));
+	NPrint("9. Test address space verification in both locks and conditions\n", sizeof("9. Test address space verification in both locks and conditions\n"));
+	NPrint("10. Test creating too many locks\n", sizeof("10. Test creating too many locks\n"));
+	NPrint("11. Test creating too many conditions\n", sizeof("11. Test creating too many conditions\n"));
 
 	choice = ReadInt("Please enter a menu choice:\n", sizeof("Please enter a menu choice:\n"));
 	NPrint("Choice: %d\n", sizeof("Choice: %d\n"), choice, 0);
@@ -360,24 +343,21 @@ int main(int argc, char** argv) {
 		testDestroyCondition();
 		break;
 	case 6:
-		startTestAcquire();
-		break;
-	case 7:
 		startTestMutex();
 		break;
-	case 8:
+	case 7:
 		testConditionSequencing();
 		break;
-	case 9:
+	case 8:
 		testYield();
 		break;
-	case 10:
+	case 9:
 		testAddressSpaceVerification();
 		break;
-	case 11:
+	case 10:
 		testCreatingTooManyLocks();
 		break;
-	case 12:
+	case 11:
 		testCreatingTooManyConditions();
 		break;
 	default:
