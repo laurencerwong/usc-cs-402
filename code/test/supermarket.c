@@ -295,10 +295,12 @@ void initManagerArrays(){
 void initCustomerArrays(){
   int i, j;
   customerIndexLock = CreateLock("customerIndexLock", sizeof("customerIndexLock"));
+  NPrint("Customer index lock is %d\n", sizeof("Customer index lock is %d\n"), customerIndexLock);
   trollyLock  = CreateLock("trollyLock", sizeof("trollyLock"));
   trollyCount = numTrollies;
   trollyCV = CreateCondition("trollyCV", sizeof("trollyCV"));
   displacedTrollyLock = CreateLock("displacedTrollyLock", sizeof("displacedTrollyLock"));
+  NPrint("finished initializing customer arrays\n", sizeof("finished initializing customer arrays\n"));
 }
 
 
@@ -419,7 +421,7 @@ void Customer(){
 	}
 	NPrint("Item - Qty\n", sizeof("Item - Qty\n"), 0, 0);
 	for(j = 0; j < numItemsToBuy; j++){
-	  NPrint("  %d - %d\n", sizeof("  %d - %d\n"), NEncode2to1(itemsToBuy, qtyItemsToBuy[j]), 0);
+	  NPrint("  %d - %d\n", sizeof("  %d - %d\n"), NEncode2to1(itemsToBuy[j], qtyItemsToBuy[j]), 0);
 	}
 
 	/* ENTERS STORE */
@@ -1835,7 +1837,13 @@ int main(int argv, char** argc){
 	    testCustomerGettingInLine();
 	    break;
 	  case 2:
-		  Fork(Customer, "ACUST", sizeof("ACUST"));
+	    initCustomerArrays();
+	    initShelvesWithQty(5);
+	    initCashierArrays(1);
+	    initSalesmanArrays();
+	    initManagerArrays();
+	    NPrint("Customer index lock is: %d\n", sizeof("Customer index lock is: %d\n"), customerIndexLock);
+	    Fork(Customer, "ACUST", sizeof("ACUST"));
 	    break;
 	  case 3:
 	    break;
