@@ -47,7 +47,6 @@
 #define SC_V 23
 #define SC_NPrint 24
 #define SC_NEncode2to1 25
-#define SC_NDecode1to2 26
 #define SC_CreateQueue 27
 #define SC_DestroyQueue 28
 #define SC_QueuePush 29
@@ -183,7 +182,6 @@ void P(int);
 
 void NPrint(char*, int, int, int);
 int NEncode2to1(int, int);
-void NDecode1to2(int, int*, int*);
 int ReadInt(char*, int);
 int RandInt();
 

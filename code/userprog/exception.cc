@@ -596,17 +596,15 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	processIDLock.Release();
 }
 
+//encodes 2 ints into a single value. usually to allow user to pass more values to NPrint
 int NEncode2to1_Syscall(int v1, int v2) {
-	if( ((v1 & 0xffff0000) != 0) || ((v2 & 0xffff0000) != 0)) {
+	if( ((v1 & 0xffff0000) != 0) || ((v2 & 0xffff0000) != 0)) { //decode algorithm zero extends numbers, so we shouldn't get passed negative numbers
 		cout << "WARNING: values passed to NEncode2to1 should be limited to 16 bits.  "
 				<< v1 << " and " << v2 << " were passed" << endl;
 	}
 
 	int res = (v2 << 16) | (v1 & 0x0000ffff);
-	//cout << "NEncode2to1: " << v1 << " and " << v2 << " encoded to: " << res << endl;
 	return res;
-
-	//	return (v2 << 16) | (v1 & 0x0000ffff);
 }
 
 void NDecode1to2_Syscall(int v, int targetV1, int targetV2) {
@@ -630,10 +628,11 @@ void NDecode1to2_Syscall(int v, int targetV1, int targetV2) {
 	//	cout << "NDecode1to2: value 1 = " << target[0] << " value 2 = " << target[1] << endl;
 }
 
+//takes  an int and takes its upper 2 bytes and translates them into a 0 extended int,
+// same with the lower 2.  allows user to pass in encoded values to print up to 4 ints with an NPrint syscall
 void decode2to1(int v, int target[2]) {
 	target[0] = (v & 0x0000ffff);
 	target[1] = (v & 0xffff0000) >> 16;
-	//cout << "decode1to2: input : " << v << " value 1 = " << target[0] << " value 2 = " << target[1] << endl;
 }
 
 void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVal2){
@@ -930,10 +929,6 @@ void ExceptionHandler(ExceptionType which) {
 		case SC_NEncode2to1:
 			DEBUG('a', "NEncode2to1 syscall.\n");
 			rv = NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-			break;
-		case SC_NDecode1to2:
-			DEBUG('a', " NDecode1to2 syscall.\n");
-			NDecode1to2_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
 			break;
 		case SC_Exit:
 			DEBUG('a', "Exit syscall.\n");
