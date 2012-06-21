@@ -199,6 +199,7 @@ void testLockBoundariesWithConditions(){
  *
  */
 void testDestroyConditionCompanion(){
+	NPrint("Companion thread starting\n", sizeof("Companion thread starting\n"));
 	Acquire(lock);
 	Signal(condition, lock);
 	Wait(condition, lock);
@@ -230,25 +231,32 @@ void testDestroyCondition(){
 	NPrint("\n\nStarting second DestroyCondition test\n", sizeof("\n\nStarting first DestroyCondition test\n"));
 	condition = CreateCondition("testCondition", sizeof("testCondition"));
 	NPrint("Created condition\n", sizeof("Created condition\n"));
+	NPrint("Forking companion thread\n", sizeof("Forking companion thread\n"));
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
+	NPrint("About to call Wait on the condition\n", sizeof("About to call Wait on the condition\n"));
 	Wait(condition, lock);
 	DestroyCondition(condition);
 	NPrint("Destroyed condition\n", sizeof("Destroyed condition\n"));
 	NPrint("About to call Signal on the condition\n", sizeof("About to call Signal on the condition\n"));
 	Signal(condition, lock);
+	Release();
+	Yield();
 	NPrint("About to call Wait on the condition\n", sizeof("About to call Wait on the condition\n"));
 	Wait(condition, lock);
 
 	/*Method 3*/
+	Acquire(lock);
 	NPrint("\n\nStarting third DestroyCondition test\n", sizeof("\n\nStarting third DestroyCondition test\n"));
 	condition = CreateCondition("testCondition", sizeof("testCondition"));
 	Fork(testDestroyConditionCompanion, "destroy condition companion", sizeof("destroy condition companion"));
 	Wait(condition, lock);
 	DestroyLock(lock);
-	NPrint("Destroyed condition\n", sizeof("Destroyed condition\n"));
+	NPrint("Destroyed lock\n", sizeof("Destroyed lock\n"));
+	NPrint("About to call Signal on the condition\n", sizeof("About to call Signal on the condition\n"));
 	Signal(condition, lock);
 	NPrint("Releaseing lock\n", sizeof("Releasing lock\n"));
 	Release(lock);
+	Yield();
 	Acquire(lock);
 	Exit(0);
 

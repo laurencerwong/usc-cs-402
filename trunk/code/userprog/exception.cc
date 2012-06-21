@@ -888,11 +888,11 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_CreateLock:
 			DEBUG('a', "CreateLock syscall.\n");
-			CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+			rv = CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 			break;
 		case SC_CreateCondition:
 			DEBUG('a', "CreateCondition syscall.\n");
-			CreateCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+			rv = CreateCondition_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 			break;
 		case SC_Yield:
 			DEBUG('a', "Yield syscall.\n");
@@ -923,7 +923,7 @@ void ExceptionHandler(ExceptionType which) {
 			rv = NEncode2to1_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 			break;
 		case SC_NDecode1to2:
-			DEBUG('a', "NDecode1to2 syscall.\n");
+			DEBUG('a', " NDecode1to2 syscall.\n");
 			NDecode1to2_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
 			break;
 		case SC_Exit:
