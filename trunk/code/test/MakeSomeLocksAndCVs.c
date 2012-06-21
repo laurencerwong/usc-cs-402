@@ -17,6 +17,7 @@ int main() {
 	}
 
 	for(i = 0; i < 10; i++) {
+		NPrint("Creating additional threads. #%d\n", sizeof("Creating additional threads. #%d\n"), i, 0);
 		v[0][i] = CreateLock("some lock", sizeof("some lock"));
 		v[1][i] = CreateCondition("some cv", sizeof("some cv"));
 	}
