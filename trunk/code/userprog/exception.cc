@@ -242,9 +242,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	if(lockTableLock == NULL) lockTableLock = new Lock("Lock table lock");
 	lockTableLock->Acquire();
 	if(lockArraySize == 0){
-		lockTable = new LockEntry[50];
-		lockMap = new BitMap(50);
-		lockArraySize = 50;
+		lockTable = new LockEntry[500];
+		lockMap = new BitMap(500);
+		lockArraySize = 500;
 	}
 	int nextFreeIndex = lockMap->Find();
 	if(nextFreeIndex == -1){
@@ -259,6 +259,8 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 		nextFreeIndex = lockMap->Find();
 	}
 	lockTableLock->Release();
+	ioLock->Acquire();
+	printf("creating %s lock of index of %d\n", name, nextFreeIndex);
 	lockTable[nextFreeIndex].lock = new Lock (name);
 	lockTable[nextFreeIndex].lockSpace = currentThread->space;
 	lockTable[nextFreeIndex].isToBeDeleted = false;
@@ -272,9 +274,9 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	if(conditionTableLock == NULL) conditionTableLock = new Lock("Condition table lock");
 	conditionTableLock->Acquire();
 	if(conditionArraySize == 0){
-		conditionTable = new ConditionEntry[50];
-		conditionMap = new BitMap(50);
-		conditionArraySize = 50;
+		conditionTable = new ConditionEntry[500];
+		conditionMap = new BitMap(500);
+		conditionArraySize = 500;
 	}
 	int nextFreeIndex = conditionMap->Find();
 	if(nextFreeIndex == -1){
@@ -289,6 +291,7 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 		nextFreeIndex = conditionMap->Find();
 	}
 	conditionTableLock->Release();
+	printf("creating %s CV of index of %d\n", name, nextFreeIndex);	
 	conditionTable[nextFreeIndex].condition = new Condition (name);
 	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
 	conditionTable[nextFreeIndex].isToBeDeleted = false;
