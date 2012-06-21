@@ -32,7 +32,7 @@ INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
-HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket
+HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket
 
 
 start.o: start.s ../userprog/syscall.h
@@ -63,6 +63,12 @@ supermarket.o: supermarket.c
 supermarket: supermarket.o start.o
 	$(LD) $(LDFLAGS) start.o supermarket.o -o supermarket.coff
 	../bin/coff2noff supermarket.coff supermarket
+	
+startsupermarket.o: startsupermarket.c
+	$(CC) $(CFLAGS) -c startsupermarket.c
+startsupermarket: startsupermarket.o start.o
+	$(LD) $(LDFLAGS) start.o startsupermarket.o -o startsupermarket.coff
+	../bin/coff2noff startsupermarket.coff startsupermarket
 
 addrspace_verification.o: addrspace_verification.c
 	$(CC) $(CFLAGS) -c addrspace_verification.c
