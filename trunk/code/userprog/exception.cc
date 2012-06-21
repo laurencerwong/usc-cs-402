@@ -707,11 +707,11 @@ void Exit_Syscall() {
 		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
 		//cout << "last stack page" << lastStackPage << endl;
 
-		/*for(int i = 0; i < 7; i++) {
+		for(int i = 0; i < 7; i++) {
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
 			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
-		}*/
+		}
 
 		processIDLock.Release();
 		currentThread->Finish();

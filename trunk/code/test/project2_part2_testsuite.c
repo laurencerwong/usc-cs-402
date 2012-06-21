@@ -97,6 +97,10 @@ void testInfiniteExecs() {
 	}
 }
 
+void testClearingLocksAndCVsOnExit() {
+	Exec("../test/MaxThreadMaker", sizeof("../test/MaxThreadMaker"), "MaxThreadMaker main", sizeof("MaxThreadMaker main"));
+}
+
 int main(int argc, char** argv) {
 	int choice = -1;
 	int loop = 1;

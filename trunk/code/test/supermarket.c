@@ -213,7 +213,7 @@ void initCashierArrays(int numCashiersIn){
 	for( i = 0; i < numCashiersIn; i++){
 		total[i] = 0;
 		custID[i] = 0;
-                unprivilegedCashierLineCV[i] = CreateCondition("unprivilegedCashierLineCV", sizeof("privilegedCashierLineCV"));
+		unprivilegedCashierLineCV[i] = CreateCondition("unprivilegedCashierLineCV", sizeof("privilegedCashierLineCV"));
 		privilegedCashierLineCV[i] = CreateCondition("privilegedCashierLineCV", sizeof("privilegedCashierLineCV"));
 		cashierLock[i] = CreateLock("cashierLock", sizeof("cashierLock"));
 		cashierToCustCV[i] = CreateCondition("cashierToCustCV", sizeof("cashierToCustCV"));
