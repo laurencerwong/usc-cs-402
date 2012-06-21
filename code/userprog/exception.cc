@@ -259,6 +259,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	ioLock->Acquire(); //make sure our print is done atomically
 	printf("creating %s lock of index of %d\n", name, nextFreeIndex);
 	ioLock->Release();
+	//initialize the lockTable entry we grabbed for this lock
 	lockTable[nextFreeIndex].lock = new Lock (name);
 	lockTable[nextFreeIndex].lockSpace = currentThread->space;
 	lockTable[nextFreeIndex].isToBeDeleted = false;
@@ -266,25 +267,29 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	return nextFreeIndex;
 }
 
+//Create a condition to be stored in kernel array conditionTable.
+//Can at most have MAX_LOCK_CONDITIONS number of condition or abort
 int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
-	if(conditionTableLock == NULL) conditionTableLock = new Lock("Condition table lock");
+	if(conditionTableLock == NULL) conditionTableLock = new Lock("Condition table lock"); //should execute only on the first call in a run of nachos
+	//this lock protects the BitMap and size for the conditionTable
 	conditionTableLock->Acquire();
-	if(conditionArraySize == 0){
+	if(conditionArraySize == 0){ //should only execute on first call to this function in a run of nachos
 		conditionTable = new ConditionEntry[MAX_LOCKS_CONDITIONS];
 		conditionMap = new BitMap(MAX_LOCKS_CONDITIONS);
 		conditionArraySize = MAX_LOCKS_CONDITIONS;
 	}
 	int nextFreeIndex = conditionMap->Find();
-	if(nextFreeIndex == -1){
+	if(nextFreeIndex == -1){ //error, kernel is out of memory for locks and should terminate
 		printf("Fatal system error, too many condition variables! Shut it down!\n");
 		interrupt->Halt();
 	}
 	conditionTableLock->Release();
-	ioLock->Acquire();
+	ioLock->Acquire(); //make sure our print is atomic
 	printf("creating %s CV of index of %d\n", name, nextFreeIndex);	
 	ioLock->Release();
+	//initialize the lockTable entry we grabbed for this lock
 	conditionTable[nextFreeIndex].condition = new Condition (name);
 	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
 	conditionTable[nextFreeIndex].isToBeDeleted = false;
@@ -292,109 +297,112 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 }
 
 void Signal_Syscall(int conditionIndex, int lockIndex){
-	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+	IntStatus oldLevel = interrupt->SetLevel(IntOff); //turn off interrupts since we need our validations to be atomic
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!conditionMap->Test(conditionIndex)){
+	if(!conditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
 		printf("Thread %s called Signal on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){ //the condition at this index belongs to another process
 		printf("Thread %s called Signal on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){
+	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
+	if(lockTable[lockIndex].lockSpace != currentThread->space){ //the lock at this index belongs to another process
 		printf("Thread %s called Signal on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
+	//validation done, ok to perform operation
 	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex].lock);
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 }
 
 void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!conditionMap->Test(conditionIndex)){
+	if(!conditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
 		printf("Thread %s called Broadcast on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){ //the condition at this index belongs to another process
 		printf("Thread %s called Broadcast on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){
+	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Broadcast with a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
+	if(lockTable[lockIndex].lockSpace != currentThread->space){ //the lock at this index belongs to another process
 		printf("Thread %s called Broadcast with lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
+	//validation done, ok to perform operation
 	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 }
 
 void Wait_Syscall(int conditionIndex, int lockIndex){
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!conditionMap->Test(conditionIndex)){
+	if(!conditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
 		printf("Thread %s called Wait on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){ //the condition at this index belongs to another process
 		printf("Thread %s called Wait on condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Wait with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){
+	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Wait with a lock index that does not exist: %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
+	if(lockTable[lockIndex].lockSpace != currentThread->space){ //the lock at this index belongs to another process
 		printf("Thread %s called Wait with lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
+	//validation done, ok to perform operation
 	conditionTable[conditionIndex].condition->Wait(lockTable[lockIndex].lock);
 	if(conditionTable[conditionIndex].isToBeDeleted){
 		if(!(conditionTable[conditionIndex].condition->hasWaiting())){
@@ -407,21 +415,22 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 
 void DestroyLock_Syscall(int lockIndex){
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s tried to destroy a lock with an invalid index %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){
+	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s tried to destroy a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
+	if(lockTable[lockIndex].lockSpace != currentThread->space){ //the lock at this index belongs to another process
 		printf("Thread %s tried to destroy a lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
+	//validation done, ok to perform operation
 	if(!(lockTable[lockIndex].lock->isBusy() && lockTable[lockIndex].acquireCount == 0)){
 		delete lockTable[lockIndex].lock;
 		lockMap->Clear(lockIndex);
@@ -434,22 +443,23 @@ void DestroyLock_Syscall(int lockIndex){
 
 void DestroyCondition_Syscall(int conditionIndex){
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){
+	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s tried to delete a condition with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!conditionMap->Test(conditionIndex)){
+	if(!conditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
 		printf("Thread %s tried to delete a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){
+	if(conditionTable[conditionIndex].conditionSpace != currentThread->space){ //the condition at this index belongs to another process
 		printf("Thread %s tried to delete condition %d which does not belong to its address space\n", currentThread->getName(), conditionIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!(conditionTable[conditionIndex].condition->hasWaiting())){
+	//validation done, ok to perform operation
+	if(!(conditionTable[conditionIndex].condition->hasWaiting())){ //the lock at this index belongs to another process
 		delete conditionTable[conditionIndex].condition;
 		conditionMap->Clear(conditionIndex);
 	}
@@ -466,21 +476,22 @@ void Yield_Syscall(){
 
 void Acquire_Syscall(int lockIndex){
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Acquire with an invalid index %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){
+	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Acquire on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
+	if(lockTable[lockIndex].lockSpace != currentThread->space){ //the lock at this index belongs to another process
 		printf("Thread %s called Acquire on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
+	//validation done, ok to perform operation
 	lockTable[lockIndex].acquireCount++;
 	lockTable[lockIndex].lock->Acquire();
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
@@ -488,21 +499,22 @@ void Acquire_Syscall(int lockIndex){
 
 void Release_Syscall(int lockIndex){
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){
+	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Release with an invalid index %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){
+	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Release on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
-	if(lockTable[lockIndex].lockSpace != currentThread->space){
+	if(lockTable[lockIndex].lockSpace != currentThread->space){ //the lock at this index belongs to another process
 		printf("Thread %s called Release on lock %d which does not belong to its address space\n", currentThread->getName(), lockIndex);
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 		return;
 	}
+	//validation done, ok to perform operation
 	lockTable[lockIndex].acquireCount--;
 	lockTable[lockIndex].lock->Release();
 	if(lockTable[lockIndex].isToBeDeleted && lockTable[lockIndex].acquireCount == 0){
