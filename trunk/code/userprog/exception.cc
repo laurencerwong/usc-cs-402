@@ -536,7 +536,6 @@ void Create_Kernel_Thread_Fork(unsigned int vaddr){
 	currentThread->space->RestoreState();
 	int stackLoc = (currentThread->space->numExecutablePages /*numCodeDataPages*/ + ((currentThread->threadID /*offset*/ + 1) * 8)) * PageSize - 16;
 	processTable[currentThread->space->processID].threadStacks[currentThread->threadID] = (currentThread->space->numExecutablePages + ((currentThread->threadID + 1) * 8));
-	//cout << "creating thread with stack loc: " << stackLoc << endl;
 	machine->WriteRegister(StackReg, stackLoc );
 	machine->Run();
 }
@@ -550,20 +549,14 @@ void Create_Kernel_Thread_Exec() {
 void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 	char* name = new char[length + 1];
 	copyin(nameIndex, length, name);
-	//cout << "Forking a new thread..." << endl;
 	Thread* t = new Thread(name);
 	t->space = currentThread->space;
-	//cout << "New thread's address space set to the current address space" << endl;
 	processIDLock.Acquire();
-	//cout << "Process table lock acquired" << endl;
 	t->threadID = processTable[t->space->processID].nextThreadID;
 	processTable[t->space->processID].nextThreadID++;
 	processTable[t->space->processID].numThreadsAlive++;
 	processIDLock.Release();
-	//cout << "Process table lock released, IDs set" << endl;
-
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Fork, vaddr);
-	//cout << "Thread Forked" << endl;
 }
 
 void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIndex, int nameLength){
