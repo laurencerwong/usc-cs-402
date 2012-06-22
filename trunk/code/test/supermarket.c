@@ -369,13 +369,7 @@ void Customer(){
 	myID = nextCustomerIndex;
 	nextCustomerIndex++;
 	Release(customerIndexLock);
-	for(i = 0; i < MAX_ITEMS_TO_BUY; i++){
-		itemsToBuy[i] = -1;
-		qtyItemsToBuy[i] = -1;
-		itemsInCart[i] = -1;
-		qtyItemsInCart[i] = -1;
-	}
-	/*choose the items we want to buy */
+
 
 	/* setup some initialization for specific tests */
 	if(testNumber == 8 || testNumber ==10){

@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
 		NPrint("1. Test printing and print encoding\n", sizeof("1. Test printing and print encoding\n"), 0, 0);
 		NPrint("2. Test fork\n", sizeof("2. Test fork\n"), 0, 0);
 		NPrint("3. Test exec\n", sizeof("3. Test exec\n"), 0, 0);
-		NPrint("4. Test more complicated fork and exec\n", sizeof("4. Test more complicated fork and exec\n"), 0, 0);
+		NPrint("4. Test more complicated fork and exec (also validates exit working for the threads and processes)\n", sizeof("4. Test more complicated fork and exec (also validates exit working for the threads and processes)\n"), 0, 0);
 		NPrint("5. Test running out of memory\n", sizeof("5. Test running out of memory\n"), 0, 0);
 		NPrint("6. Test clearing locks and CVs on process exit\n", sizeof("6. Test clearing locks and CVs on process exit\n"), 0, 0);
 		NPrint("7. Test creating the maximum umber of threads\n", sizeof("7. Test creating the maximum umber of threads\n"), 0, 0);
