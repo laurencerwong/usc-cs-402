@@ -575,7 +575,7 @@ void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 
 //syscall a user accesses when they exec.  first two arguments are how the executable name is retrieved,
 //second two are so the user can name the kernel level thread
-void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIndex, int nameLength){
+int Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIndex, int nameLength){
 	char* buf = new char[filenameLength + 1];
 	copyin(fileName, filenameLength, buf);  //retrieve executable name
 	OpenFile *executable = fileSystem->Open(buf);
@@ -603,8 +603,8 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	processTable[space->processID].numThreadsAlive++;
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
 	processIDLock.Release();
-
 	delete executable;
+	return space->processID;
 }
 
 //encodes 2 ints into a single value. usually to allow user to pass more values to NPrint
@@ -930,7 +930,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_Exec:
 			DEBUG('a', "Exec syscall.\n");
-			Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+			rv = Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 			break;
 		case SC_NPrint:
 			DEBUG('a', "NPrint syscall.\n");
