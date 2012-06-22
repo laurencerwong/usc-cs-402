@@ -7,7 +7,10 @@
 
 int main(){
 	Exec("../test/supermarket", sizeof("../test/supermarket"), "supermarket thread 1", sizeof("supermarket thread 1"));
-	Exec("../test/supermarket", sizeof("../test/supermarket"), "supermarket thread 2", sizeof("supermarket thread 2"));
+	/*Exec("../test/supermarket", sizeof("../test/supermarket"), "supermarket thread 2", sizeof("supermarket thread 2"));*/
+	while(1) {
+		Yield();
+	}
 	for(;;){
 		Yield();
 	}

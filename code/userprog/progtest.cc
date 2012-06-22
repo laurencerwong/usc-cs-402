@@ -33,10 +33,11 @@ StartProcess(char *filename)
 		return;
 	}
 
-	space = new AddrSpace(executable);
 
 #ifdef CHANGED
 	processIDLock.Acquire();
+	space = new AddrSpace(executable);
+
 	if(nextProcessID == MAX_PROCESSES){
 		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
 		interrupt->Halt();

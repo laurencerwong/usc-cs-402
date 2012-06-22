@@ -564,6 +564,7 @@ void Fork_Syscall(unsigned int vaddr, unsigned int nameIndex, int length){
 	copyin(nameIndex, length, name); //retrieve name for thread
 	Thread* t = new Thread(name);
 	t->space = currentThread->space;
+
 	processIDLock.Acquire(); //threadIDs must be retrieved in mutually exclusive manner
 	t->threadID = processTable[t->space->processID].nextThreadID;
 	processTable[t->space->processID].nextThreadID++; //update so next thread doesn't grab this thread's ID
@@ -590,9 +591,11 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	space->processID = nextProcessID;
 	numLivingProcesses++; //information for Exit
 	nextProcessID++; //make sure no one else can get our id
+
 	buf = new char[nameLength];
 	copyin(nameIndex, nameLength, buf); //retrieve user's desired thread name
 	Thread* t = new Thread(buf);
+
 	t->space = space;
 	t->threadID = processTable[space->processID].nextThreadID; //have to also set thread id
 	processTable[space->processID].processID = space->processID;
@@ -600,6 +603,8 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 	processTable[space->processID].numThreadsAlive++;
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
 	processIDLock.Release();
+
+	delete executable;
 }
 
 //encodes 2 ints into a single value. usually to allow user to pass more values to NPrint
