@@ -11,7 +11,8 @@ int main(){
 	while(1) {
 		Yield();
 	}
-	for(;;){
+	Exit(0);
+	/*for(;;){
 		Yield();
-	}
+	}*/
 }

@@ -194,6 +194,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 AddrSpace::~AddrSpace()
 {
     delete pageTable;
+    currentThread->Finish();
 }
 
 //----------------------------------------------------------------------
