@@ -240,7 +240,7 @@ void Close_Syscall(int fd) {
 //Create a lock to be stored in kernel array lockTable.
 //Can at most have MAX_LOCK_CONDITIONS number of locks, or abort
 int CreateLock_Syscall(unsigned int nameIndex, int length){
-	char* name = new char[length + 1]; //allow user to pass in lock name for debug pruposes
+	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
 	//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
@@ -255,9 +255,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 		interrupt->Halt();
 	}
 	lockTableLock->Release();
-	ioLock->Acquire(); //make sure our print is done atomically
-	printf("creating %s lock of index of %d\n", name, nextFreeIndex);
-	ioLock->Release();
+	//ioLock->Acquire(); //make sure our print is done atomically
+	//printf("creating %s lock of index of %d\n", name, nextFreeIndex);
+	//ioLock->Release();
 	//initialize the lockTable entry we grabbed for this lock
 	lockTable[nextFreeIndex].lock = new Lock (name);
 	lockTable[nextFreeIndex].lockSpace = currentThread->space;
@@ -284,9 +284,9 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 		interrupt->Halt();
 	}
 	conditionTableLock->Release();
-	ioLock->Acquire(); //make sure our print is atomic
-	printf("creating %s CV of index of %d\n", name, nextFreeIndex);	
-	ioLock->Release();
+	//ioLock->Acquire(); //make sure our print is atomic
+	//printf("creating %s CV of index of %d\n", name, nextFreeIndex);
+	//ioLock->Release();
 	//initialize the lockTable entry we grabbed for this lock
 	conditionTable[nextFreeIndex].condition = new Condition (name);
 	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
@@ -610,8 +610,8 @@ void Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameIn
 //encodes 2 ints into a single value. usually to allow user to pass more values to NPrint
 int NEncode2to1_Syscall(int v1, int v2) {
 	if( ((v1 & 0xffff0000) != 0) || ((v2 & 0xffff0000) != 0)) { //decode algorithm zero extends numbers, so we shouldn't get passed negative numbers
-		cout << "WARNING: values passed to NEncode2to1 should be limited to 16 bits.  "
-				<< v1 << " and " << v2 << " were passed" << endl;
+		//cout << "WARNING: values passed to NEncode2to1 should be limited to 16 bits.  "
+			//	<< v1 << " and " << v2 << " were passed" << endl;
 	}
 
 	int res = (v2 << 16) | (v1 & 0x0000ffff);
@@ -662,7 +662,6 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 
 
 void Exit_Syscall() {
-
 	processIDLock.Acquire();
 
 	if(numLivingProcesses == 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
@@ -671,19 +670,13 @@ void Exit_Syscall() {
 	}
 	else if(numLivingProcesses > 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
 		//I am the last thread in a process, but there are other processes
+		int i;
 		AddrSpace *currentSpace = currentThread->space;
 
 		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
 
-		for(int i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
-			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
-		}
-		for(int i = 0; i < currentSpace->numExecutablePages; i++) {
-			mainMemoryBitmap->Clear(machine->pageTable[i].physicalPage);
-		}
-
 		lockTableLock->Acquire();
-		for(int i = 0; i < lockArraySize; i++) { //delete all locks so that other processes can use the space
+		for(i = 0; i < lockArraySize; i++) { //delete all locks so that other processes can use the space
 			if(lockTable[i].lockSpace == currentSpace) {
 				lockTable[i].lockSpace = NULL;
 				lockTable[i].isToBeDeleted = false;
@@ -693,8 +686,8 @@ void Exit_Syscall() {
 		}
 		lockTableLock->Release();
 
-		conditionTableLock->Acquire();
-		for(int i = 0; i < conditionArraySize; i++) { //delete all conditions so other processes can use the space
+		//conditionTableLock->Acquire();
+		for(i = 0; i < conditionArraySize; i++) { //delete all conditions so other processes can use the space
 			if(conditionTable[i].conditionSpace == currentSpace) {
 				conditionTable[i].conditionSpace = NULL;
 				conditionTable[i].isToBeDeleted = false;
@@ -702,12 +695,19 @@ void Exit_Syscall() {
 				conditionMap->Clear(i);
 			}
 		}
-		conditionTableLock->Release();
 
-		delete currentThread->space;
+		//conditionTableLock->Release();
 		numLivingProcesses--;
+		for(i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
+			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
+		}
 
+		for(i = 0; i < currentSpace->numExecutablePages; i++) {
+			mainMemoryBitmap->Clear(machine->pageTable[i].physicalPage);
+		}
 		processIDLock.Release();
+		currentThread->Finish();
+		delete currentThread->space;
 		currentThread->Finish();
 	}
 	else if(processTable[currentThread->space->processID].numThreadsAlive > 1) { //other threads are alive in my process
