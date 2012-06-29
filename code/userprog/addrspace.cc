@@ -160,6 +160,13 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     		interrupt->Halt();
     	}
     	else {
+    		IPT[newPhysPage].space = this;
+    		IPT[newPhysPage].virtualPage = i;
+    		IPT[newPhysPage].physicalPage = newPhysPage;
+    		IPT[newPhysPage].valid = TRUE;
+    		IPT[newPhysPage].use = FALSE;
+    		IPT[newPhysPage].dirty = FALSE;
+    		IPT[newPhysPage].readOnly = FALSE;
     		//this is setting up the translation from virtual to physical page
     		pageTable[i].physicalPage = newPhysPage;
     	}

@@ -700,6 +700,7 @@ void Exit_Syscall() {
 		numLivingProcesses--;
 		for(i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
 			mainMemoryBitmap->Clear(currentThread->space->pageTable[lastStackPage - i].physicalPage);
+			IPT[currentThread->space->pageTable[lastStackPage -i].virtualPage].valid = FALSE;
 		}
 
 		for(i = 0; i < currentSpace->numExecutablePages; i++) {
@@ -726,6 +727,7 @@ void Exit_Syscall() {
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
 			mainMemoryBitmap->Clear(currentThread->space->pageTable[lastStackPage - i].physicalPage);
+			IPT[currentThread->space->pageTable[lastStackPage -i].virtualPage].valid = FALSE;
 		}
 
 		processIDLock.Release();
@@ -848,17 +850,25 @@ int RandInt_Syscall() {
 
 void HandlePageFault(){
 	IntStatus old = interrupt->SetLevel(IntOff);
-//	cout << "Handling page fault" << endl;
-	//cout << "currentTlb = " << currentTLB << endl;
 	int vpn = machine->ReadRegister(BadVAddrReg)/128;
-	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
-	machine->tlb[currentTLB].physicalPage = currentThread->space->pageTable[vpn].physicalPage;
-	machine->tlb[currentTLB].valid = true;
+//	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
+//	machine->tlb[currentTLB].physicalPage = currentThread->space->pageTable[vpn].physicalPage;
+//	machine->tlb[currentTLB].valid = true;
+	int ppn = -1;
+	for(int i = 0; i < NumPhysPages; i++){
+		if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space){
+			ppn = i;
+			break;
+		}
+	}
+	machine->tlb[currentTLB].virtualPage = IPT[ppn].virtualPage;
+	machine->tlb[currentTLB].physicalPage = IPT[ppn].physicalPage;
+	machine->tlb[currentTLB].valid = IPT[ppn].valid;
+	machine->tlb[currentTLB].use = IPT[ppn].use;
+	machine->tlb[currentTLB].dirty = IPT[ppn].dirty;
+	machine->tlb[currentTLB].readOnly = IPT[ppn].readOnly;
 	currentTLB++;
 	currentTLB %= TLBSize;
-//	for(int i = 0;i < TLBSize; i++){
-//		cout << "tlb entry " << i << ".valid = " << machine->tlb[i].valid << endl;
-//	}
 	(void)interrupt->SetLevel(old);
 }
 
