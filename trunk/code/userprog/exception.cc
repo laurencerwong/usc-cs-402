@@ -699,11 +699,11 @@ void Exit_Syscall() {
 		//conditionTableLock->Release();
 		numLivingProcesses--;
 		for(i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
-			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
+			mainMemoryBitmap->Clear(currentThread->space->pageTable[lastStackPage - i].physicalPage);
 		}
 
 		for(i = 0; i < currentSpace->numExecutablePages; i++) {
-			mainMemoryBitmap->Clear(machine->pageTable[i].physicalPage);
+			mainMemoryBitmap->Clear(currentThread->space->pageTable[i].physicalPage);
 		}
 		processIDLock.Release();
 		currentThread->Finish();
@@ -725,7 +725,7 @@ void Exit_Syscall() {
 		for(int i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
-			mainMemoryBitmap->Clear(machine->pageTable[lastStackPage - i].physicalPage);
+			mainMemoryBitmap->Clear(currentThread->space->pageTable[lastStackPage - i].physicalPage);
 		}
 
 		processIDLock.Release();
@@ -848,12 +848,17 @@ int RandInt_Syscall() {
 
 void HandlePageFault(){
 	IntStatus old = interrupt->SetLevel(IntOff);
-	cout << "Handling page fault" << endl;
-	int vpn = machine->ReadRegister(BadVAddrReg)/PageSize;
+//	cout << "Handling page fault" << endl;
+	//cout << "currentTlb = " << currentTLB << endl;
+	int vpn = machine->ReadRegister(BadVAddrReg)/128;
 	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
+	machine->tlb[currentTLB].physicalPage = currentThread->space->pageTable[vpn].physicalPage;
 	machine->tlb[currentTLB].valid = true;
 	currentTLB++;
 	currentTLB %= TLBSize;
+//	for(int i = 0;i < TLBSize; i++){
+//		cout << "tlb entry " << i << ".valid = " << machine->tlb[i].valid << endl;
+//	}
 	(void)interrupt->SetLevel(old);
 }
 
