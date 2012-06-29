@@ -661,8 +661,9 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 }
 
 
-void Exit_Syscall() {
+void Exit_Syscall(int input) {
 	processIDLock.Acquire();
+	cout << "exited with value of " << input << endl;
 
 	if(numLivingProcesses == 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
 		//I am the last thread of the last process
@@ -968,8 +969,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_Exit:
 			DEBUG('a', "Exit syscall.\n");
-			rv = machine->ReadRegister(4);
-			Exit_Syscall();
+			Exit_Syscall(rv = machine->ReadRegister(4));
 			break;
 		case SC_ReadInt:
 			DEBUG('a', "ReadInt syscall.\n");

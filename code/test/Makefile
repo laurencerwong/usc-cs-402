@@ -32,7 +32,8 @@ INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
-HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket
+HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
+exec_matmult
 
 
 start.o: start.s ../userprog/syscall.h
@@ -45,6 +46,12 @@ halt.o: halt.c
 halt: halt.o start.o
 	$(LD) $(LDFLAGS) start.o halt.o -o halt.coff
 	../bin/coff2noff halt.coff halt
+
+exec_matmult.o: exec_matmult.c
+	$(CC) $(CFLAGS) -c exec_matmult.c
+exec_matmult: exec_matmult.o start.o
+	$(LD) $(LDFLAGS) start.o exec_matmult.o -o exec_matmult.coff
+	../bin/coff2noff exec_matmult.coff exec_matmult
 	
 project2_part1_testsuite.o: project2_part1_testsuite.c
 	$(CC) $(CFLAGS) -c project2_part1_testsuite.c
