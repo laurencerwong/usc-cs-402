@@ -22,7 +22,7 @@ ProcessEntry processTable[MAX_PROCESSES];
 int nextProcessID = 0;
 Lock processIDLock = Lock("Process ID Lock");
 int numLivingProcesses = 0;
-currentTLB = 0;
+int currentTLB = 0;
 
 #endif
 Thread *currentThread;			// the thread we are running now
