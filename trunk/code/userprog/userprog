@@ -846,16 +846,6 @@ int RandInt_Syscall() {
 	return rand();
 }
 
-void HandlePageFault(){
-	int old = interrupt->setLevel(IntOff);
-	int vpn = machine->ReadRegister(BadVaddrReg)/PageSize;
-	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
-	machine->tlb[currentTLB].virtualPage.valid = true;
-	currentTLB++;
-	currentTLB %= TLBSize;
-	(void)interrupt->setLevel(old);
-}
-
 //#endif
 
 void ExceptionHandler(ExceptionType which) {
@@ -1007,12 +997,7 @@ void ExceptionHandler(ExceptionType which) {
 		machine->WriteRegister(PCReg,machine->ReadRegister(NextPCReg));
 		machine->WriteRegister(NextPCReg,machine->ReadRegister(PCReg)+4);
 		return;
-
-	}
-	else if(which == PageFaultException){
-		HandlePageFault();
-	}
-		else {
+	} else {
 		cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
 		interrupt->Halt();
 	}

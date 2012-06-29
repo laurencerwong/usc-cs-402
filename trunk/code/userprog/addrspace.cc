@@ -245,7 +245,12 @@ AddrSpace::InitRegisters()
 //----------------------------------------------------------------------
 
 void AddrSpace::SaveState() 
-{}
+{
+	//invalidating tlb
+	for(int i = 0; i < TLBSize; i++){
+		machine->tlb[i].valid = false;
+	}
+}
 
 //----------------------------------------------------------------------
 // AddrSpace::RestoreState
@@ -257,6 +262,6 @@ void AddrSpace::SaveState()
 
 void AddrSpace::RestoreState() 
 {
-    machine->pageTable = pageTable;
-    machine->pageTableSize = numPages;
+//    machine->pageTable = pageTable;
+//    machine->pageTableSize = numPages;
 }
