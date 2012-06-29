@@ -847,13 +847,14 @@ int RandInt_Syscall() {
 }
 
 void HandlePageFault(){
-	int old = interrupt->setLevel(IntOff);
-	int vpn = machine->ReadRegister(BadVaddrReg)/PageSize;
+	IntStatus old = interrupt->SetLevel(IntOff);
+	cout << "Handling page fault" << endl;
+	int vpn = machine->ReadRegister(BadVAddrReg)/PageSize;
 	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
-	machine->tlb[currentTLB].virtualPage.valid = true;
+	machine->tlb[currentTLB].valid = true;
 	currentTLB++;
 	currentTLB %= TLBSize;
-	(void)interrupt->setLevel(old);
+	(void)interrupt->SetLevel(old);
 }
 
 //#endif
