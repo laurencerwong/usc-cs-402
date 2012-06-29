@@ -13,7 +13,7 @@
 #ifdef CHANGED
 BitMap *mainMemoryBitmap;
 AddrSpace **pageOwners;
-Lock *processTableLock;
+Lock *processTableLock;;
 Lock *ioLock;
 Lock* lockTableLock;
 Lock* conditionTableLock;
@@ -23,6 +23,8 @@ int nextProcessID = 0;
 Lock processIDLock = Lock("Process ID Lock");
 int numLivingProcesses = 0;
 int currentTLB = 0;
+
+IPTEntry* IPT;
 
 #endif
 Thread *currentThread;			// the thread we are running now
@@ -183,6 +185,7 @@ Initialize(int argc, char **argv)
     pageOwners = new AddrSpace*[NumPhysPages];
     lockTableLock = new Lock("lockTable lock");
     conditionTableLock = new Lock("conditionTable lock");
+    IPT = new IPTEntry[NumPhysPages];
 
     for(int i = 0; i < MAX_PROCESSES; i++) {
     	processTable[i].numThreadsAlive = 0;

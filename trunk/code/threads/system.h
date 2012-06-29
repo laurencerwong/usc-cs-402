@@ -22,6 +22,7 @@
 //#include "../userprog/addrspace.h"
 #include "synch.h"
 #include "machine.h"
+#include "IPTEntry.h"
 
 #define MAX_THREADS 100
 #define MAX_PROCESSES (NumPhysPages / (12 +  8 * MAX_THREADS))
@@ -54,6 +55,8 @@ extern Lock* lockTableLock;
 extern Lock* conditionTableLock;
 
 extern int currentTLB;
+
+extern IPTEntry* IPT;
 
 #endif
 

@@ -51,7 +51,8 @@ THREAD_H =../threads/copyright.h\
 	../machine/timer.h\
 	../userprog/bitmap.h\
 	../userprog/addrspace.h\
-	../machine/machine.h	
+	../machine/machine.h\
+	../userprog/IPTEntry.h
 
 THREAD_C =../threads/main.cc\
 	../threads/list.cc\
@@ -80,7 +81,8 @@ USERPROG_H = ../userprog/addrspace.h\
 	../machine/console.h\
 	../machine/machine.h\
 	../machine/mipssim.h\
-	../machine/translate.h
+	../machine/translate.h\
+	../userprog/IPTEntry.h
 
 USERPROG_C = ../userprog/addrspace.cc\
 	../userprog/bitmap.cc\
@@ -94,7 +96,7 @@ USERPROG_C = ../userprog/addrspace.cc\
 USERPROG_O = addrspace.o bitmap.o exception.o progtest.o console.o machine.o \
 	mipssim.o translate.o
 
-VM_H = 
+VM_H = ../userprog/IPTEntry.h
 VM_C = 
 VM_O = 
 

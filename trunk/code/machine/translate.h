@@ -42,4 +42,5 @@ class TranslationEntry {
 			// page is modified.
 };
 
+
 #endif
