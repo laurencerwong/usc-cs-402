@@ -53,6 +53,8 @@ extern Lock* ioLock;
 extern Lock* lockTableLock;
 extern Lock* conditionTableLock;
 
+extern int currentTLB;
+
 #endif
 
 extern Thread *currentThread;			// the thread holding the CPU
