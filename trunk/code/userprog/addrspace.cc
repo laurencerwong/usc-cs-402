@@ -18,7 +18,6 @@
 #include "copyright.h"
 #include "system.h"
 #include "addrspace.h"
-#include "noff.h"
 #include "table.h"
 #include "synch.h"
 
@@ -119,7 +118,7 @@ SwapHeader (NoffHeader *noffH)
 
 #ifdef CHANGED
 AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
-    NoffHeader noffH;
+	this->executable = executable;
     unsigned int i, size;
 
 
@@ -133,7 +132,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     	SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
 
-    size = noffH.code.size + noffH.initData.size + noffH.uninitData.size ;
+    size = noffH.code.size + noffH.initData.size + noffH.uninitData.size;
     numPages = divRoundUp(size, PageSize) + MAX_THREADS * divRoundUp(UserStackSize,PageSize); // i think we add divRoundUp(UserStackSize,PageSize) for the number of max_threads
                                                 // we need to increase the size
 						// to leave room for the stack
@@ -149,28 +148,28 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 
     //remember this so we can allocate stacks later taking this into account
     //also useful for an exiting process, so we can free the main memory physical pages we will allocate
-    numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
-
+    //numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
+    numExecutablePages = numPages;
     pageTable = new TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
     	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-    	int newPhysPage = mainMemoryBitmap->Find();
-    	if(newPhysPage == -1) {
-    		cout << "ERROR: Out of memory" << endl;
-    		interrupt->Halt();
-    	}
-    	else {
-    		IPT[newPhysPage].space = this;
-    		IPT[newPhysPage].virtualPage = i;
-    		IPT[newPhysPage].physicalPage = newPhysPage;
-    		IPT[newPhysPage].valid = TRUE;
-    		IPT[newPhysPage].use = FALSE;
-    		IPT[newPhysPage].dirty = FALSE;
-    		IPT[newPhysPage].readOnly = FALSE;
-    		//this is setting up the translation from virtual to physical page
-    		pageTable[i].physicalPage = newPhysPage;
-    	}
-    	pageTable[i].valid = TRUE;
+    	//int newPhysPage = mainMemoryBitmap->Find();
+//    	if(newPhysPage == -1) {
+//    		cout << "ERROR: Out of memory" << endl;
+//    		interrupt->Halt();
+//    	}
+//    	else {
+//    		IPT[newPhysPage].space = this;
+//    		IPT[newPhysPage].virtualPage = i;
+//    		IPT[newPhysPage].physicalPage = newPhysPage;
+//    		IPT[newPhysPage].valid = FALSE;
+//    		IPT[newPhysPage].use = FALSE;
+//    		IPT[newPhysPage].dirty = FALSE;
+//    		IPT[newPhysPage].readOnly = FALSE;
+//    		//this is setting up the translation from virtual to physical page
+//    		pageTable[i].physicalPage = newPhysPage;
+//    	}
+    	pageTable[i].valid = FALSE;
     	pageTable[i].use = FALSE;
     	pageTable[i].dirty = FALSE;
     	pageTable[i].readOnly = FALSE;  // if the code segment was entirely on
@@ -179,10 +178,11 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 
 
     	//copy executable over
-    	if(i < (unsigned int)numExecutablePages) { // copy executable page by page (if we are still have any executable left to copy)
-    		int tempPhysAddr = pageTable[i].physicalPage * PageSize;
-    		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.code.inFileAddr + i * PageSize);
-    	}
+//    	if(i < (unsigned int)numExecutablePages) { // copy executable page by page (if we are still have any executable left to copy)
+//    		int tempPhysAddr = pageTable[i].physicalPage * PageSize;
+//    		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.code.inFileAddr + i * PageSize);
+//
+//    	}
     }
 
 }
