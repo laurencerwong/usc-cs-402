@@ -16,6 +16,8 @@
 #include "copyright.h"
 #include "filesys.h"
 #include "table.h"
+#include "noff.h"
+
 
 #define UserStackSize		1024 	// increase this as necessary!
 
@@ -41,6 +43,9 @@ class AddrSpace {
     								//for now
     int processID;				//unique identifier for this process
     int numExecutablePages;  		//number of pages dedicated to code + initData + uninitData
+    NoffHeader noffH;
+    OpenFile *executable;
+
  private:
     unsigned int numPages;		// Number of pages in the virtual 
 								// address space

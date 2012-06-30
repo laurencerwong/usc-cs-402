@@ -603,7 +603,6 @@ int Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameInd
 	processTable[space->processID].numThreadsAlive++;
 	t->Fork((VoidFunctionPtr)Create_Kernel_Thread_Exec, 0);
 	processIDLock.Release();
-	delete executable;
 	return space->processID;
 }
 
@@ -708,6 +707,7 @@ void Exit_Syscall(int input) {
 			mainMemoryBitmap->Clear(currentThread->space->pageTable[i].physicalPage);
 		}
 		processIDLock.Release();
+		delete currentThread->space->executable;
 		currentThread->Finish();
 		delete currentThread->space;
 		currentThread->Finish();
@@ -849,6 +849,30 @@ int RandInt_Syscall() {
 	return rand();
 }
 
+int HandleIPTMiss(int vpn){
+	cout << "IN HANDLE, vpn = " << vpn << " and numexecutablepages = " << currentThread->space->numExecutablePages << endl;
+	int p = mainMemoryBitmap->Find();
+	if(vpn < currentThread->space->numExecutablePages){
+		cout << "IN IF STATEMENTT IN HANDLE" << endl;
+		int tempPhysAddr = p * PageSize;
+		currentThread->space->executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->noffH.code.inFileAddr + vpn * PageSize);
+		IPT[p].space = currentThread->space;
+		IPT[p].virtualPage = vpn;
+		IPT[p].physicalPage = p;
+		IPT[p].valid = TRUE;
+		IPT[p].use = FALSE;
+		IPT[p].dirty = FALSE;
+		IPT[p].readOnly = FALSE;
+		currentThread->space->pageTable[vpn].virtualPage = vpn;
+		currentThread->space->pageTable[vpn].physicalPage = p;
+		currentThread->space->pageTable[vpn].valid = TRUE;
+		currentThread->space->pageTable[vpn].use = FALSE;
+		currentThread->space->pageTable[vpn].dirty = FALSE;
+		currentThread->space->pageTable[vpn].readOnly = FALSE;
+	}
+	return p;
+}
+
 void HandlePageFault(){
 	IntStatus old = interrupt->SetLevel(IntOff);
 	int vpn = machine->ReadRegister(BadVAddrReg)/128;
@@ -861,6 +885,9 @@ void HandlePageFault(){
 			ppn = i;
 			break;
 		}
+	}
+	if(ppn == -1){
+		ppn = HandleIPTMiss(vpn);
 	}
 	machine->tlb[currentTLB].virtualPage = IPT[ppn].virtualPage;
 	machine->tlb[currentTLB].physicalPage = IPT[ppn].physicalPage;
