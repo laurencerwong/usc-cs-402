@@ -23,6 +23,9 @@
 #include "synch.h"
 #include "machine.h"
 #include "IPTEntry.h"
+//#include <queue>
+#include "list.h"
+//using namespace std;
 
 #define MAX_THREADS 100
 #define MAX_PROCESSES (NumPhysPages / (12 +  8 * MAX_THREADS))
@@ -57,6 +60,17 @@ extern Lock* conditionTableLock;
 extern int currentTLB;
 
 extern IPTEntry* IPT;
+extern BitMap *swapMap;
+extern OpenFile *swapFile;
+
+extern Lock* iptLock;
+extern Lock* swapLock;
+
+extern List *evictionList;
+
+enum EvictionPolicy {FIFO, RAND};
+extern EvictionPolicy evictionPolicy;
+
 
 #endif
 

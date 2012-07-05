@@ -17,6 +17,7 @@
 #include "filesys.h"
 #include "table.h"
 #include "noff.h"
+#include "PageTableEntry.h"
 
 
 #define UserStackSize		1024 	// increase this as necessary!
@@ -39,11 +40,10 @@ class AddrSpace {
 
     Table fileTable;			// Table of openfiles
 
-    TranslationEntry *pageTable;	// Assume linear page table translation
+    PageTableEntry *pageTable;	// Assume linear page table translation
     								//for now
     int processID;				//unique identifier for this process
     int numExecutablePages;  		//number of pages dedicated to code + initData + uninitData
-    NoffHeader noffH;
     OpenFile *executable;
 
  private:
