@@ -584,6 +584,7 @@ int Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameInd
 	AddrSpace* space = new AddrSpace(executable); //first part of process, address space, instantiated
 
 	if(nextProcessID == MAX_PROCESSES){
+		printf("process id is %d", nextProcessID);
 		printf("Fatal error, system is out of memory.  Nachos terminating.\n");
 		interrupt->Halt();
 	}
@@ -940,7 +941,7 @@ void HandlePageFault(){
 		iptLock->Acquire();
 		ppn = mainMemoryBitmap->Find();
 		if(ppn == -1){
-			//evict page
+			ppn = Evict();
 		}
 		if(ppn != -1){
 			IPT[ppn].use = TRUE;
