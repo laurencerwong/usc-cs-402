@@ -20,6 +20,7 @@
 #include "addrspace.h"
 #include "table.h"
 #include "synch.h"
+#include "PageTableEntry.h"
 
 extern "C" { int bzero(char *, int); };
 
@@ -117,9 +118,10 @@ SwapHeader (NoffHeader *noffH)
 //----------------------------------------------------------------------
 
 #ifdef CHANGED
-AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
-	this->executable = executable;
+AddrSpace::AddrSpace(OpenFile *executableIn) : fileTable(MaxOpenFiles) {
+	executable = executableIn;
     unsigned int i, size;
+    NoffHeader noffH;
 
 
     // Don't allocate the input or output to disk files
@@ -148,34 +150,24 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 
     //remember this so we can allocate stacks later taking this into account
     //also useful for an exiting process, so we can free the main memory physical pages we will allocate
-    //numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
-    numExecutablePages = numPages;
-    pageTable = new TranslationEntry[numPages];
+    numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
+//    numExecutablePages = numPages;
+    pageTable = new PageTableEntry[numPages];
     for (i = 0; i < numPages; i++) {
     	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-    	//int newPhysPage = mainMemoryBitmap->Find();
-//    	if(newPhysPage == -1) {
-//    		cout << "ERROR: Out of memory" << endl;
-//    		interrupt->Halt();
-//    	}
-//    	else {
-//    		IPT[newPhysPage].space = this;
-//    		IPT[newPhysPage].virtualPage = i;
-//    		IPT[newPhysPage].physicalPage = newPhysPage;
-//    		IPT[newPhysPage].valid = FALSE;
-//    		IPT[newPhysPage].use = FALSE;
-//    		IPT[newPhysPage].dirty = FALSE;
-//    		IPT[newPhysPage].readOnly = FALSE;
-//    		//this is setting up the translation from virtual to physical page
-//    		pageTable[i].physicalPage = newPhysPage;
-//    	}
     	pageTable[i].valid = FALSE;
     	pageTable[i].use = FALSE;
     	pageTable[i].dirty = FALSE;
     	pageTable[i].readOnly = FALSE;  // if the code segment was entirely on
     	// a separate page, we could set its
     	// pages to be read-only
-
+    	if(i < numExecutablePages){
+    		pageTable[i].location = IN_EXECUTABLE;
+    	}
+    	else{
+    		pageTable[i].location = UNINIT;
+    	}
+    	pageTable[i].offset = noffH.code.inFileAddr + i * PageSize;
 
     	//copy executable over
 //    	if(i < (unsigned int)numExecutablePages) { // copy executable page by page (if we are still have any executable left to copy)
@@ -253,10 +245,15 @@ AddrSpace::InitRegisters()
 
 void AddrSpace::SaveState() 
 {
+#ifdef CHANGED
+
 	//invalidating tlb
 	for(int i = 0; i < TLBSize; i++){
 		machine->tlb[i].valid = false;
+		IPT[machine->tlb[i].physicalPage].dirty = machine->tlb[i].dirty;
 	}
+
+#endif
 }
 
 //----------------------------------------------------------------------

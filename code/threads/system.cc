@@ -11,6 +11,7 @@
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
 #ifdef CHANGED
+
 BitMap *mainMemoryBitmap;
 AddrSpace **pageOwners;
 Lock *processTableLock;;
@@ -25,6 +26,13 @@ int numLivingProcesses = 0;
 int currentTLB = 0;
 
 IPTEntry* IPT;
+BitMap *swapMap;
+OpenFile *swapFile;
+Lock* iptLock;
+Lock* swapLock;
+List *evictionList;
+EvictionPolicy evictionPolicy;
+
 
 #endif
 Thread *currentThread;			// the thread we are running now
@@ -186,6 +194,8 @@ Initialize(int argc, char **argv)
     lockTableLock = new Lock("lockTable lock");
     conditionTableLock = new Lock("conditionTable lock");
     IPT = new IPTEntry[NumPhysPages];
+    swapMap = new BitMap(4096);
+    swapFile = new OpenFile(0);
 
     for(int i = 0; i < MAX_PROCESSES; i++) {
     	processTable[i].numThreadsAlive = 0;
@@ -195,6 +205,9 @@ Initialize(int argc, char **argv)
     numLivingProcesses = 0;
     nextProcessID = 0;
     ioLock = new Lock("IO Lock");
+    iptLock = new Lock("IPT Lock");
+    swapLock = new Lock("Swap Lock");
+    evictionList = new List();
 #endif
 }
 

@@ -53,7 +53,6 @@
 #include "utility.h"
 #include "system.h"
 
-
 // External functions used by this file
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
@@ -63,6 +62,7 @@ extern void MailTest(int networkID);
 #ifdef THREADS
 extern void Problem2(void), TestSuite(void);
 #endif
+
 //----------------------------------------------------------------------
 // main
 // 	Bootstrap the operating system kernel.  
@@ -107,6 +107,18 @@ int main(int argc, char **argv)
         } else if (!strcmp(*argv, "-c")) {      // test the console
 	    if (argc == 1)
 	        ConsoleTest(NULL, NULL);
+	    else if(!strcmp (*argv, "-P")){
+	    	if(!strcmp (*(argv + 1), "FIFO")){
+	    		evictionPolicy = FIFO;
+	    	}
+	    	else if(!strcmp (*(argv + 1), "RAND")){
+	    		evictionPolicy = RAND;
+	    	}
+	    	else{
+	    		cout << "INVALID EVICTION POLICY.  DEFAULTING TO FIFO" << endl;
+	    		evictionPolicy = RAND;
+	    	}
+	    }
 	    else {
 		ASSERT(argc > 2);
 	        ConsoleTest(*(argv + 1), *(argv + 2));
