@@ -28,7 +28,7 @@
 //using namespace std;
 
 #define MAX_THREADS 100
-#define MAX_PROCESSES (NumPhysPages / (12 +  8 * MAX_THREADS))
+#define MAX_PROCESSES 100
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,
