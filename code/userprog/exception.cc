@@ -861,7 +861,9 @@ int Evict(){
 	case FIFO:
 	default:
 		cout << "Picking a page to evict using FIFO..." << endl;
-		pageToEvict = *(int*)(evictionList->Remove());
+		int* pageToEvictAddr = (int*) (evictionList->Remove());
+		pageToEvict = *pageToEvictAddr;
+		delete pageToEvictAddr;
 		//evictionList.pop();
 		break;
 	}
@@ -890,6 +892,8 @@ int HandleIPTMiss(int vpn, int p){
 	if(p == -1){
 		return p;
 	}
+	int* ppnAddr = new int;
+	*ppnAddr = p;
 	int tempPhysAddr = p * PageSize;
 	switch(currentThread->space->pageTable[vpn].location){
 	case IN_EXECUTABLE:
@@ -911,9 +915,11 @@ int HandleIPTMiss(int vpn, int p){
 		IPT[p].use = FALSE;
 		IPT[p].dirty = (currentThread->space->pageTable[vpn].location == UNINIT ? TRUE : FALSE);
 		IPT[p].readOnly = FALSE;
+		int* temp = new int;
+		*temp = p;
 		if(evictionPolicy == FIFO)
 			//evictionList.push(p);
-			evictionList->Append((void*)&p);
+			evictionList->Append((void*)temp);
 		currentThread->space->pageTable[vpn].virtualPage = vpn;
 		currentThread->space->pageTable[vpn].physicalPage = p;
 		currentThread->space->pageTable[vpn].valid = TRUE;
