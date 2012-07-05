@@ -109,9 +109,11 @@ int main(int argc, char **argv)
 	        ConsoleTest(NULL, NULL);
 	    else if(!strcmp (*argv, "-P")){
 	    	if(!strcmp (*(argv + 1), "FIFO")){
+	    		cout << "Eviction policy is fifo" << endl;
 	    		evictionPolicy = FIFO;
 	    	}
 	    	else if(!strcmp (*(argv + 1), "RAND")){
+	    		cout << "Eviction policy is rand" << endl;
 	    		evictionPolicy = RAND;
 	    	}
 	    	else{
