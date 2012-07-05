@@ -854,11 +854,13 @@ int Evict(){
 	int pageToEvict;
 	switch(evictionPolicy){
 	case RAND:
+		cout << "Picking a page to evict using RAND..." << endl;
 		//pageToEvict = rand()%evictionList.size();
 		pageToEvict = rand() % NumPhysPages;
 		break;
 	case FIFO:
 	default:
+		cout << "Picking a page to evict using FIFO..." << endl;
 		pageToEvict = *(int*)(evictionList->Remove());
 		//evictionList.pop();
 		break;
@@ -942,6 +944,7 @@ void HandlePageFault(){
 		ppn = mainMemoryBitmap->Find();
 		if(ppn == -1){
 			ppn = Evict();
+			cout << "Evicted physical page: " << ppn << endl;
 		}
 		if(ppn != -1){
 			IPT[ppn].use = TRUE;
