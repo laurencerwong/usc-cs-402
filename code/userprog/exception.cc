@@ -933,7 +933,6 @@ int HandleIPTMiss(int vpn, int p){
 	currentThread->space->pageTable[vpn].virtualPage = vpn;
 	currentThread->space->pageTable[vpn].physicalPage = p;
 	currentThread->space->pageTable[vpn].valid = TRUE;
-	currentThread->space->pageTable[vpn].use = FALSE;
 	currentThread->space->pageTable[vpn].dirty = (currentThread->space->pageTable[vpn].location == UNINIT ? TRUE : FALSE);
 	currentThread->space->pageTable[vpn].readOnly = FALSE;
 	return p;
