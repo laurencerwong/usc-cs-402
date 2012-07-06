@@ -33,8 +33,7 @@ CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
-exec_matmult exec_sort
-
+exec_matmult test_fork_matmult exec_sort
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -52,6 +51,18 @@ exec_matmult.o: exec_matmult.c
 exec_matmult: exec_matmult.o start.o
 	$(LD) $(LDFLAGS) start.o exec_matmult.o -o exec_matmult.coff
 	../bin/coff2noff exec_matmult.coff exec_matmult
+
+test_fork_matmult.o: test_fork_matmult.c
+	$(CC) $(CFLAGS) -c test_fork_matmult.c
+test_fork_matmult: test_fork_matmult.o start.o
+	$(LD) $(LDFLAGS) start.o test_fork_matmult.o -o test_fork_matmult.coff
+	../bin/coff2noff test_fork_matmult.coff test_fork_matmult
+
+test_fork_sort.o: test_fork_sort.c
+	$(CC) $(CFLAGS) -c test_fork_sort.c
+test_fork_sort: test_fork_sort.o start.o
+	$(LD) $(LDFLAGS) start.o test_fork_sort.o -o test_fork_sort.coff
+	../bin/coff2noff test_fork_sort.coff test_fork_sort
 	
 exec_sort.o: exec_sort.c
 	$(CC) $(CFLAGS) -c exec_sort.c
