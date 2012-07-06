@@ -33,7 +33,7 @@ CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
-exec_matmult test_fork_matmult exec_sort
+exec_matmult test_fork_matmult exec_sort test_fork_sort
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
