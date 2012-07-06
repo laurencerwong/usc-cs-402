@@ -870,7 +870,13 @@ int Evict(){
 	if(IPT[pageToEvict].dirty){
 		//write to the swap file
 //		swapLock->Acquire();
-		int swapFilePageNum = swapMap->Find();
+		int swapFilePageNum;
+		if(currentThread->space->pageTable[IPT[pageToEvict].virtualPage].location == IN_SWAP){
+			swapFilePageNum = currentThread->space->pageTable[IPT[pageToEvict].virtualPage].offset / PageSize;
+		}
+		else{
+			swapFilePageNum = swapMap->Find();
+		}
 		swapFile->WriteAt(&(machine->mainMemory[pageToEvict * PageSize]), PageSize, swapFilePageNum * PageSize);
 //		swapLock->Release();
 		currentThread->space->pageTable[pageToEvict].location = IN_SWAP;
