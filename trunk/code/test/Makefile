@@ -33,7 +33,7 @@ CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
-exec_matmult
+exec_matmult exec_sort
 
 
 start.o: start.s ../userprog/syscall.h
@@ -52,6 +52,12 @@ exec_matmult.o: exec_matmult.c
 exec_matmult: exec_matmult.o start.o
 	$(LD) $(LDFLAGS) start.o exec_matmult.o -o exec_matmult.coff
 	../bin/coff2noff exec_matmult.coff exec_matmult
+	
+exec_sort.o: exec_sort.c
+	$(CC) $(CFLAGS) -c exec_sort.c
+exec_sort: exec_sort.o start.o
+	$(LD) $(LDFLAGS) start.o exec_sort.o -o exec_sort.coff
+	../bin/coff2noff exec_sort.coff exec_sort
 	
 project2_part1_testsuite.o: project2_part1_testsuite.c
 	$(CC) $(CFLAGS) -c project2_part1_testsuite.c
