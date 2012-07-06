@@ -32,7 +32,8 @@ int matMult()
 }
 
 int main(){
-	NPrint("Testing fork 2 matmults", sizeof("Testing 2 matmults"));
-	//Fork("../test/matmult", sizeof("../test/matmult"));
-	//Fork("../test/matmult", sizeof("../test/matmult"));
+	NPrint("Testing fork 2 matmults\n", sizeof("Testing fork 2 matmults\n"));
+	Fork(matMult, "test matmult 1", sizeof("test matmult 1"));
+	Fork(matMult, "test matmult 1", sizeof("test matmult 1"));
+	Exit(0);
 }
