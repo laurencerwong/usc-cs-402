@@ -7,6 +7,7 @@
 
 #include "copyright.h"
 #include "system.h"
+#include "filesys.h"
 
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
@@ -195,7 +196,8 @@ Initialize(int argc, char **argv)
     conditionTableLock = new Lock("conditionTable lock");
     IPT = new IPTEntry[NumPhysPages];
     swapMap = new BitMap(8192);
-    swapFile = new OpenFile(0);
+    fileSystem->Create("SwapFile", NumPhysPages * PageSize);
+    swapFile = fileSystem->Open("SwapFile");
 
     for(int i = 0; i < MAX_PROCESSES; i++) {
     	processTable[i].numThreadsAlive = 0;
