@@ -174,8 +174,9 @@ AddrSpace::AddrSpace(OpenFile *executableIn) : fileTable(MaxOpenFiles) {
 //    		int tempPhysAddr = pageTable[i].physicalPage * PageSize;
 //    		executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, noffH.code.inFileAddr + i * PageSize);
 //
-//    	}
+//    	}]
     }
+  // numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
 
 }
 #endif
