@@ -879,8 +879,8 @@ int Evict(){
 		}
 		swapFile->WriteAt(&(machine->mainMemory[pageToEvict * PageSize]), PageSize, swapFilePageNum * PageSize);
 //		swapLock->Release();
-		currentThread->space->pageTable[pageToEvict].location = IN_SWAP;
-		currentThread->space->pageTable[pageToEvict].offset = swapFilePageNum * PageSize;
+		currentThread->space->pageTable[IPT[pageToEvict].virtualPage].location = IN_SWAP;
+		currentThread->space->pageTable[IPT[pageToEvict].virtualPage].offset = swapFilePageNum * PageSize;
 	}
 	return pageToEvict;
 }
@@ -893,26 +893,25 @@ int HandleIPTMiss(int vpn, int p){
 	int* ppnAddr = new int;
 	*ppnAddr = p;
 	int tempPhysAddr = p * PageSize;
-	cout << "HandleIPTMiss: about to switch" << endl;
 	switch(currentThread->space->pageTable[vpn].location){
 	case IN_EXECUTABLE:
-		cout << "HandleIPTMiss: switch in executable" << endl;
+		cout << "HandleIPTMiss: Page is in executable" << endl;
 		currentThread->space->executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
 		break;
 	case IN_MEMORY:
-		cout << "HandleIPTMiss: switch in memory" << endl;
+		cout << "HandleIPTMiss: Page is in memory" << endl;
 		cout << "IPT MISSED IN MEMORY! :(" << endl;
 		break;
 	case IN_SWAP:
-		cout << "HandleIPTMiss: switch in swap" << endl;
+		cout << "HandleIPTMiss: Page is in swap" << endl;
 		swapFile->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
-		cout << "HandleIPTMiss: read from swap" << endl;
+		cout << "HandleIPTMiss: Page was read from swap" << endl;
 		break;
 	case UNINIT:
-		cout << "HandleIPTMiss: switch uninit" << endl;
+		cout << "HandleIPTMiss: Page is uninit" << endl;
 		break;
 	default:
-		cout << "HandleIPTMiss: switch default" << endl;
+		cout << "HandleIPTMiss: Page is default" << endl;
 		break;
 	}
 	IPT[p].space = currentThread->space;
@@ -924,12 +923,11 @@ int HandleIPTMiss(int vpn, int p){
 	IPT[p].readOnly = FALSE;
 	int* temp = new int;
 	*temp = p;
-	cout << "HandleIPTMiss: about to append p = " << p << "to FIFO list" << endl;
+	cout << "HandleIPTMiss: appending physical page " << p << " to FIFO list" << endl;
 	if(evictionPolicy == FIFO) {
 		//evictionList.push(p);
 		evictionList->Append((void*)temp);
 	}
-	cout << "HandleIPTMiss: appended to FIFO list" << endl;
 	currentThread->space->pageTable[vpn].virtualPage = vpn;
 	currentThread->space->pageTable[vpn].physicalPage = p;
 	currentThread->space->pageTable[vpn].valid = TRUE;
@@ -942,9 +940,7 @@ int HandleIPTMiss(int vpn, int p){
 void HandlePageFault(){
 	cout << "Handling page fault..." << endl;
 	iptLock->Acquire();
-	cout << "handle page fault acquired ipt lock" << endl;
 	int vpn = machine->ReadRegister(BadVAddrReg)/128;
-	cout << "handle page fault read vpn reg" << endl;
 //	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
 //	machine->tlb[currentTLB].physicalPage = currentThread->space->pageTable[vpn].physicalPage;
 //	machine->tlb[currentTLB].valid = true;
@@ -956,21 +952,21 @@ void HandlePageFault(){
 			break;
 		}
 	}
-	cout << "handle page fault got a ppn: " << ppn << endl;
+	cout << "HandlePageFault: got ppn " << ppn << " and vpn " << vpn << endl;
 	iptLock->Release();
 	while(ppn == -1){
-		cout << "Trying to find a physical page to evict..." << endl;
+		cout << "Page not in IPT" << endl;
 		//processIDLock is for main memory bitmap in addition to creation of processes
 		iptLock->Acquire();
 		ppn = mainMemoryBitmap->Find();
 		if(ppn == -1){
 			ppn = Evict();
-			cout << "Evicted physical page: " << ppn << endl;
+			cout << "No more memory, evicted physical page: " << ppn << endl;
 		}
+
 		if(ppn != -1){
 			IPT[ppn].use = TRUE;
 			iptLock->Release();
-			cout << "HaAbout to handle IPT Miss" << endl;
 			HandleIPTMiss(vpn, ppn);
 		}
 		else {
