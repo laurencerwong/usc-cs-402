@@ -882,15 +882,6 @@ int Evict(){
 		currentThread->space->pageTable[pageToEvict].location = IN_SWAP;
 		currentThread->space->pageTable[pageToEvict].offset = swapFilePageNum * PageSize;
 	}
-	else{
-		int vpn = IPT[pageToEvict].virtualPage;
-		if(vpn < currentThread->space->numExecutablePages){
-			currentThread->space->pageTable[vpn].location = IN_EXECUTABLE;
-		}
-		else{
-			currentThread->space->pageTable[vpn].location = IN_SWAP;
-		}
-	}
 	return pageToEvict;
 }
 
