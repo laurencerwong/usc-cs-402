@@ -194,7 +194,7 @@ Initialize(int argc, char **argv)
     lockTableLock = new Lock("lockTable lock");
     conditionTableLock = new Lock("conditionTable lock");
     IPT = new IPTEntry[NumPhysPages];
-    swapMap = new BitMap(4096);
+    swapMap = new BitMap(8192);
     swapFile = new OpenFile(0);
 
     for(int i = 0; i < MAX_PROCESSES; i++) {

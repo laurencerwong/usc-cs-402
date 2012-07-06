@@ -886,49 +886,66 @@ int Evict(){
 }
 
 int HandleIPTMiss(int vpn, int p){
+	cout << "HandleIPTMiss: beginning handle ipt miss with vpn = " << vpn << " and p = " << p << endl;
 	if(p == -1){
 		return p;
 	}
 	int* ppnAddr = new int;
 	*ppnAddr = p;
 	int tempPhysAddr = p * PageSize;
+	cout << "HandleIPTMiss: about to switch" << endl;
 	switch(currentThread->space->pageTable[vpn].location){
 	case IN_EXECUTABLE:
+		cout << "HandleIPTMiss: switch in executable" << endl;
 		currentThread->space->executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
 		break;
 	case IN_MEMORY:
+		cout << "HandleIPTMiss: switch in memory" << endl;
 		cout << "IPT MISSED IN MEMORY! :(" << endl;
 		break;
 	case IN_SWAP:
+		cout << "HandleIPTMiss: switch in swap" << endl;
 		swapFile->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
+		cout << "HandleIPTMiss: read from swap" << endl;
 		break;
 	case UNINIT:
+		cout << "HandleIPTMiss: switch uninit" << endl;
+		break;
+	default:
+		cout << "HandleIPTMiss: switch default" << endl;
 		break;
 	}
-		IPT[p].space = currentThread->space;
-		IPT[p].virtualPage = vpn;
-		IPT[p].physicalPage = p;
-		IPT[p].valid = TRUE;
-		IPT[p].use = FALSE;
-		IPT[p].dirty = (currentThread->space->pageTable[vpn].location == UNINIT ? TRUE : FALSE);
-		IPT[p].readOnly = FALSE;
-		int* temp = new int;
-		*temp = p;
-		if(evictionPolicy == FIFO)
-			//evictionList.push(p);
-			evictionList->Append((void*)temp);
-		currentThread->space->pageTable[vpn].virtualPage = vpn;
-		currentThread->space->pageTable[vpn].physicalPage = p;
-		currentThread->space->pageTable[vpn].valid = TRUE;
-		currentThread->space->pageTable[vpn].use = FALSE;
-		currentThread->space->pageTable[vpn].dirty = (currentThread->space->pageTable[vpn].location == UNINIT ? TRUE : FALSE);
-		currentThread->space->pageTable[vpn].readOnly = FALSE;
+	IPT[p].space = currentThread->space;
+	IPT[p].virtualPage = vpn;
+	IPT[p].physicalPage = p;
+	IPT[p].valid = TRUE;
+	IPT[p].use = FALSE;
+	IPT[p].dirty = (currentThread->space->pageTable[vpn].location == UNINIT ? TRUE : FALSE);
+	IPT[p].readOnly = FALSE;
+	int* temp = new int;
+	*temp = p;
+	cout << "HandleIPTMiss: about to append p = " << p << "to FIFO list" << endl;
+	if(evictionPolicy == FIFO) {
+		//evictionList.push(p);
+		evictionList->Append((void*)temp);
+	}
+	cout << "HandleIPTMiss: appended to FIFO list" << endl;
+	currentThread->space->pageTable[vpn].virtualPage = vpn;
+	currentThread->space->pageTable[vpn].physicalPage = p;
+	currentThread->space->pageTable[vpn].valid = TRUE;
+	currentThread->space->pageTable[vpn].use = FALSE;
+	currentThread->space->pageTable[vpn].dirty = (currentThread->space->pageTable[vpn].location == UNINIT ? TRUE : FALSE);
+	currentThread->space->pageTable[vpn].readOnly = FALSE;
 	return p;
 }
 
+//Called when we don't find the virtual page we are looking for in the tlb
 void HandlePageFault(){
+	cout << "Handling page fault..." << endl;
 	iptLock->Acquire();
+	cout << "handle page fault acquired ipt lock" << endl;
 	int vpn = machine->ReadRegister(BadVAddrReg)/128;
+	cout << "handle page fault read vpn reg" << endl;
 //	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
 //	machine->tlb[currentTLB].physicalPage = currentThread->space->pageTable[vpn].physicalPage;
 //	machine->tlb[currentTLB].valid = true;
@@ -940,8 +957,10 @@ void HandlePageFault(){
 			break;
 		}
 	}
+	cout << "handle page fault got a ppn: " << ppn << endl;
 	iptLock->Release();
 	while(ppn == -1){
+		cout << "Trying to find a physical page to evict..." << endl;
 		//processIDLock is for main memory bitmap in addition to creation of processes
 		iptLock->Acquire();
 		ppn = mainMemoryBitmap->Find();
@@ -951,10 +970,15 @@ void HandlePageFault(){
 		}
 		if(ppn != -1){
 			IPT[ppn].use = TRUE;
+			iptLock->Release();
+			cout << "HaAbout to handle IPT Miss" << endl;
+			HandleIPTMiss(vpn, ppn);
 		}
-		iptLock->Release();
+		else {
+			iptLock->Release();
+		}
 	}
-	HandleIPTMiss(vpn, ppn);
+
 	IntStatus old = interrupt->SetLevel(IntOff);
 	//essentially evicting a page
 	IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty;
