@@ -982,7 +982,7 @@ void HandlePageFault(){
 	machine->tlb[currentTLB].physicalPage = IPT[ppn].physicalPage;
 	machine->tlb[currentTLB].valid = IPT[ppn].valid;
 	machine->tlb[currentTLB].use = IPT[ppn].use;
-	machine->tlb[currentTLB].dirty = IPT[ppn].dirty;-
+	machine->tlb[currentTLB].dirty = IPT[ppn].dirty;
 	machine->tlb[currentTLB].readOnly = IPT[ppn].readOnly;
 	currentTLB++;
 	currentTLB %= TLBSize;
