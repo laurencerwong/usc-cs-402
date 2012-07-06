@@ -663,7 +663,7 @@ void NPrint_Syscall(int outputString, int length, int encodedVal1, int encodedVa
 
 void Exit_Syscall(int input) {
 	processIDLock.Acquire();
-	cout << "exited with value of " << input << endl;
+	cout << "Thread " << currentThread->getName() << " exited with value of " << input << endl;
 
 	if(numLivingProcesses == 1 && processTable[currentThread->space->processID].numThreadsAlive == 1) {
 		//I am the last thread of the last process
@@ -910,6 +910,9 @@ int HandleIPTMiss(int vpn, int p){
 	int* ppnAddr = new int;
 	*ppnAddr = p;
 	int tempPhysAddr = p * PageSize;
+	//cout << "tempPhysAddr" << tempPhysAddr << endl;
+	//printf("tempPhysAddr: 0x%x for page %d\n", tempPhysAddr, p);
+	//printf("page %d in use? %d\n", p, IPT[p].use);
 	switch(currentThread->space->pageTable[vpn].location){
 	case IN_EXECUTABLE:
 		//cout << "HandleIPTMiss: Page is in executable" << endl;
@@ -982,7 +985,9 @@ void HandlePageFault(){
 		}
 
 		if(ppn != -1){
+			//printf("PageFault: page %d in use? %d\n", ppn, IPT[ppn].use);
 			IPT[ppn].use = TRUE;
+			
 			iptLock->Release();
 			HandleIPTMiss(vpn, ppn);
 		}
@@ -994,7 +999,8 @@ void HandlePageFault(){
 
 	IntStatus old = interrupt->SetLevel(IntOff);
 
-	//essentially evicting a page
+
+	//essentially evicting a page from tlb to make room for the new page we are bringing in
 	IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty;
 
 	machine->tlb[currentTLB].virtualPage = IPT[ppn].virtualPage;

@@ -150,7 +150,7 @@ AddrSpace::AddrSpace(OpenFile *executableIn) : fileTable(MaxOpenFiles) {
 
     //remember this so we can allocate stacks later taking this into account
     //also useful for an exiting process, so we can free the main memory physical pages we will allocate
-    numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
+    numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size, PageSize);
 //    numExecutablePages = numPages;
     pageTable = new PageTableEntry[numPages];
     for (i = 0; i < numPages; i++) {
