@@ -2,14 +2,19 @@
 
 
 
+int A[20][20];
+int B[20][20];
+int C[20][20];
+int i, j, k;
+
+int D[20][20];
+int E[20][20];
+int F[20][20];
+int l, m, n;
 
 
-int matMult()
+int matMultA()
 {
-	int A[20][20];
-	int B[20][20];
-	int C[20][20];
-	int i, j, k;
 
 	for (i = 0; i < 20; i++)		/* first initialize the matrices */
 		for (j = 0; j < 20; j++) {
@@ -26,9 +31,27 @@ int matMult()
 	Exit(C[20-1][20-1]);		/* and then we're done */
 }
 
+int matMultB()
+{
+
+	for (l = 0; l < 20; l++)		/* flrst lnltlallze the matrlces */
+		for (m = 0; m < 20; m++) {
+			D[l][m] = l;
+			E[l][m] = m;
+			F[l][m] = 0;
+		}
+
+	for (l = 0; l < 20; l++)		/* then multlply them together */
+		for (m = 0; m < 20; m++)
+			for (n = 0; n < 20; n++)
+				F[l][m] += D[l][n] * E[n][m];
+
+	Exit(F[20-1][20-1]);		/* and then we're done */
+}
+
 int main(){
 	NPrint("Testing fork 2 matmults\n", sizeof("Testing fork 2 matmults\n"));
-	Fork(matMult, "test matmult 1", sizeof("test matmult 1"));
-	Fork(matMult, "test matmult 1", sizeof("test matmult 1"));
+	Fork(matMultA, "test matmult A", sizeof("test matmult A"));
+	Fork(matMultB, "test matmult B", sizeof("test matmult B"));
 	Exit(0);
 }
