@@ -45,6 +45,18 @@ struct ProcessEntry {
 	int nextThreadID;
 };
 
+class ClientRequest{
+public:
+	int machineID;
+	int mailboxNumber;
+	boolean respond;
+	ClientRequest(int m, int mb){
+		machineID = m;
+		mailboxNumber = mb;
+		respond = false;
+	}
+};
+
 extern ProcessEntry processTable[MAX_PROCESSES];
 extern int nextProcessID;
 extern Lock processIDLock;
