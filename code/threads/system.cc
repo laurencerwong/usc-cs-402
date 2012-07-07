@@ -34,6 +34,8 @@ Lock* swapLock;
 List *evictionList;
 EvictionPolicy evictionPolicy;
 
+int machineID;
+
 
 #endif
 Thread *currentThread;			// the thread we are running now
