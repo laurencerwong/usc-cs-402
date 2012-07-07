@@ -33,7 +33,7 @@ Lock* iptLock;
 Lock* swapLock;
 List *evictionList;
 EvictionPolicy evictionPolicy;
-
+bool isServer;
 int machineID;
 
 
