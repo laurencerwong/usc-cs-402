@@ -102,25 +102,27 @@ int main(int argc, char **argv)
 #ifdef USER_PROGRAM
         if (!strcmp(*argv, "-x")) {        	// run a user program
 	    ASSERT(argc > 1);
+	    	if(argc > 2){
+	    	if(!strcmp (*(argv + 2), "-PFIFO")){
+	            		cout << "Eviction policy is fifo" << endl;
+	            		evictionPolicy = FIFO;
+	            }
+	    	 else if(!strcmp (*(argv + 2), "-PRAND")){
+	    	        		cout << "Eviction policy is rand" << endl;
+	    	        		evictionPolicy = RAND;
+	    	        }
+	    	}
             StartProcess(*(argv + 1));
             argCount = 2;
-        } else if (!strcmp(*argv, "-c")) {      // test the console
+        }
+        else if(!strcmp (*argv, "-PFIFO")){
+        		cout << "Eviction policy is fifo" << endl;
+        		evictionPolicy = FIFO;
+        }
+
+        else if (!strcmp(*argv, "-c")) {      // test the console
 	    if (argc == 1)
 	        ConsoleTest(NULL, NULL);
-	    else if(!strcmp (*argv, "-P")){
-	    	if(!strcmp (*(argv + 1), "FIFO")){
-	    		cout << "Eviction policy is fifo" << endl;
-	    		evictionPolicy = FIFO;
-	    	}
-	    	else if(!strcmp (*(argv + 1), "RAND")){
-	    		cout << "Eviction policy is rand" << endl;
-	    		evictionPolicy = RAND;
-	    	}
-	    	else{
-	    		cout << "INVALID EVICTION POLICY.  DEFAULTING TO FIFO" << endl;
-	    		evictionPolicy = RAND;
-	    	}
-	    }
 	    else {
 		ASSERT(argc > 2);
 	        ConsoleTest(*(argv + 1), *(argv + 2));

@@ -240,6 +240,7 @@ void Close_Syscall(int fd) {
 //Create a lock to be stored in kernel array lockTable.
 //Can at most have MAX_LOCK_CONDITIONS number of locks, or abort
 int CreateLock_Syscall(unsigned int nameIndex, int length){
+#ifdef USER_PROGRAM
 	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
 	//this lock protects the BitMap of free locks
@@ -264,11 +265,17 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	lockTable[nextFreeIndex].isToBeDeleted = false;
 	lockTable[nextFreeIndex].acquireCount = 0;
 	return nextFreeIndex;
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 //Create a condition to be stored in kernel array conditionTable.
 //Can at most have MAX_LOCK_CONDITIONS number of condition or abort
 int CreateCondition_Syscall(unsigned int nameIndex, int length){
+#ifdef USER_PROGRAM
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
 	//this lock protects the BitMap and size for the conditionTable
@@ -292,9 +299,16 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	conditionTable[nextFreeIndex].conditionSpace = currentThread->space;
 	conditionTable[nextFreeIndex].isToBeDeleted = false;
 	return nextFreeIndex;
+#endif
+
+#ifdef NETWORK
+
+#endif
+
 }
 
 void Signal_Syscall(int conditionIndex, int lockIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff); //turn off interrupts since we need our validations to be atomic
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
@@ -329,9 +343,15 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	//validation done, ok to perform operation
 	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex].lock);
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 void Broadcast_Syscall(int conditionIndex, int lockIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
@@ -366,9 +386,15 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	//validation done, ok to perform operation
 	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 void Wait_Syscall(int conditionIndex, int lockIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
@@ -411,9 +437,15 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 		}
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 void DestroyLock_Syscall(int lockIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s tried to destroy a lock with an invalid index %d\n", currentThread->getName(), lockIndex);
@@ -439,9 +471,15 @@ void DestroyLock_Syscall(int lockIndex){
 		lockTable[lockIndex].isToBeDeleted = true;
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 void DestroyCondition_Syscall(int conditionIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s tried to delete a condition with an invalid index %d\n", currentThread->getName(), conditionIndex);
@@ -467,6 +505,11 @@ void DestroyCondition_Syscall(int conditionIndex){
 		conditionTable[conditionIndex].isToBeDeleted = true;
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 void Yield_Syscall(){
@@ -475,6 +518,7 @@ void Yield_Syscall(){
 
 
 void Acquire_Syscall(int lockIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Acquire with an invalid index %d\n", currentThread->getName(), lockIndex);
@@ -495,9 +539,15 @@ void Acquire_Syscall(int lockIndex){
 	lockTable[lockIndex].acquireCount++; //marks this lock as being held by a user thread, protects lock from deletion til same thread call Release syscall
 	lockTable[lockIndex].lock->Acquire();
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 void Release_Syscall(int lockIndex){
+#ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Release with an invalid index %d\n", currentThread->getName(), lockIndex);
@@ -524,6 +574,11 @@ void Release_Syscall(int lockIndex){
 		}
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+#endif
+
+#ifdef NETWORK
+
+#endif
 }
 
 
@@ -857,6 +912,9 @@ int Evict(){
 		//cout << "Picking a page to evict using RAND..." << endl;
 		//pageToEvict = rand()%evictionList.size();
 		pageToEvict = rand() % NumPhysPages;
+		while(IPT[pageToEvict].use){
+			pageToEvict = rand() % NumPhysPages;
+		}
 		break;
 	case FIFO:
 	default:
