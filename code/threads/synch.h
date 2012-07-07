@@ -90,6 +90,42 @@ class Lock {
     // plus some other stuff you'll need to define
 };
 
+class Owner{
+public:
+	int machineID;
+	int mailboxNumber;
+};
+
+class ServerLock {
+public:
+	enum LockStatus {BUSY, FREE};
+    ServerLock(char* debugName);  		// initialize lock to be FREE
+    ~ServerLock();				// deallocate lock
+    char* getName() { return name; }	// debugging assist
+
+    void Acquire(int, int); // these are the only operations on a lock
+    Owner* Release(int, int); // they are both *atomic*
+
+    bool isHeldByRequester(Owner*);	// true if the current thread
+					// holds this lock.  Useful for
+					// checking in Release, and in
+					// Condition variable ops below.
+#ifdef CHANGED
+    bool isBusy();	// check if its busy
+#endif
+
+  private:
+    char* name;				// for debugging
+    LockStatus state; //for checking if lock is acquired or not
+    List* queue; // track threads waiting
+    Owner* currentOwner; //used for checking if release() is called
+    										//by same thread as the one which acquired lock
+    // plus some other stuff you'll need to define
+};
+
+
+
+
 // The following class defines a "condition variable".  A condition
 // variable does not have a value, but threads may be queued, waiting
 // on the variable.  These are only operations on a condition variable: 
@@ -146,4 +182,6 @@ class Condition {
 		Lock* waitingLock;
     // plus some other stuff you'll need to define
 };
+
+#
 #endif // SYNCH_H
