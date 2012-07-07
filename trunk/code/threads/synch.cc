@@ -185,6 +185,100 @@ bool Lock::isBusy(){
 
 #endif
 
+
+// Dummy functions -- so we can compile our later assignments
+// Note -- without a correct implementation of Condition::Wait(),
+// the test case in the network assignment won't work!
+ServerLock::ServerLock(char* debugName) {
+	name = debugName;
+	state = FREE; //not allowing more than one thread to acquire one ServerLock
+										//to conform to the monitor paradigm
+	queue = new List;
+}
+
+//---------------------------------------------------------------
+//Deallocates ServerLock, assuming no thread is still trying to use ServerLock
+//--------------------------------------------------------------
+ServerLock::~ServerLock() {
+	delete queue;
+	delete name;
+}
+//----------------------------------------------------------------
+
+//--------------------------------------------------------------
+//ServerLock::Acquire
+//Allow thread to acquire the ServerLock, also allows us to remember which
+//Thread called this function
+//----------------------------------------------------------------
+void ServerLock::Acquire(int machineID, int mailboxNum) {
+
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts so the current thread
+														//cannot be switched out
+	Owner* o = new Owner;
+	o->machineID = machineID;
+	o->mailboxNumber = mailboxNum;
+  if(this->isHeldByRequester(o)){ //thread already has possession, if allowed to acquire again,
+	  	  	  	  	  	  	  //thread would be bServerLocked entire process indefinitely since interrupts are switched off
+  	delete o;
+	(void) interrupt->SetLevel(oldLevel);		//so restore interrupts
+  	return;																	//and do not wait
+  }
+  if(state == FREE){	//ServerLock is free to be taken
+						state = BUSY;
+						currentOwner = o; //make this thread the holder
+	}
+  else{
+  	queue->Append( (void *) o); //go into waiting queue
+  }
+  (void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+}
+
+Owner* ServerLock::Release(int machineID, int mailboxNum) {
+	Owner* o;
+	o->machineID = machineID;
+	o->mailboxNumber = mailboxNum;
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);
+	if(!isHeldByRequester(o)){ //shouldn't allow synchronization to be messed up if a thread calls release accidentally or maliciously
+		printf("Thread with machineID %d and mailboxNumber %d calling Release() on ServerLock %s does not have ServerLock\n", machineID, mailboxNum, this->name);
+		delete o;
+		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+		return NULL; //kicks out a thread that didn't acquire ServerLock
+	}
+	if(!queue->IsEmpty()){ //check this condition to avoid segmentation faults or bus errors
+		Owner* oneToWakeUp = (Owner *) queue->Remove();
+		currentOwner = oneToWakeUp; //give next thread immediate possession of the ServerLock
+	}
+	else{ //make sure ServerLock can be grabbed by anyone if no one was waiting in te ready queue
+		state = FREE;
+		currentOwner = NULL;
+	}
+	(void) interrupt->SetLevel(oldLevel); //restore interrupts
+	delete o;
+	return currentOwner;
+
+}
+
+//--------------------------------------------------------------
+//Allows us to use the external system variable Thread* currentThread
+//to check against the thread that last acquired the ServerLock.
+//---------------------------------------------------------
+bool ServerLock::isHeldByRequester(Owner* o){
+	return o->machineID == currentOwner->machineID && o->mailboxNumber == currentOwner->mailboxNumber;
+}
+
+#ifdef CHANGED
+
+bool ServerLock::isBusy(){
+	if(state == BUSY){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+#endif
+
 Condition::Condition(char* debugName) { 
 	name = debugName;
 	queue = new List;
