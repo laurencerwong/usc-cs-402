@@ -210,51 +210,52 @@ ServerLock::~ServerLock() {
 //Allow thread to acquire the ServerLock, also allows us to remember which
 //Thread called this function
 //----------------------------------------------------------------
-void ServerLock::Acquire(int machineID, int mailboxNum) {
+ClientRequest* ServerLock::Acquire(ClientRequest* cr) {
 
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts so the current thread
 														//cannot be switched out
-	Owner* o = new Owner;
-	o->machineID = machineID;
-	o->mailboxNumber = mailboxNum;
-  if(this->isHeldByRequester(o)){ //thread already has possession, if allowed to acquire again,
+  if(this->isHeldByRequester(cr)){ //thread already has possession, if allowed to acquire again,
 	  	  	  	  	  	  	  //thread would be bServerLocked entire process indefinitely since interrupts are switched off
-  	delete o;
+
 	(void) interrupt->SetLevel(oldLevel);		//so restore interrupts
-  	return;																	//and do not wait
+	cr->respond = true;
+  	return cr;																	//and do not wait
   }
   if(state == FREE){	//ServerLock is free to be taken
 						state = BUSY;
-						currentOwner = o; //make this thread the holder
+						currentClientRequest = cr; //make this thread the holder
+						cr->respond = true;
 	}
   else{
-  	queue->Append( (void *) o); //go into waiting queue
+  	queue->Append( (void *) cr); //go into waiting queue
+  	cr->respond = false;
   }
   (void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+  return cr;
 }
 
-Owner* ServerLock::Release(int machineID, int mailboxNum) {
-	Owner* o;
-	o->machineID = machineID;
-	o->mailboxNumber = mailboxNum;
+ClientRequest* ServerLock::Release(ClientRequest* cr) {
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	if(!isHeldByRequester(o)){ //shouldn't allow synchronization to be messed up if a thread calls release accidentally or maliciously
-		printf("Thread with machineID %d and mailboxNumber %d calling Release() on ServerLock %s does not have ServerLock\n", machineID, mailboxNum, this->name);
-		delete o;
+	if(!isHeldByRequester(cr)){ //shouldn't allow synchronization to be messed up if a thread calls release accidentally or maliciously
+		printf("Thread with machineID %d and mailboxNumber %d calling Release() on ServerLock %s does not have ServerLock\n", cr->machineID, cr->mailboxNumber, this->name);
+
 		(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
-		return NULL; //kicks out a thread that didn't acquire ServerLock
+		cr->respond = false;
+		return cr; //kicks out a thread that didn't acquire ServerLock
 	}
 	if(!queue->IsEmpty()){ //check this condition to avoid segmentation faults or bus errors
-		Owner* oneToWakeUp = (Owner *) queue->Remove();
-		currentOwner = oneToWakeUp; //give next thread immediate possession of the ServerLock
+		delete cr;
+		cr = (ClientRequest *) queue->Remove();
+		currentClientRequest = cr; //give next thread immediate possession of the ServerLoc
+		cr->respond = true;
 	}
 	else{ //make sure ServerLock can be grabbed by anyone if no one was waiting in te ready queue
 		state = FREE;
-		currentOwner = NULL;
+		currentClientRequest = NULL;
+		cr->respond = false;
 	}
 	(void) interrupt->SetLevel(oldLevel); //restore interrupts
-	delete o;
-	return currentOwner;
+	return cr;
 
 }
 
@@ -262,8 +263,8 @@ Owner* ServerLock::Release(int machineID, int mailboxNum) {
 //Allows us to use the external system variable Thread* currentThread
 //to check against the thread that last acquired the ServerLock.
 //---------------------------------------------------------
-bool ServerLock::isHeldByRequester(Owner* o){
-	return o->machineID == currentOwner->machineID && o->mailboxNumber == currentOwner->mailboxNumber;
+bool ServerLock::isHeldByRequester(ClientRequest* cr){
+	return cr->machineID == currentClientRequest->machineID && cr->mailboxNumber == currentClientRequest->mailboxNumber;
 }
 
 #ifdef CHANGED
@@ -381,6 +382,128 @@ void Condition::Broadcast(Lock* conditionLock) {
 
 #ifdef CHANGED
 bool Condition::hasWaiting(){
+	if(queue->IsEmpty()){
+		return false;
+	}
+	else{
+		return true;
+	}
+}
+
+#endif
+
+ServerCondition::ServerCondition(char* debugName) {
+	name = debugName;
+	queue = new List;
+}
+ServerCondition::~ServerCondition() {
+	delete queue;
+}
+ClientRequest* ServerCondition::Wait(ServerLock* serverConditionLock, ClientRequest* cr) {
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts so this operation is atomic
+														//(can't be switched out)
+	//a null argument would be improper, so don't allow current thread to execute rest of function
+	if(serverConditionLock == NULL){
+		printf("Argument passed to ServerCondition::Wait() was null, returning without performing wait\n");
+		cr->respond = true;
+		(void) interrupt->SetLevel(oldLevel);
+		return cr;
+	}
+	//set the current lock for the ServerCondition variable if we don't already remember it
+	if(waitingLock == NULL){
+		waitingLock = serverConditionLock;
+	}
+	//check that the lock passed in is the lock associated with this CV.  Otherwise, it would be improper
+	//to allow the thread to release the lock, and would mess up the semantics of the CV
+	if(serverConditionLock != waitingLock){
+		printf("Argument passed to ServerCondition::Wait() for ServerCondition %s was the incorrect lock, returning without performing wait\n", name);
+		(void) interrupt->SetLevel(oldLevel);
+		cr->respond = true;
+		return cr;
+	}
+	if(!waitingLock->isHeldByRequester(cr)){
+		printf("Thread w/ machine number %d and mailbox number %d calling Wait() on ServerCondition %s does not have lock\n", cr->machineID, cr->mailboxNumber, name);
+		(void) interrupt->SetLevel(oldLevel);
+		cr->respond = true;
+		return cr;
+	}
+	//OK to wait
+
+	ClientRequest* temp = serverConditionLock->Release(cr); //release lock
+	queue->Append((void *) cr);
+	cr = temp;
+	//must find server equivalent of following line:
+	//ServerConditionLock->Acquire(); //reacquire lock before returning ensures mutual exclusivity until current thread manually releases lock
+    (void) interrupt->SetLevel(oldLevel);	// re-enable interrupts (atomic operation finished)
+    return cr;
+
+}
+ClientRequest* ServerCondition::Signal(ServerLock* ServerConditionLock, ClientRequest* cr) {
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts so this opertion is atomic
+	if(ServerConditionLock == NULL){
+		printf("Argument passed to ServerCondition::Signal() was null, returning without performing wait\n");
+		(void) interrupt->SetLevel(oldLevel);
+		cr->respond = false;
+		return cr;
+	}											//(can't be switch out
+	if(queue->IsEmpty()){
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		cr->respond = false;
+		return cr; //don't need to worry if an extraneous call to signal, just return
+	}
+	if(waitingLock != ServerConditionLock){ //check that it is the proper lock, otherwise the thread woken up will try
+										//to acquire a lock that may not be free and be blocked as a result
+		printf("Argument passed to ServerCondition::Signal() for ServerCondition %s was the incorrect lock, returning without performing wait\n", name);
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		cr->respond = false;
+		return cr;
+	}
+	if(!waitingLock->isHeldByRequester(cr)){
+		printf("Thread w/ machineId %d and mailbox number %d calling Signal() on ServerCondition %s does not have lock\n", cr->machineID, cr->mailboxNumber, name);
+		(void) interrupt->SetLevel(oldLevel);
+		cr->respond = false;
+		return cr;
+	}
+	delete cr;
+	cr = (ClientRequest *) queue->Remove(); //get the next thread waiting on CV
+	if(queue->IsEmpty()){
+		waitingLock = NULL; //if queue is empty, we no longer need to remember a lock
+							//and can allow a different lock to be passed in on the next Wait
+	}
+	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+	cr->respond = true;
+	return cr;
+}
+
+/**Dont' use
+ClientRequest* ServerCondition::Broadcast(Lock* ServerConditionLock client) {
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);
+	if(ServerConditionLock == NULL){
+		printf("Argument passed to ServerCondition::Broadcast() was null, returning without performing operation\n");
+		(void) interrupt->SetLevel(oldLevel);
+		return;
+	}
+	if(queue->IsEmpty()){
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		return; //don't need to worry if an extraneous call to signal, just return
+	}
+	if(waitingLock != conditionLock){ //check that it is the proper lock, otherwise the thread woken up will try
+										//to acquire a lock that may not be free and be blocked as a result
+		printf("Argument passed to Condition::Broadcast() for condition %s was the incorrect lock, returning without performing opeartion\n", name);
+		(void) interrupt->SetLevel(oldLevel); //restore interrupts (atomic operation done)
+		return;
+	}
+	if(!waitingLock->isHeldByCurrentThread()){
+		printf("Thread %s calling Signal() on Condition %s does not have lock\n", currentThread->getName(), name);
+		(void) interrupt->SetLevel(oldLevel);
+		return;
+	}
+	while(!queue->IsEmpty()) Signal(conditionLock); //all operations we need are in Signal, just need to call over and over
+	(void) interrupt->SetLevel(oldLevel);
+}
+*/
+#ifdef CHANGED
+bool ServerCondition::hasWaiting(){
 	if(queue->IsEmpty()){
 		return false;
 	}

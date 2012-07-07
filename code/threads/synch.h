@@ -21,6 +21,7 @@
 #include "thread.h"
 #include "list.h"
 
+
 // The following class defines a "semaphore" whose value is a non-negative
 // integer.  The semaphore has only two operations P() and V():
 //
@@ -90,11 +91,19 @@ class Lock {
     // plus some other stuff you'll need to define
 };
 
-class Owner{
+class ClientRequest{
 public:
 	int machineID;
 	int mailboxNumber;
+	bool respond;
+	ClientRequest(int m, int mb){
+		machineID = m;
+		mailboxNumber = mb;
+		respond = false;
+	}
 };
+
+
 
 class ServerLock {
 public:
@@ -103,10 +112,10 @@ public:
     ~ServerLock();				// deallocate lock
     char* getName() { return name; }	// debugging assist
 
-    void Acquire(int, int); // these are the only operations on a lock
-    Owner* Release(int, int); // they are both *atomic*
+    ClientRequest* Acquire(ClientRequest*); // these are the only operations on a lock
+    ClientRequest* Release(ClientRequest*); // they are both *atomic*
 
-    bool isHeldByRequester(Owner*);	// true if the current thread
+    bool isHeldByRequester(ClientRequest*);	// true if the current thread
 					// holds this lock.  Useful for
 					// checking in Release, and in
 					// Condition variable ops below.
@@ -118,7 +127,7 @@ public:
     char* name;				// for debugging
     LockStatus state; //for checking if lock is acquired or not
     List* queue; // track threads waiting
-    Owner* currentOwner; //used for checking if release() is called
+    ClientRequest* currentClientRequest; //used for checking if release() is called
     										//by same thread as the one which acquired lock
     // plus some other stuff you'll need to define
 };
@@ -180,6 +189,31 @@ class Condition {
     char* name;
     List* queue;
 		Lock* waitingLock;
+    // plus some other stuff you'll need to define
+};
+
+class ServerCondition {
+  public:
+    ServerCondition(char* debugName);		// initialize ServerCondition to
+					// "no one waiting"
+    ~ServerCondition();			// deallocate the ServerCondition
+    char* getName() { return (name); }
+
+    ClientRequest* Wait(ServerLock*, ClientRequest*); 	// these are the 3 operations on
+					// ServerCondition variables; releasing the
+					// lock and going to sleep are
+					// *atomic* in Wait()
+    ClientRequest* Signal(ServerLock *serverConditionLock, ClientRequest*);   // ServerConditionLock must be held by
+    //ClientRequest* Broadcast(ServerLock *serverConditionLock);// the currentThread for all of
+					// these operations
+#ifdef CHANGED
+    bool hasWaiting();
+#endif
+
+  private:
+    char* name;
+    List* queue;
+	ServerLock* waitingLock;
     // plus some other stuff you'll need to define
 };
 
