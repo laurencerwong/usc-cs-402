@@ -163,6 +163,17 @@ int main(int argc, char **argv)
             MailTest(atoi(*(argv + 1)));
             argCount = 2;
         }
+	else if(!strcmp(*argv, "-server")){
+	  Server();
+	}
+	else if(!strcmp(*argv, "-x")){
+	  StartProcess(*(argv + 1));
+	  argCount = 2;
+	}
+	else if(!strcmp(*argv, "-m")){
+	  machineID = atoi(*(argv + 1));
+	  argCount = 2;
+	}
 #endif // NETWORK
     }
 
