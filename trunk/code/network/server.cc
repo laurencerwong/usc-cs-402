@@ -11,6 +11,11 @@
 #include "synch.h"
 #include "messagetypes"
 
+
+
+
+
+
 void Server() {
 
 	while(true) {
@@ -22,26 +27,34 @@ void Server() {
 		postOffice->Receive(0, packetHeader, mailHeader, messageData);	//server is always mailbox 0 for now
 
 		//parse message
-		//parse
 		char messageType = messageData[0];
-		ClientRequest request;
-		request.machineID = messageData[1] + (messageData[4] << 8) + (messageData[3] << 16) + (messageData[2] << 24);
-		request.mailboxNumber = (messageData[5] << 24) + (messageData[6] << 16) + (messageData[7] << 8) + messageData[8];
+		int machineID = packetHeader->from;
+		int mailboxNumber = mailHeader->from;
+
+		replyMachineID = machineID;
+		replyMailboxNumber = mailboxNumber;
 
 		//handle the message
 		ClientRequest reply;
 		switch(messageType) {	//first byte is the message type
-		case CREATE_LOCK:
-			reply = ServerCreateLock(request);
+		case CREATE_LOCK:	//data[9] = nameLength, data[10:10+nameLength] = name
+			char nameLength = messageData[9];
+			char* name = new char[nameLength];
+			strncpy(name, (messageData + 10), nameLength);
+			reply = ServerCreateLock(machineID, mailboxNumber, name);
 			break;
 		case DESTROY_LOCK:
-			reply = ServerDestroyLock(request);
+			reply = ServerDestroyLock(owner, request);
 			break;
 		case ACQUIRE:
-			reply = ServerAcquire(request);
+			ClientRequest* temp = ServerAcquire(request);
+			if(temp->respond){
+				replyMachine = temp->machineID;
+				replyMailbox = temp->mailboxNumber;
+			}
 			break;
 		case RELEASE:
-			reply = ServerRelease(request);
+			reply = ServerRelease();
 			break;
 		case CREATE_CV:
 			reply = ServerCreateCV(request);
@@ -76,8 +89,9 @@ void Server() {
 
 		}
 
-
 		//send response message
+
+
 	}
 }
 

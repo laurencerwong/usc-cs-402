@@ -6,10 +6,8 @@
  */
 
 //data[0] = message type
-//data[1:4] = machine ID
-//data[5:8] = mailbox #
-//data[9] name size
-//data[10:10+namesize] name
+//data[1] name size
+//data[2:2+namesize] name
 
 char CREATE_LOCK = 'a';
 char DESTROY_LOCK = 'b';
