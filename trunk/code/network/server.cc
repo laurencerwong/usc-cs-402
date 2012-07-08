@@ -31,11 +31,11 @@ void Server() {
 		int machineID = packetHeader->from;
 		int mailboxNumber = mailHeader->from;
 
-		replyMachineID = machineID;
-		replyMailboxNumber = mailboxNumber;
+		int replyMachineID = machineID;
+		int replyMailboxNumber = mailboxNumber;
+
 
 		//handle the message
-		ClientRequest reply;
 		switch(messageType) {	//first byte is the message type
 		case CREATE_LOCK:	//data[9] = nameLength, data[10:10+nameLength] = name
 			char nameLength = messageData[9];
