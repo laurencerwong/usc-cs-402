@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 	  argCount = 2;
 	}
 	else if(!strcmp(*argv, "-m")){
-	  machineID = atoi(*(argv + 1));
+	  myMachineID = atoi(*(argv + 1));
 	  argCount = 2;
 	  if(isServer){
 	    Server();
