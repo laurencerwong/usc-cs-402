@@ -63,6 +63,10 @@ extern void MailTest(int networkID);
 extern void Problem2(void), TestSuite(void);
 #endif
 
+#ifdef NETWORK
+extern void Server();
+#endif
+
 //----------------------------------------------------------------------
 // main
 // 	Bootstrap the operating system kernel.  
@@ -176,7 +180,7 @@ int main(int argc, char **argv)
 	  machineID = atoi(*(argv + 1));
 	  argCount = 2;
 	  if(isServer){
-	    //Server();
+	    Server();
 	  }
 	  else{
 	    StartProcess(program);
