@@ -35,6 +35,7 @@ List *evictionList;
 EvictionPolicy evictionPolicy;
 
 int machineID;
+bool isServer;
 
 
 #endif

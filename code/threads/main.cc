@@ -155,6 +155,7 @@ int main(int argc, char **argv)
 	}
 #endif // FILESYS
 #ifdef NETWORK
+	char *program;
         if (!strcmp(*argv, "-o")) {
 	    ASSERT(argc > 1);
             Delay(2); 				// delay for 2 seconds
@@ -164,15 +165,22 @@ int main(int argc, char **argv)
             argCount = 2;
         }
 	else if(!strcmp(*argv, "-server")){
-	  Server();
+	  isServer = true;
 	}
 	else if(!strcmp(*argv, "-x")){
-	  StartProcess(*(argv + 1));
+	  isServer = false;
+	  program = *(argv + 1);
 	  argCount = 2;
 	}
 	else if(!strcmp(*argv, "-m")){
 	  machineID = atoi(*(argv + 1));
 	  argCount = 2;
+	  if(isServer){
+	    //Server();
+	  }
+	  else{
+	    StartProcess(program);
+	  }
 	}
 #endif // NETWORK
     }
