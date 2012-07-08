@@ -14,13 +14,13 @@
 #define MAX_SERVER_LOCKS 500
 #define MAX_SERVER_CVS 500
 
-typedef struct Server_Lock_Entry{
+typedef struct ServerLockEntry{
 	ServerLock *lock;
 	bool isToBeDeleted;
 	int acquireCount;
 } LockEntry;
 
-typedef struct Server_Condition_Entry{
+typedef struct ServerConditionEntry{
 	ServerCondition *condition;
 	bool isToBeDeleted;
 } ConditionEntry;
@@ -56,8 +56,23 @@ int ServerCreateLock(int machineID, int mailboxID, char* name) {
 	return nextFreeIndex;
 }
 
-int ServerDestroyLock() {
-
+void ServerDestroyLock(int lockIndex) {
+	if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
+		printf("Thread %s tried to destroy a lock with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return;
+	}
+	if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
+		printf("Thread %s tried to destroy a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+		return;
+	}
+	//validation done, ok to perform operation
+	if(!(serverLockTable[lockIndex].lock->isBusy() && serverLockTable[lockIndex].acquireCount == 0)){ //delete now if no one has called an Acquire syscall without a Release syscall
+		delete serverLockTable[lockIndex].lock;
+		serverLockMap->Clear(lockIndex);
+	}
+	else{ //some thread is depending on the thread being there, so just defer deletion
+		lockTable[lockIndex].isToBeDeleted = true;
+	}
 }
 
 
