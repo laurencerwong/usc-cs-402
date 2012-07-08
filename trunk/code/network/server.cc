@@ -9,10 +9,56 @@
 #include "post.h"
 #include "network.h"
 #include "synch.h"
-#include "messagetypes"
+#include "messagetypes.h"
 
+#define MAX_SERVER_LOCKS 500
+#define MAX_SERVER_CVS 500
 
+typedef struct Server_Lock_Entry{
+	ServerLock *lock;
+	bool isToBeDeleted;
+	int acquireCount;
+} LockEntry;
 
+typedef struct Server_Condition_Entry{
+	ServerCondition *condition;
+	bool isToBeDeleted;
+} ConditionEntry;
+
+BitMap *serverLockMap;
+BitMap *serverConditionMap;
+
+int serverLockArraySize = 0;
+int serverConditionArraySize = 0;
+ServerLockEntry *severLockTable;
+ServerConditionEntry *serverConditionTable;
+
+int ServerCreateLock(int machineID, int mailboxID, char* name) {
+	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
+		serverLockTable = new LockEntry[MAX_SERVER_LOCKS];
+		serverLockMap = new BitMap(MAX_SERVER_LOCKS);
+		serverLockArraySize = MAX_SERVER_LOCKS;
+	}
+
+	int nextFreeIndex = serverLockMap->Find(); //returns a free index in lockTable
+	if(nextFreeIndex == -1){ //error, kernel is out of memory for locks and should terminate
+		printf("Out of space for user program locks!\n");
+		//interrupt->Halt();
+		//on the server, don't halt, send a -1 as lock index response
+	}
+	else {
+		printf("Creating %s lock of index of %d\n", name, nextFreeIndex);
+		//initialize the lockTable entry we grabbed for this lock
+		serverLockTable[nextFreeIndex].lock = new ServerLock (name);
+		serverLockTable[nextFreeIndex].isToBeDeleted = false;
+		serverLockTable[nextFreeIndex].acquireCount = 0;
+	}
+	return nextFreeIndex;
+}
+
+int ServerDestroyLock() {
+
+}
 
 
 
@@ -44,8 +90,10 @@ void Server() {
 			reply = ServerCreateLock(machineID, mailboxNumber, name);
 			break;
 		case DESTROY_LOCK:
-			reply = ServerDestroyLock(owner, request);
+			reply = ServerDestroyLock();
 			break;
+
+
 		case ACQUIRE:
 			ClientRequest* temp = ServerAcquire(request);
 			if(temp->respond){
@@ -62,7 +110,7 @@ void Server() {
 		case DESTROY_CV:
 			reply = ServerDestroyCV(request);
 			break;
-		case SIGNAL:
+		case SIGNAL:	//condition, then lock in message
 			reply = ServerSignal(request);
 			break;
 		case WAIT:
