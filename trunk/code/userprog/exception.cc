@@ -25,7 +25,10 @@
 #include "system.h"
 #include "syscall.h"
 #include "exception.h"
+#include "post.h"
+#include "../network/messagetypes.h"
 #include <time.h>
+#include <cstring>
 #include <stdio.h>
 #include <iostream>
 
@@ -240,9 +243,10 @@ void Close_Syscall(int fd) {
 //Create a lock to be stored in kernel array lockTable.
 //Can at most have MAX_LOCK_CONDITIONS number of locks, or abort
 int CreateLock_Syscall(unsigned int nameIndex, int length){
-#ifdef USER_PROGRAM
+
 	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
+#ifdef USER_PROGRAM
 	//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
 	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
@@ -268,7 +272,27 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[2 + sizeof(name)];
+	data[0] = CREATE_LOCK;
+	data[1] = (char) sizeof(name);
+	strncpy(data + 2, name, sizeof(name) );
+
+	char buff[MaxMailSize];
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+
+	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
 #endif
 }
 
@@ -302,7 +326,27 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[2 + sizeof(name)];
+	data[0] = CREATE_CV;
+	data[1] = (char) sizeof(name);
+	strncpy(data + 2, name, sizeof(name) );
+
+	char buff[MaxMailSize];
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+
+	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
 #endif
 
 }
@@ -346,7 +390,20 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + 2* sizeof(int)];
+	data[0] = SIGNAL;
+	sprintf(data + 1, "%d%d", conditionIndex, lockIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
@@ -389,7 +446,20 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + 2* sizeof(int)];
+	data[0] = BROADCAST;
+	sprintf(data + 1, "%d%d", conditionIndex, lockIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
@@ -440,7 +510,32 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + 2 * sizeof(int)];
+	data[0] = WAIT;
+	char buff[MaxMailSize];
+	sprintf(data + 1, "%d%d", conditionIndex, lockIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+	delete data;
+	data = new char[1 + sizeof(int)];
+	data[0] = ACQUIRE;
+	sprintf(data + 1, "%d", lockIndex);
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	success = postOffice->Send(*packetHeader, *mailHeader, data);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
 #endif
 }
 
@@ -471,10 +566,24 @@ void DestroyLock_Syscall(int lockIndex){
 		lockTable[lockIndex].isToBeDeleted = true;
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
+
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + sizeof(int)];
+	data[0] = DESTROY_LOCK;
+	sprintf(data + 1, "%d", lockIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
@@ -508,7 +617,20 @@ void DestroyCondition_Syscall(int conditionIndex){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + sizeof(int)];
+	data[0] = DESTROY_LOCK;
+	sprintf(data + 1, "%d", conditionIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
@@ -542,7 +664,22 @@ void Acquire_Syscall(int lockIndex){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* buff = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + sizeof(int)];
+
+	data[0] = ACQUIRE;
+	sprintf(data + 1, "%d", lockIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
 #endif
 }
 
@@ -577,7 +714,20 @@ void Release_Syscall(int lockIndex){
 #endif
 
 #ifdef NETWORK
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
 
+	packetHeader->to = 0; //server machineID
+	packetHeader->from = machineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+
+
+	char* data = new char[1 + sizeof(int)];
+	data[0] = RELEASE;
+	sprintf(data + 1, "%d", lockIndex);
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
