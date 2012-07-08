@@ -25,7 +25,9 @@
 #include "system.h"
 #include "syscall.h"
 #include "exception.h"
+#ifdef NETWORK
 #include "post.h"
+#endif
 #include "../network/messagetypes.h"
 #include <time.h>
 #include <cstring>
@@ -290,8 +292,10 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char buff[MaxMailSize];
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
+	//wait for index, sent in message back from server
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
 
+	//parse int, as it will come in char form
 	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
 #endif
 }
@@ -344,7 +348,7 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	char buff[MaxMailSize];
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //wait for response from server (should be an index)
 
 	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
 #endif
@@ -402,8 +406,10 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 
 	char* data = new char[1 + 2* sizeof(int)];
 	data[0] = SIGNAL;
-	sprintf(data + 1, "%d%d", conditionIndex, lockIndex);
+	data[1] = conditionIndex;
+	data[5] = lockIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	//don't need to wait for a response
 #endif
 }
 
@@ -455,10 +461,11 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
-
+	//pack message
 	char* data = new char[1 + 2* sizeof(int)];
 	data[0] = BROADCAST;
-	sprintf(data + 1, "%d%d", conditionIndex, lockIndex);
+	data[1] = conditionIndex;
+	data[5] = lockIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
@@ -523,13 +530,17 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	char* data = new char[1 + 2 * sizeof(int)];
 	data[0] = WAIT;
 	char buff[MaxMailSize];
-	sprintf(data + 1, "%d%d", conditionIndex, lockIndex);
+	data[1] = conditionIndex;
+	data[5] = lockIndex;
+	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
 	delete data;
+
+	//pack message for an Acquire.  need to reacquire lock before  user program gets control
 	data = new char[1 + sizeof(int)];
 	data[0] = ACQUIRE;
-	sprintf(data + 1, "%d", lockIndex);
+	data[1] = lockIndex;
 	packetHeader->to = 0; //server machineID
 	packetHeader->from = machineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
@@ -579,11 +590,12 @@ void DestroyLock_Syscall(int lockIndex){
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
-
+	//pack message
 	char* data = new char[1 + sizeof(int)];
 	data[0] = DESTROY_LOCK;
-	sprintf(data + 1, "%d", lockIndex);
+	data[1] = lockIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	//don't need to wait for response
 #endif
 }
 
@@ -629,8 +641,9 @@ void DestroyCondition_Syscall(int conditionIndex){
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = DESTROY_LOCK;
-	sprintf(data + 1, "%d", conditionIndex);
+	data[1] = conditionIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	//don't need to wait for response
 #endif
 }
 
@@ -677,9 +690,9 @@ void Acquire_Syscall(int lockIndex){
 	char* data = new char[1 + sizeof(int)];
 
 	data[0] = ACQUIRE;
-	sprintf(data + 1, "%d", lockIndex);
+	data[1] = lockIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //must get response for user program to continue
 #endif
 }
 
@@ -726,8 +739,9 @@ void Release_Syscall(int lockIndex){
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = RELEASE;
-	sprintf(data + 1, "%d", lockIndex);
+	data[1] = conditionIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	//don't need to wait for response
 #endif
 }
 
@@ -1055,24 +1069,24 @@ int RandInt_Syscall() {
 	return rand();
 }
 
+/**If a page wasn't in physical memory, we need to pick a page to evict based on either FIFO
+ * or random policy
+ */
 int Evict(){
 	int pageToEvict;
 	switch(evictionPolicy){
-	case RAND:
-		//cout << "Picking a page to evict using RAND..." << endl;
-		//pageToEvict = rand()%evictionList.size();
+	case RAND:;
 		pageToEvict = rand() % NumPhysPages;
-		while(IPT[pageToEvict].use){
+		while(IPT[pageToEvict].use){ //make sure IPTEntry isn't in use, otherwise pick a new one
 			pageToEvict = rand() % NumPhysPages;
 		}
 		break;
 	case FIFO:
-	default:
-		//cout << "Picking a page to evict using FIFO..." << endl;
+	default: //policy if FIFO if not specified
 
 			int* pageToEvictAddr = (int*) (evictionList->Remove());
 			pageToEvict = *pageToEvictAddr;
-			while(IPT[pageToEvict].use){
+			while(IPT[pageToEvict].use){ // if page was in use, put it back on and grab another
 				evictionList->Append((void*)pageToEvictAddr);
 				pageToEvictAddr = (int*) (evictionList->Remove());
 				pageToEvict = *pageToEvictAddr;
@@ -1080,10 +1094,11 @@ int Evict(){
 
 
 		delete pageToEvictAddr;
-		//evictionList.pop();
 		break;
 	}
-	IPT[pageToEvict].use = true;
+	IPT[pageToEvict].use = true; //makr this as used so no one can grab it
+	//if page we are evicting is in tlb, makr its valid bit to false right away
+	//so it can be used to access physical memory that is no longer there
 	IntStatus old = interrupt->SetLevel(IntOff);
 	for(int i = 0; i < TLBSize; i++){
 		if(machine->tlb[i].physicalPage == pageToEvict && machine->tlb[i].valid){
@@ -1094,54 +1109,49 @@ int Evict(){
 	(void)interrupt->SetLevel(old);
 	if(IPT[pageToEvict].dirty){
 		//write to the swap file
-//		swapLock->Acquire();
+		//we have IPT lock, so this is in critical section
 		int swapFilePageNum;
 		if(IPT[pageToEvict].space->pageTable[IPT[pageToEvict].virtualPage].location == IN_SWAP){
+			//we use a policy where a copy of a page is always in the swap file, and we just check out a copy
+			//so if a copy has been in memory, find where in the swap file it is so we write over that page
 			swapFilePageNum = IPT[pageToEvict].space->pageTable[IPT[pageToEvict].virtualPage].offset / PageSize;
 		}
 		else{
-			swapFilePageNum = swapMap->Find();
+			swapFilePageNum = swapMap->Find(); //if this page has never been in the swap file
 		}
-		swapFile->WriteAt(&(machine->mainMemory[pageToEvict * PageSize]), PageSize, swapFilePageNum * PageSize);
-//		swapLock->Release();
+		swapFile->WriteAt(&(machine->mainMemory[pageToEvict * PageSize]), PageSize, swapFilePageNum * PageSize); //do write
 		IPT[pageToEvict].space->pageTable[IPT[pageToEvict].virtualPage].location = IN_SWAP;
 		IPT[pageToEvict].space->pageTable[IPT[pageToEvict].virtualPage].offset = swapFilePageNum * PageSize;
 	}
 	return pageToEvict;
 }
 
+//function that will update IPT with page that triggered PageFault
 int HandleIPTMiss(int vpn, int p){
-	//cout << "HandleIPTMiss: beginning handle ipt miss with vpn = " << vpn << " and p = " << p << endl;
 	if(p == -1){
 		return p;
 	}
-	int* ppnAddr = new int;
-	*ppnAddr = p;
-	int tempPhysAddr = p * PageSize;
-	//cout << "tempPhysAddr" << tempPhysAddr << endl;
-	//printf("tempPhysAddr: 0x%x for page %d\n", tempPhysAddr, p);
-	//printf("page %d in use? %d\n", p, IPT[p].use);
-	switch(currentThread->space->pageTable[vpn].location){
-	case IN_EXECUTABLE:
-		//cout << "HandleIPTMiss: Page is in executable" << endl;
+	int tempPhysAddr = p * PageSize; //page to address translation
+	switch(currentThread->space->pageTable[vpn].location){ //page table will tell us where to find data
+	case IN_EXECUTABLE: //exectable file has the information
 		currentThread->space->executable->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
 		break;
-	case IN_MEMORY:
-		//cout << "HandleIPTMiss: Page is in memory" << endl;
-		//cout << "IPT MISSED IN MEMORY! :(" << endl;
+	case IN_MEMORY: //unused case
 		break;
-	case IN_SWAP:
-		//cout << "HandleIPTMiss: Page is in swap" << endl;
+	case IN_SWAP: //information has been modified at some point in time and was stored in the swap file
+		//do read from swap file
 		swapFile->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
-		//cout << "HandleIPTMiss: Page was read from swap" << endl;
 		break;
 	case UNINIT:
-		//cout << "HandleIPTMiss: Page is uninit" << endl;
+		//for data that isn't part of the executable (i.e. thread stack pages) but has not yet been written to the swapfile
+		//don't need to read anything because all datat should be overwritten before access by user program
 		break;
 	default:
-		//cout << "HandleIPTMiss: Page is default" << endl;
+		//don't do anything, should not be reached
 		break;
 	}
+
+	//update IPT entry with data about the page
 	IPT[p].space = currentThread->space;
 	IPT[p].virtualPage = vpn;
 	IPT[p].physicalPage = p;
@@ -1150,11 +1160,11 @@ int HandleIPTMiss(int vpn, int p){
 	IPT[p].readOnly = FALSE;
 	int* temp = new int;
 	*temp = p;
-	//cout << "HandleIPTMiss: appending physical page " << p << " to FIFO list" << endl;
 	if(evictionPolicy == FIFO) {
-		//evictionList.push(p);
+		//update list used for FIFO eviction
 		evictionList->Append((void*)temp);
 	}
+	//update pageTable of AddrSpace
 	currentThread->space->pageTable[vpn].virtualPage = vpn;
 	currentThread->space->pageTable[vpn].physicalPage = p;
 	currentThread->space->pageTable[vpn].valid = TRUE;
@@ -1164,53 +1174,47 @@ int HandleIPTMiss(int vpn, int p){
 }
 
 //Called when we don't find the virtual page we are looking for in the tlb
+//by the end of this function, the necessary page needs to be in physical memory
+//with a translation entry in the tlb
 void HandlePageFault(){
-	//cout << "Handling page fault..." << endl;
-	iptLock->Acquire();
-	int vpn = machine->ReadRegister(BadVAddrReg)/128;
-//	machine->tlb[currentTLB].virtualPage = currentThread->space->pageTable[vpn].virtualPage;
-//	machine->tlb[currentTLB].physicalPage = currentThread->space->pageTable[vpn].physicalPage;
-//	machine->tlb[currentTLB].valid = true;
+	iptLock->Acquire(); //acquire lock because IPT access needs to be in a critical section
+						//problems would occur if we found our page only to have it evicted in some other thread
+
+	int vpn = machine->ReadRegister(BadVAddrReg)/PageSize; //register holds the offending virtual address than caused PageFaultException
 	int ppn = -1;
-	for(int i = 0; i < NumPhysPages; i++){
-		if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){
-			ppn = i;
-			IPT[i].use = TRUE;
-			iptLock->Release();
-			break;
-		}
+	int i = currentThread->space->pageTable[vpn].physicalPage; //the last known location of our page in physical memory
+	if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){ //check that the physical page still belongs to this thread
+		//here, we found the virtual page already in physical memory
+		ppn = i;
+		IPT[i].use = TRUE; //this will allow us to release lock but still prevent other threads from changing the IPT entry
+		iptLock->Release();
 	}
-	//cout << "HandlePageFault: got ppn " << ppn << " and vpn " << vpn << endl;
 
-	while(ppn == -1){
-		//cout << "Page not in IPT" << endl;
-		//processIDLock is for main memory bitmap in addition to creation of processes
+	while(ppn == -1){ //just in case we don't find something on first pass however
+					// shouldn't ever execute more than once
+
 		iptLock->Acquire();
-		ppn = mainMemoryBitmap->Find();
-		if(ppn == -1){
-			ppn = Evict();
-			//cout << "No more memory, evicted physical page: " << ppn << endl;
+		ppn = mainMemoryBitmap->Find(); //check if there's a free page in memory for us to take
+		if(ppn == -1){ //all physical memory has been allocated
+			ppn = Evict(); //choose and return a page to evict
 		}
 
-		if(ppn != -1){
-			//printf("PageFault: page %d in use? %d\n", ppn, IPT[ppn].use);
+		if(ppn != -1){ //have picked page to evict
 			IPT[ppn].use = TRUE;
-			
 			iptLock->Release();
 			HandleIPTMiss(vpn, ppn);
 		}
-		else {
-
-		}
 	}
 
 
-	IntStatus old = interrupt->SetLevel(IntOff);
+	IntStatus old = interrupt->SetLevel(IntOff); //turn off interrupts to update tlb since we can't put a lock around it in machine code
 
 
 	//essentially evicting a page from tlb to make room for the new page we are bringing in
-	IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty;
+	IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty; //propagate dirty bit from tlb entry being evicted
+																					//otherwise, on eviction from memory we wouldn't know if page has been modified
 
+	//put information of the page we need into the tlb
 	machine->tlb[currentTLB].virtualPage = IPT[ppn].virtualPage;
 	machine->tlb[currentTLB].physicalPage = IPT[ppn].physicalPage;
 	machine->tlb[currentTLB].valid = IPT[ppn].valid;
@@ -1219,7 +1223,8 @@ void HandlePageFault(){
 	machine->tlb[currentTLB].readOnly = IPT[ppn].readOnly;
 	currentTLB++;
 	currentTLB %= TLBSize;
-	IPT[ppn].use = FALSE;
+	IPT[ppn].use = FALSE; //can let other threads alter our IPT entry now. worst case scenario it happens before we run our instruction again and we have
+				//another page fault
 	machine->tlb[currentTLB].use = FALSE;
 	(void)interrupt->SetLevel(old);
 }
