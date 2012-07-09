@@ -278,8 +278,8 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -334,8 +334,8 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -354,6 +354,29 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 #endif
 
 }
+
+#ifdef NETWORK
+int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries){
+	char* name = new char [length];
+	copyin(nameIndex, length, name);
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
+
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+
+	char* data = new char[2 + sizeof(name) + sizeof(int)];
+	data[0] = CREATE_MV;
+	data[1] = sizeof(name);
+	strncpy(data + 2, name, sizeof(name));
+	data[2 + sizeof(name)] = numArrayEntries;
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, data);
+	return ((int) data[0]) << 24 + ((int) data[1]) << 16 + ((int) data[2]) << 8 + ((int) data[3]);
+}
+#endif
 
 void Signal_Syscall(int conditionIndex, int lockIndex){
 #ifdef USER_PROGRAM
@@ -398,8 +421,8 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -456,8 +479,8 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -521,8 +544,8 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -541,8 +564,8 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	data = new char[1 + sizeof(int)];
 	data[0] = ACQUIRE;
 	data[1] = lockIndex;
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 	success = postOffice->Send(*packetHeader, *mailHeader, data);
@@ -585,8 +608,8 @@ void DestroyLock_Syscall(int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -633,8 +656,8 @@ void DestroyCondition_Syscall(int conditionIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -646,6 +669,67 @@ void DestroyCondition_Syscall(int conditionIndex){
 	//don't need to wait for response
 #endif
 }
+
+#ifdef NETWORK
+void DestroyMV_Syscall( int index){
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
+
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+
+	char* data = new char[1 + sizeof(int)];
+	data[0] = DESTROY_MV;
+	data[1] = index;
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+}
+#endif
+
+#ifdef NETWORK
+void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
+
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+
+	char* data = new char[1 + sizeof(int)];
+	data[0] = SET_MV;
+	data[1] = arrIndex;
+	data[1 + sizeof(int)] = indexInArray;
+	data[1 + sizeof(int) * 2] = value;
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+
+}
+#endif
+
+
+#ifdef NETWORK
+int GetMV_Syscall(int arrIndex, int varIndex){
+	PacketHeader *packetHeader = new PacketHeader;
+	MailHeader *mailHeader = new MailHeader;
+	char* messageData = new char[MaxMailSize];
+
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
+	mailHeader->to = 0; //server mailbox
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+
+	char* data = new char[1 + 2 * sizeof(int)];
+
+	data[1] = arrIndex;
+	data[1 + varIndex] = varIndex;
+	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, data);
+	return ((int) data[0]) << 24 + ((int) data[1]) << 16 + ((int) data[2]) << 8 + ((int) data[3]);
+}
+#endif
 
 void Yield_Syscall(){
 	currentThread->Yield();
@@ -681,8 +765,8 @@ void Acquire_Syscall(int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* buff = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
@@ -731,15 +815,15 @@ void Release_Syscall(int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server machineID
-	packetHeader->from = machineID; //this instance's machine number
+	packetHeader->to = 0; //server myMachineID
+	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
 
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = RELEASE;
-	data[1] = conditionIndex;
+	data[1] = lockIndex;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
@@ -1182,12 +1266,13 @@ void HandlePageFault(){
 
 	int vpn = machine->ReadRegister(BadVAddrReg)/PageSize; //register holds the offending virtual address than caused PageFaultException
 	int ppn = -1;
-	int i = currentThread->space->pageTable[vpn].physicalPage; //the last known location of our page in physical memory
-	if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){ //check that the physical page still belongs to this thread
-		//here, we found the virtual page already in physical memory
-		ppn = i;
-		IPT[i].use = TRUE; //this will allow us to release lock but still prevent other threads from changing the IPT entry
-		iptLock->Release();
+	for(int i = 0; i < NumPhysPages; i++){
+		if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){ //check that the physical page still belongs to this thread
+			//here, we found the virtual page already in physical memory
+			ppn = i;
+			IPT[i].use = TRUE; //this will allow us to release lock but still prevent other threads from changing the IPT entry
+			iptLock->Release();
+		}
 	}
 
 	while(ppn == -1){ //just in case we don't find something on first pass however
@@ -1370,6 +1455,18 @@ void ExceptionHandler(ExceptionType which) {
 		case SC_NSrand:
 			NSrand_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "Srand syscall.\n");
+			break;
+		case SC_CreateMV:
+			CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+			break;
+		case SC_DestroyMV:
+			DestroyMV_Syscall(machine->ReadRegister(4));
+			break;
+		case SC_SetMV:
+			SetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+			break;
+		case SC_GetMV:
+			GetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 			break;
 		}
 

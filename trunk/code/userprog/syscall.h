@@ -59,6 +59,10 @@
 #define SC_NSrand 36
 #define SC_ReadInt 37
 #define SC_RandInt 38
+#define SC_CreateMV 39
+#define SC_DestroyMV 40
+#define SC_SetMV 41
+#define SC_GetMV 42
 
 #define MAX_LOCKS_CONDITIONS 500
 
