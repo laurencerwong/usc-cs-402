@@ -502,7 +502,7 @@ ClientRequest* ServerCondition::Broadcast(Lock* ServerConditionLock client) {
 	(void) interrupt->SetLevel(oldLevel);
 }
 */
-#ifdef CHANGED
+//#ifdef CHANGED
 bool ServerCondition::hasWaiting(){
 	if(queue->IsEmpty()){
 		return false;
@@ -512,4 +512,4 @@ bool ServerCondition::hasWaiting(){
 	}
 }
 
-#endif
+//#endif

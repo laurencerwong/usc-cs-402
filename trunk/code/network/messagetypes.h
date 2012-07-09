@@ -24,6 +24,9 @@ char SET_MV = 'm';
 /*
 Note: When ints are in messages, the MSByte comes first, ie. read the int from left to right in the order the bytes are received
 
+::::: Message Formats :::::
+-What the server expects to get from the client
+
 ---== FOR ALL MESSAGES ==---
 data[0] = message type
 
@@ -67,8 +70,9 @@ data[5:8] = lockIndex, the index of the lock you want to use
 ---- MV messages ----
 Create:
 data[1:4] = numEntries, the number of entries you watn to create in this MV array
-data[5] = nameLength, the length of the name for this MV array
-data[6:6 + nameLength] = the data for the name itself
+data[5:8] = initialValue, the value that every entry in the new MV will be initialized to
+data[9] = nameLength, the length of the name for this MV array
+data[10:10 + nameLength] = the data for the name itself
 
 Destroy:
 data[1:4] = mvToDestroy, the index of the MV array that we are deleting

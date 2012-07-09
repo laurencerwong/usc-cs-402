@@ -10,12 +10,14 @@
 #include "network.h"
 #include "synch.h"
 #include "messagetypes.h"
+#include <queue>
 
 #define MAX_SERVER_LOCKS 500
 #define MAX_SERVER_CVS 500
 #define MAX_SERVER_MV_ARRAYS 500
 #define MAX_SERVER_ENTRIES_PER_MV_ARRAY 500
 
+using namespace std;
 
 struct ServerLockEntry{
 	ServerLock *lock;
@@ -44,6 +46,15 @@ int serverMVArraySize = 0;
 ServerLockEntry *serverLockTable;
 ServerConditionEntry *serverConditionTable;
 ServerMVEntry *serverMVTable;
+
+struct ServerResponse {
+	int toMachine;
+	int toMailbox;
+	int data;
+	//int operationSuccessful;
+};
+
+queue<ServerResponse> necessaryResponses;
 
 int ServerCreateLock(int machineID, int mailboxID, char* name) {
 	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
@@ -240,8 +251,15 @@ void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockInd
 	}
 
 	//validation done, ok to perform operation
-	serverConditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
-	//TODO- you must loop signalling everyone here, including the sending of messages!
+	//serverConditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
+	respond = false;	//broadcast is special, it doesn't send 1 response, it sends many, so it handles that itself.
+
+
+	while(serverConditionTable[conditionIndex].condition->) {
+
+	}
+
+	necessaryResponses.push()
 	//also, construct and return a blank clientrequest with response false
 }
 
@@ -268,7 +286,10 @@ int ServerCreateMV(int machineID, int mailboxID, char* name, int numEntries, int
 		//initialize the MVtable entry
 		serverMVTable[nextFreeIndex].mvEntries = new int[numEntries];
 		serverMVTable[nextFreeIndex].numEntries = numEntries;
-		serverMVTable[nextFreeIndex].name = name;	//TODO do we need to copy or something here?
+		serverMVTable[nextFreeIndex].name = name;
+		for(int i = 0; i < numEntries; i++) {
+			serverMVTable[nextFreeIndex].mvEntries[i] = initialValue;
+		}
 	}
 	return nextFreeIndex;
 }
@@ -354,13 +375,19 @@ void Server() {
 		bool respond = false;
 		int replyData = 0;
 
+		ServerResponse response;
+		response.toMachine = machineID;
+		response.toMailbox = mailbox;
+		response.data = -1;
+
 		//handle the message
 		switch(messageType) {	//first byte is the message type
 		case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
 			char nameLength = messageData[1];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 2), nameLength);
-			replyData = ServerCreateLock(machineID, mailbox, name);
+			response.data = ServerCreateLock(machineID, mailbox, name);
+			necessaryResponses.push(response);
 			respond = true;
 			break;
 
@@ -373,28 +400,31 @@ void Server() {
 			int lockIndex = extractInt(messageData + 1);
 			ClientRequest* temp = ServerAcquire(machineID, mailbox, lockIndex);
 			if(temp->respond){
-				replyMachine = temp->machineID;
-				replyMailbox = temp->mailboxNumber;
+				response.toMachine = temp->machineID;
+				response.toMailbox = temp->mailboxNumber;
+				necessaryResponses.push(response);
 				respond = true;
 			}
-			//TODO- can we delete temp, or is it used internally in the lock/cv?
 			break;
 
 		case RELEASE:
 			int lockIndex = extractInt(messageData + 1);
 			ClientRequest* temp = ServerRelease(machineID, mailbox, lockIndex);
 			if(temp->respond){
-				replyMachine = temp->machineID;
-				replyMailbox = temp->mailboxNumber;
+				response.toMachine = temp->machineID;
+				response.toMailbox = temp->mailboxNumber;
+				necessaryResponses.push(response);
 				respond = true;
 			}
+			delete temp;
 			break;
 
 		case CREATE_CV:
 			char nameLength = messageData[1];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 2), nameLength);
-			replyData = ServerCreateCV(machineID, mailbox, name);
+			response.data = ServerCreateCV(machineID, mailbox, name);
+			necessaryResponses.push(response);
 			respond = true;
 			break;
 
@@ -408,10 +438,12 @@ void Server() {
 			int lockIndex = extractInt(messageData + 5);
 			ClientRequest *temp = ServerSignal(machineID, mailbox, cvIndex, lockIndex);
 			if(temp->respond){
-				replyMachine = temp->machineID;
-				replyMailbox = temp->mailboxNumber;
+				response.toMachine = temp->machineID;
+				response.toMailbox = temp->mailboxNumber;
+				necessaryResponses.push(response);
 				respond = true;
 			}
+			delete temp;
 			break;
 
 		case WAIT:
@@ -423,7 +455,9 @@ void Server() {
 		case BROADCAST:
 			int cvIndex = extractInt(messageData + 1);
 			int lockIndex = extractInt(messageData + 5);
-			ServerBroadcast(machineID, mailbox, cvIndex, lockIndex);	//TODO, need to handle messaging back, maybe return a success, no response ClientRequest
+			ServerBroadcast(machineID, mailbox, cvIndex, lockIndex);
+			necessaryResponses.push(response);
+			respond = true;
 			break;
 
 		case CREATE_MV:
@@ -432,7 +466,9 @@ void Server() {
 			char nameLength = messageData[9];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 10), nameLength);
-			replyData = ServerCreateMV(machineID, mailbox, name, numEntries, initialValue);
+			response.data = ServerCreateMV(machineID, mailbox, name, numEntries, initialValue);
+			necessaryResponses.push(response);
+
 			respond = true;
 			break;
 
@@ -444,7 +480,8 @@ void Server() {
 		case GET_MV:
 			int mvIndex = extractInt(messageData + 1);
 			int entryIndex = extractInt(messageData + 5);
-			replyData = ServerGetMV(mvIndex, entryIndex);
+			response.data = ServerGetMV(mvIndex, entryIndex);
+			necessaryResponses.push(response);
 			respond = true;
 			break;
 
@@ -466,9 +503,9 @@ void Server() {
 			MailHeader *responseMailHeader = new MailHeader;
 			char* responseData = new char[MaxMailSize];
 
-			responsePacketHeader->to = replyMachineID; //machine i'm responding to
+			responsePacketHeader->to = response.toMachine; //machine i'm responding to
 			responsePacketHeader->from = myMachineID; //this machine's number
-			mailHeader->to = replyMailbox;	//mailbox i'm responding to
+			mailHeader->to = response.toMailbox;	//mailbox i'm responding to
 			mailHeader->from = 0; //server mailbox?  TODO
 
 			//pack message
