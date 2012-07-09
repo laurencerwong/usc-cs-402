@@ -7,19 +7,19 @@
 
 
 
-char CREATE_LOCK = 'a';
-char DESTROY_LOCK = 'b';
-char ACQUIRE = 'c';
-char RELEASE = 'd';
-char CREATE_CV = 'e';
-char DESTROY_CV = 'f';
-char SIGNAL = 'g';
-char WAIT = 'h';
-char BROADCAST = 'i';
-char CREATE_MV = 'j';
-char DESTROY_MV = 'k';
-char GET_MV = 'l';
-char SET_MV = 'm';
+#define CREATE_LOCK 'a'
+#define DESTROY_LOCK 'b'
+#define ACQUIRE 'c'
+#define RELEASE 'd'
+#define CREATE_CV 'e'
+#define DESTROY_CV 'f'
+#define SIGNAL 'g'
+#define WAIT 'h'
+#define BROADCAST 'i'
+#define CREATE_MV 'j'
+#define DESTROY_MV 'k'
+#define GET_MV 'l'
+#define SET_MV 'm'
 
 /*
 Note: When ints are in messages, the MSByte comes first, ie. read the int from left to right in the order the bytes are received

@@ -57,8 +57,8 @@ struct ServerResponse {
 queue<ServerResponse> necessaryResponses;
 
 int ServerCreateLock(int machineID, int mailboxID, char* name) {
-	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
-		serverLockTable = new LockEntry[MAX_SERVER_LOCKS];
+	if(serverLockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
+		serverLockTable = new ServerLockEntry[MAX_SERVER_LOCKS];
 		serverLockMap = new BitMap(MAX_SERVER_LOCKS);
 		serverLockArraySize = MAX_SERVER_LOCKS;
 	}
@@ -103,7 +103,7 @@ ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex) {
 		printf("Thread %s called Acquire with an invalid index %d\n", currentThread->getName(), lockIndex);
 		return NULL;
 	}
-	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
+	if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Acquire on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		return NULL;
 	}
@@ -139,9 +139,9 @@ ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex){
 int ServerCreateCV(int machineID, int mailbox, char* name){
 
 	if(serverConditionArraySize == 0){ //should only execute on first call to this function in a run of nachos
-		serverConditionTable = new ServerConditionEntry[MAX_SERVER_CONDITIONS];
-		serverConditionMap = new BitMap(MAX_SERVER_CONDITIONS);
-		serverConditionArraySize = MAX_SERVER_CONDITIONS;
+		serverConditionTable = new ServerConditionEntry[MAX_SERVER_CVS];
+		serverConditionMap = new BitMap(MAX_SERVER_CVS);
+		serverConditionArraySize = MAX_SERVER_CVS;
 	}
 	int nextFreeIndex = serverConditionMap->Find();
 	if(nextFreeIndex == -1){ //error, kernel is out of memory for CVs and should terminate
@@ -233,19 +233,19 @@ void ServerWait(int machineID, int mailbox, int conditionIndex, int lockIndex){
 
 void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockIndex){
 
-	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
+	if(conditionIndex < 0 || conditionIndex > serverConditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		return;
 	}
-	if(!conditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
+	if(!serverConditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
 		printf("Thread %s called Broadcast on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
 		return;
 	}
-	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
+	if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
-	if(!lockMap->Test(lockIndex)){ //lock has not been instantiated at this index
+	if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 		printf("Thread %s called Broadcast with a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 		return;
 	}
@@ -382,7 +382,9 @@ void Server() {
 
 		//handle the message
 		switch(messageType) {	//first byte is the message type
+
 		case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
+		{
 			char nameLength = messageData[1];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 2), nameLength);
@@ -390,13 +392,15 @@ void Server() {
 			necessaryResponses.push(response);
 			respond = true;
 			break;
-
+		}
 		case DESTROY_LOCK:
+		{
 			int lockIndex = extractInt(messageData + 1);
 			ServerDestroyLock(lockIndex);
 			break;
-
+		}
 		case ACQUIRE:
+		{
 			int lockIndex = extractInt(messageData + 1);
 			ClientRequest* temp = ServerAcquire(machineID, mailbox, lockIndex);
 			if(temp->respond){
@@ -406,8 +410,9 @@ void Server() {
 				respond = true;
 			}
 			break;
-
+		}
 		case RELEASE:
+		{
 			int lockIndex = extractInt(messageData + 1);
 			ClientRequest* temp = ServerRelease(machineID, mailbox, lockIndex);
 			if(temp->respond){
@@ -418,8 +423,9 @@ void Server() {
 			}
 			delete temp;
 			break;
-
+		}
 		case CREATE_CV:
+		{
 			char nameLength = messageData[1];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 2), nameLength);
@@ -427,13 +433,15 @@ void Server() {
 			necessaryResponses.push(response);
 			respond = true;
 			break;
-
+		}
 		case DESTROY_CV:
+		{
 			int cvToDestroy = extractInt(messageData + 1);
 			ServerDestroyCV(cvToDestroy);
 			break;
-
+		}
 		case SIGNAL:	//condition, then lock in message
+		{
 			int cvIndex = extractInt(messageData + 1);
 			int lockIndex = extractInt(messageData + 5);
 			ClientRequest *temp = ServerSignal(machineID, mailbox, cvIndex, lockIndex);
@@ -445,21 +453,24 @@ void Server() {
 			}
 			delete temp;
 			break;
-
+		}
 		case WAIT:
+		{
 			int cvIndex = extractInt(messageData + 1);
 			int lockIndex = extractInt(messageData + 5);
 			ServerWait(machineID, mailbox, cvIndex, lockIndex);
 			break;
-
+		}
 		case BROADCAST:
+		{
 			int cvIndex = extractInt(messageData + 1);
 			int lockIndex = extractInt(messageData + 5);
 			ServerBroadcast(machineID, mailbox, cvIndex, lockIndex);	//adding responses to the queue is handled in broadcast
 			respond = true;
 			break;
-
+		}
 		case CREATE_MV:
+		{
 			int numEntries = extractInt(messageData + 1);
 			int initialValue = extractInt(messageData + 5);
 			char nameLength = messageData[9];
@@ -470,30 +481,35 @@ void Server() {
 
 			respond = true;
 			break;
-
+		}
 		case DESTROY_MV:
+		{
 			int mvToDestroy = extractInt(messageData + 1);
 			ServerDestroyMV(mvToDestroy);
 			break;
-
+		}
 		case GET_MV:
+		{
 			int mvIndex = extractInt(messageData + 1);
 			int entryIndex = extractInt(messageData + 5);
 			response.data = ServerGetMV(mvIndex, entryIndex);
 			necessaryResponses.push(response);
 			respond = true;
 			break;
-
+		}
 		case SET_MV:
+		{
 			int mvIndex = extractInt(messageData + 1);
 			int entryIndex = extractInt(messageData + 5);
 			int value = extractInt(messageData + 9);
 			ServerSetMV(mvIndex, entryIndex, value);
 			break;
-
+		}
 		default:
+		{
 			//oops...
 			break;
+		}
 
 		}
 
@@ -509,10 +525,10 @@ void Server() {
 				mailHeader->from = 0; //server mailbox?  TODO
 
 				//pack message
-				data[0] = compressInt(necessaryResponses.front().data, (responseData + 0));
+				compressInt(necessaryResponses.front().data, (responseData + 0));
 
 				//send
-				bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+				bool success = postOffice->Send(*packetHeader, *mailHeader, responseData);
 
 				//remove response from list
 				necessaryResponses.pop();
