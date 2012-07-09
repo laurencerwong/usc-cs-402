@@ -200,6 +200,11 @@ int NRand();
 time_t NTime();
 void NSrand(int);
 
+int CreateMV(char*, int, int, int);
+void DestroyMV(int);
+int GetMV(int, int);
+void SetMV(int, int, int);
+
 
 #endif /*CHAGNED */
 
