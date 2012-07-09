@@ -287,7 +287,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char* data = new char[2 + sizeof(name)];
 	data[0] = CREATE_LOCK;
 	data[1] = (char) sizeof(name);
-	strncpy(data + 2, name, sizeof(name) );
+	strncpy(data + 2, name, sizeof(name) ); 	//copy into data[2: 2 + sizeof(name)]
 
 	char buff[MaxMailSize];
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
@@ -343,7 +343,8 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	char* data = new char[2 + sizeof(name)];
 	data[0] = CREATE_CV;
 	data[1] = (char) sizeof(name);
-	strncpy(data + 2, name, sizeof(name) );
+
+	strncpy(data + 2, name, sizeof(name) ); 	//copy into data[2: 2 + sizeof(name)]
 
 	char buff[MaxMailSize];
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
@@ -356,7 +357,7 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 }
 
 #ifdef NETWORK
-int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries){
+int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, int initialValue){
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
 	PacketHeader *packetHeader = new PacketHeader;
@@ -370,9 +371,10 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries){
 
 	char* data = new char[2 + sizeof(name) + sizeof(int)];
 	data[0] = CREATE_MV;
-	data[1] = sizeof(name);
-	strncpy(data + 2, name, sizeof(name));
-	data[2 + sizeof(name)] = numArrayEntries;
+	data[1] = numArrayEntries;
+	data[1 + sizeof(int)] = initialValue; //copy into data[5:8]
+	data[1 + 2 * sizeof(int)] = (char) sizeof(name); //copy into data[9]
+	strncpy(data + 2 + 2 * sizeof(int), name, sizeof(name)); 	//copy into data[10: 10 + sizeof(name)]
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, data);
 	return ((int) data[0]) << 24 + ((int) data[1]) << 16 + ((int) data[2]) << 8 + ((int) data[3]);
 }
@@ -487,8 +489,8 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	//pack message
 	char* data = new char[1 + 2* sizeof(int)];
 	data[0] = BROADCAST;
-	data[1] = conditionIndex;
-	data[5] = lockIndex;
+	data[1] = conditionIndex; //copy into data[1:4]
+	data[5] = lockIndex; //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
@@ -553,8 +555,8 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	char* data = new char[1 + 2 * sizeof(int)];
 	data[0] = WAIT;
 	char buff[MaxMailSize];
-	data[1] = conditionIndex;
-	data[5] = lockIndex;
+	data[1] = conditionIndex; //copy into data[1:4]
+	data[5] = lockIndex; //copy into data[5:8]
 	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
@@ -563,7 +565,7 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	//pack message for an Acquire.  need to reacquire lock before  user program gets control
 	data = new char[1 + sizeof(int)];
 	data[0] = ACQUIRE;
-	data[1] = lockIndex;
+	data[1] = lockIndex; //copy into data[1:4]
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
@@ -616,7 +618,7 @@ void DestroyLock_Syscall(int lockIndex){
 	//pack message
 	char* data = new char[1 + sizeof(int)];
 	data[0] = DESTROY_LOCK;
-	data[1] = lockIndex;
+	data[1] = lockIndex; //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
@@ -663,8 +665,8 @@ void DestroyCondition_Syscall(int conditionIndex){
 
 
 	char* data = new char[1 + sizeof(int)];
-	data[0] = DESTROY_LOCK;
-	data[1] = conditionIndex;
+	data[0] = DESTROY_CV;
+	data[1] = conditionIndex; //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
@@ -722,9 +724,9 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
 
 	char* data = new char[1 + 2 * sizeof(int)];
-
-	data[1] = arrIndex;
-	data[1 + varIndex] = varIndex;
+	data[0] = GET_MV;
+	data[1] = arrIndex; //copy into data[1:4]
+	data[1 + sizeof(int)] = varIndex; //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, data);
 	return ((int) data[0]) << 24 + ((int) data[1]) << 16 + ((int) data[2]) << 8 + ((int) data[3]);
@@ -774,7 +776,7 @@ void Acquire_Syscall(int lockIndex){
 	char* data = new char[1 + sizeof(int)];
 
 	data[0] = ACQUIRE;
-	data[1] = lockIndex;
+	data[1] = lockIndex; //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //must get response for user program to continue
 #endif
@@ -823,7 +825,7 @@ void Release_Syscall(int lockIndex){
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = RELEASE;
-	data[1] = lockIndex;
+	data[1] = lockIndex; //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
