@@ -251,16 +251,16 @@ void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockInd
 	}
 
 	//validation done, ok to perform operation
-	//serverConditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
-	respond = false;	//broadcast is special, it doesn't send 1 response, it sends many, so it handles that itself.
-
-
-	while(serverConditionTable[conditionIndex].condition->) {
-
+	//signal everyone in the CV and remember who to respond to
+	while(serverConditionTable[conditionIndex].condition->hasWaiting()) {
+		ClientRequest *cr = serverConditionTable[conditionIndex].condition->Signal(serverLockTable[lockIndex].lock, new ClientRequest(machineID, mailbox));
+		ServerResponse r;
+		r.toMachine = cr->machineID;
+		r.toMailbox = cr->mailboxNumber;
+		r.data = -1;
+		delete cr;
+		necessaryResponses.push(r);
 	}
-
-	necessaryResponses.push()
-	//also, construct and return a blank clientrequest with response false
 }
 
 int ServerCreateMV(int machineID, int mailboxID, char* name, int numEntries, int initialValue) {
@@ -455,14 +455,13 @@ void Server() {
 		case BROADCAST:
 			int cvIndex = extractInt(messageData + 1);
 			int lockIndex = extractInt(messageData + 5);
-			ServerBroadcast(machineID, mailbox, cvIndex, lockIndex);
-			necessaryResponses.push(response);
+			ServerBroadcast(machineID, mailbox, cvIndex, lockIndex);	//adding responses to the queue is handled in broadcast
 			respond = true;
 			break;
 
 		case CREATE_MV:
 			int numEntries = extractInt(messageData + 1);
-			int initialValue = extractInt(messageData + 5)
+			int initialValue = extractInt(messageData + 5);
 			char nameLength = messageData[9];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 10), nameLength);
@@ -499,20 +498,25 @@ void Server() {
 		}
 
 		if(respond) {
-			PacketHeader *responsePacketHeader = new PacketHeader;
-			MailHeader *responseMailHeader = new MailHeader;
-			char* responseData = new char[MaxMailSize];
+			while(!necessaryResponses.empty()) {
+				PacketHeader *responsePacketHeader = new PacketHeader;
+				MailHeader *responseMailHeader = new MailHeader;
+				char* responseData = new char[MaxMailSize];
 
-			responsePacketHeader->to = response.toMachine; //machine i'm responding to
-			responsePacketHeader->from = myMachineID; //this machine's number
-			mailHeader->to = response.toMailbox;	//mailbox i'm responding to
-			mailHeader->from = 0; //server mailbox?  TODO
+				responsePacketHeader->to = necessaryResponses.front().toMachine; //machine i'm responding to
+				responsePacketHeader->from = myMachineID; //this machine's number
+				mailHeader->to = necessaryResponses.front().toMailbox;	//mailbox i'm responding to
+				mailHeader->from = 0; //server mailbox?  TODO
 
-			//pack message
-			data[0] = compressInt(replyData, (responseData + 0));
+				//pack message
+				data[0] = compressInt(necessaryResponses.front().data, (responseData + 0));
 
-			//send
-			bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+				//send
+				bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+
+				//remove response from list
+				necessaryResponses.pop();
+			}
 		}
 	}
 }

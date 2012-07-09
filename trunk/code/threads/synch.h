@@ -181,9 +181,9 @@ class Condition {
     void Signal(Lock *conditionLock);   // conditionLock must be held by
     void Broadcast(Lock *conditionLock);// the currentThread for all of 
 					// these operations
-#ifdef CHANGED
+//#ifdef CHANGED
     bool hasWaiting();
-#endif
+//#endif
 
   private:
     char* name;
@@ -206,9 +206,9 @@ class ServerCondition {
     ClientRequest* Signal(ServerLock *serverConditionLock, ClientRequest*);   // ServerConditionLock must be held by
     //ClientRequest* Broadcast(ServerLock *serverConditionLock);// the currentThread for all of
 					// these operations
-#ifdef CHANGED
+//#ifdef CHANGED
     bool hasWaiting();
-#endif
+//#endif
 
   private:
     char* name;
