@@ -380,7 +380,7 @@ void Condition::Broadcast(Lock* conditionLock) {
 	(void) interrupt->SetLevel(oldLevel);
 }
 
-#ifdef CHANGED
+//#ifdef CHANGED
 bool Condition::hasWaiting(){
 	if(queue->IsEmpty()){
 		return false;
@@ -390,7 +390,7 @@ bool Condition::hasWaiting(){
 	}
 }
 
-#endif
+//#endif
 
 ServerCondition::ServerCondition(char* debugName) {
 	name = debugName;
