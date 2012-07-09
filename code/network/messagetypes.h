@@ -22,7 +22,7 @@ char GET_MV = 'l';
 char SET_MV = 'm';
 
 /*
-Note: When ints
+Note: When ints are in messages, the MSByte comes first, ie. read the int from left to right in the order the bytes are received
 
 ---== FOR ALL MESSAGES ==---
 data[0] = message type
