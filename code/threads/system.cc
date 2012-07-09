@@ -34,7 +34,7 @@ Lock* swapLock;
 List *evictionList;
 EvictionPolicy evictionPolicy;
 
-int machineID;
+int myMachineID;
 bool isServer;
 
 

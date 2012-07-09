@@ -72,7 +72,7 @@ extern List *evictionList;
 enum EvictionPolicy {FIFO, RAND};
 extern EvictionPolicy evictionPolicy;
 
-extern int machineID;
+extern int myMachineID;
 extern bool isServer;
 
 
