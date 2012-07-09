@@ -1459,7 +1459,7 @@ void ExceptionHandler(ExceptionType which) {
 			DEBUG('a', "Srand syscall.\n");
 			break;
 		case SC_CreateMV:
-			CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+			CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 			break;
 		case SC_DestroyMV:
 			DestroyMV_Syscall(machine->ReadRegister(4));
