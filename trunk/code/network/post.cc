@@ -136,6 +136,7 @@ MailBox::Get(PacketHeader *pktHdr, MailHeader *mailHdr, char *data)
     bcopy(mail->data, data, mail->mailHdr.length);
 					// copy the message data into
 					// the caller's buffer
+
     delete mail;			// we've copied out the stuff we
 					// need, we can now discard the message
 }

@@ -264,6 +264,9 @@ ClientRequest* ServerLock::Release(ClientRequest* cr) {
 //to check against the thread that last acquired the ServerLock.
 //---------------------------------------------------------
 bool ServerLock::isHeldByRequester(ClientRequest* cr){
+	if(currentClientRequest == NULL) {
+		return false;
+	}
 	return cr->machineID == currentClientRequest->machineID && cr->mailboxNumber == currentClientRequest->mailboxNumber;
 }
 

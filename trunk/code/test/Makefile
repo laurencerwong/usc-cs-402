@@ -33,7 +33,7 @@ CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
-exec_matmult test_fork_matmult exec_sort test_fork_sort
+exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -100,6 +100,12 @@ addrspace_verification: addrspace_verification.o start.o
 	$(LD) $(LDFLAGS) start.o addrspace_verification.o -o addrspace_verification.coff
 	../bin/coff2noff addrspace_verification.coff addrspace_verification
 	
+testmutex.o: testmutex.c
+	$(CC) $(CFLAGS) -c testmutex.c
+testmutex: testmutex.o start.o
+	$(LD) $(LDFLAGS) start.o testmutex.o -o testmutex.coff
+	../bin/coff2noff testmutex.coff testmutex
+
 HelloWorld.o: HelloWorld.c
 	$(CC) $(CFLAGS) -c HelloWorld.c
 HelloWorld: HelloWorld.o start.o
