@@ -248,7 +248,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 
 	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
+#ifndef NETWORK
 #ifdef USER_PROGRAM
+	cout << "userprog create lock" << endl;
 	//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
 	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
@@ -272,8 +274,10 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	lockTable[nextFreeIndex].acquireCount = 0;
 	return nextFreeIndex;
 #endif
+#endif
 
 #ifdef NETWORK
+	cout << "network create lock" << endl;
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
@@ -281,17 +285,18 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 2 + length;
+	cout << "mheader length " << mailHeader->length << endl;
 
-
-	char* data = new char[2 + sizeof(name)];
+	char* data = new char[2 + length];
 	data[0] = CREATE_LOCK;
-	data[1] = (char) sizeof(name);
-	strncpy(data + 2, name, sizeof(name) ); 	//copy into data[2: 2 + sizeof(name)]
+	data[1] = (char) length;
+	strncpy(data + 2, name, length ); 	//copy into data[2: 2 + sizeof(name)]
 
-	char buff[MaxMailSize];
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
+	char buff[MaxMailSize];
 	//wait for index, sent in message back from server
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
 
@@ -1458,6 +1463,7 @@ void ExceptionHandler(ExceptionType which) {
 			NSrand_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "Srand syscall.\n");
 			break;
+#ifdef NETWORK
 		case SC_CreateMV:
 			CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 			break;
@@ -1470,6 +1476,7 @@ void ExceptionHandler(ExceptionType which) {
 		case SC_GetMV:
 			GetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 			break;
+#endif
 		}
 
 		// Put in the return value and increment the PC
