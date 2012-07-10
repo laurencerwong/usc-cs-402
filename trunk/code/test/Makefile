@@ -33,7 +33,8 @@ CFLAGS = -G 0 -c $(INCDIR)
 
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
-exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex
+exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
+testsequencing test_server_create_destroy
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -45,6 +46,30 @@ halt.o: halt.c
 halt: halt.o start.o
 	$(LD) $(LDFLAGS) start.o halt.o -o halt.coff
 	../bin/coff2noff halt.coff halt
+
+test_server_create_destroy.o: test_server_create_destroy.c
+	$(CC) $(CFLAGS) -c test_server_create_destroy.c
+test_server_create_destroy: test_server_create_destroy.o start.o
+	$(LD) $(LDFLAGS) start.o test_server_create_destroy.o -o test_server_create_destroy.coff
+	../bin/coff2noff test_server_create_destroy.coff test_server_create_destroy
+
+testBroadcast.o: testBroadcast.c
+	$(CC) $(CFLAGS) -c testBroadcast.c
+testBroadcast: testBroadcast.o start.o
+	$(LD) $(LDFLAGS) start.o testBroadcast.o -o testBroadcast.coff
+	../bin/coff2noff testBroadcast.coff testBroadcast
+
+testsignal.o: testsignal.c
+	$(CC) $(CFLAGS) -c testsignal.c
+testsignal: testsignal.o start.o
+	$(LD) $(LDFLAGS) start.o testsignal.o -o testsignal.coff
+	../bin/coff2noff testsignal.coff testsignal
+
+testsequencing.o: testsequencing.c
+	$(CC) $(CFLAGS) -c testsequencing.c
+testsequencing: testsequencing.o start.o
+	$(LD) $(LDFLAGS) start.o testsequencing.o -o testsequencing.coff
+	../bin/coff2noff testsequencing.coff testsequencing
 
 exec_matmult.o: exec_matmult.c
 	$(CC) $(CFLAGS) -c exec_matmult.c
