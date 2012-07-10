@@ -45,6 +45,7 @@ class AddrSpace {
     int processID;				//unique identifier for this process
     int numExecutablePages;  		//number of pages dedicated to code + initData + uninitData
     OpenFile *executable;
+    Lock* pageTableLock;
 
  private:
     unsigned int numPages;		// Number of pages in the virtual 
