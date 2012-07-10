@@ -127,6 +127,7 @@ AddrSpace::AddrSpace(OpenFile *executableIn) : fileTable(MaxOpenFiles) {
     // Don't allocate the input or output to disk files
     fileTable.Put(0);
     fileTable.Put(0);
+    pageTableLock = new Lock("pageTable lock");
 
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
@@ -176,7 +177,7 @@ AddrSpace::AddrSpace(OpenFile *executableIn) : fileTable(MaxOpenFiles) {
 //
 //    	}]
     }
-  // numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
+   numExecutablePages = divRoundUp(noffH.code.size + noffH.initData.size + noffH.uninitData.size, PageSize);
 
 }
 #endif
@@ -247,13 +248,14 @@ AddrSpace::InitRegisters()
 void AddrSpace::SaveState() 
 {
 #ifdef CHANGED
-
+	//IntStatus old = interrupt->SetLevel(IntOff);
 	//invalidating tlb
 	for(int i = 0; i < TLBSize; i++){
-		machine->tlb[i].valid = false;
-		IPT[machine->tlb[i].physicalPage].dirty = machine->tlb[i].dirty;
-	}
 
+		if(machine->tlb[i].valid == TRUE)IPT[machine->tlb[i].physicalPage].dirty = machine->tlb[i].dirty;
+		machine->tlb[i].valid = FALSE;
+	}
+	//(void)interrupt->SetLevel(old);
 #endif
 }
 
@@ -267,6 +269,12 @@ void AddrSpace::SaveState()
 
 void AddrSpace::RestoreState() 
 {
-//    machine->pageTable = pageTable;
-//    machine->pageTableSize = numPages;
+	//invalidating tlb
+	//IntStatus old = interrupt->SetLevel(IntOff);
+	for(int i = 0; i < TLBSize; i++){
+
+		if(machine->tlb[i].valid == TRUE)IPT[machine->tlb[i].physicalPage].dirty = machine->tlb[i].dirty;
+		machine->tlb[i].valid = false;
+	}
+	//(void)interrupt->SetLevel(old);
 }
