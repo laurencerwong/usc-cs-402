@@ -73,7 +73,6 @@ enum EvictionPolicy {FIFO, RAND};
 extern EvictionPolicy evictionPolicy;
 
 extern int myMachineID;
-extern bool isServer;
 
 
 //#endif

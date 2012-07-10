@@ -37,6 +37,17 @@
 
 using namespace std;
 
+//takes buf[0:3] and makes an int, where 0 is the MSByte of the int
+int extractIntFromBytes(char *buf) {
+	return (buf[0] << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
+}
+
+void compressIntFromBytes(int x, char dest[4]) {
+	dest[0] = (x >> 24) & 0x000000ff;
+	dest[1] = (x >> 16) & 0x000000ff;
+	dest[2] = (x >> 8) & 0x000000ff;
+	dest[3] = (x >> 0) & 0x000000ff;
+}
 
 int copyin(unsigned int vaddr, int len, char *buf) {
 	// Copy len bytes from the current thread's virtual address vaddr.
@@ -308,9 +319,10 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 //Create a condition to be stored in kernel array conditionTable.
 //Can at most have MAX_LOCK_CONDITIONS number of condition or abort
 int CreateCondition_Syscall(unsigned int nameIndex, int length){
-#ifdef USER_PROGRAM
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
+#ifndef NETWORK
+#ifdef USER_PROGRAM
 	//this lock protects the BitMap and size for the conditionTable
 	conditionTableLock->Acquire();
 	if(conditionArraySize == 0){ //should only execute on first call to this function in a run of nachos
@@ -333,6 +345,7 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	conditionTable[nextFreeIndex].isToBeDeleted = false;
 	return nextFreeIndex;
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -342,18 +355,19 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 2 + length;
 
 
-	char* data = new char[2 + sizeof(name)];
+	char* data = new char[2 + length];
 	data[0] = CREATE_CV;
-	data[1] = (char) sizeof(name);
+	data[1] = (char) length;
 
-	strncpy(data + 2, name, sizeof(name) ); 	//copy into data[2: 2 + sizeof(name)]
+	strncpy(data + 2, name, length); 	//copy into data[2: 2 + sizeof(name)]
 
-	char buff[MaxMailSize];
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
+	char buff[MaxMailSize];
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //wait for response from server (should be an index)
 
 	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
@@ -367,25 +381,29 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	copyin(nameIndex, length, name);
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* messageData = new char[MaxMailSize];
+	char* data = new char[2 + length + sizeof(int)];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 11 + length;
 
-	char* data = new char[2 + sizeof(name) + sizeof(int)];
 	data[0] = CREATE_MV;
-	data[1] = numArrayEntries;
-	data[1 + sizeof(int)] = initialValue; //copy into data[5:8]
-	data[1 + 2 * sizeof(int)] = (char) sizeof(name); //copy into data[9]
-	strncpy(data + 2 + 2 * sizeof(int), name, sizeof(name)); 	//copy into data[10: 10 + sizeof(name)]
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, data);
-	return ((int) data[0]) << 24 + ((int) data[1]) << 16 + ((int) data[2]) << 8 + ((int) data[3]);
+	compressIntFromBytes(numArrayEntries, data + 1);
+	compressIntFromBytes(initialValue, data + 5); //copy into data[5:8]
+	data[9] = (char) length; //copy into data[9]
+	strncpy(data + 2 + 2 * sizeof(int), name, length); 	//copy into data[10: 10 + sizeof(name)]
+	postOffice->Send(*packetHeader, *mailHeader, data);
+
+	char* messageData = new char[MaxMailSize];
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
+	return ((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3]);
 }
 #endif
 
 void Signal_Syscall(int conditionIndex, int lockIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff); //turn off interrupts since we need our validations to be atomic
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
@@ -422,6 +440,7 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	conditionTable[conditionIndex].condition->Signal(lockTable[lockIndex].lock);
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -431,19 +450,20 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
-
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 9;
 
 	char* data = new char[1 + 2* sizeof(int)];
 	data[0] = SIGNAL;
-	data[1] = conditionIndex;
-	data[5] = lockIndex;
+	compressIntFromBytes(conditionIndex, data + 1);
+	compressIntFromBytes(lockIndex, data + 5);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for a response
 #endif
 }
 
 void Broadcast_Syscall(int conditionIndex, int lockIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
@@ -480,6 +500,7 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	conditionTable[conditionIndex].condition->Broadcast(lockTable[lockIndex].lock);
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -490,17 +511,19 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 9;
 
 	//pack message
 	char* data = new char[1 + 2* sizeof(int)];
 	data[0] = BROADCAST;
-	data[1] = conditionIndex; //copy into data[1:4]
-	data[5] = lockIndex; //copy into data[5:8]
+	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
+	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
 void Wait_Syscall(int conditionIndex, int lockIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
@@ -545,6 +568,7 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -555,13 +579,13 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
-
+	mailHeader->length = 9;
 
 	char* data = new char[1 + 2 * sizeof(int)];
 	data[0] = WAIT;
 	char buff[MaxMailSize];
-	data[1] = conditionIndex; //copy into data[1:4]
-	data[5] = lockIndex; //copy into data[5:8]
+	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
+	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
@@ -570,17 +594,19 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	//pack message for an Acquire.  need to reacquire lock before  user program gets control
 	data = new char[1 + sizeof(int)];
 	data[0] = ACQUIRE;
-	data[1] = lockIndex; //copy into data[1:4]
+	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 5; //server mailbox
 	success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
 #endif
 }
 
 void DestroyLock_Syscall(int lockIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
@@ -609,6 +635,7 @@ void DestroyLock_Syscall(int lockIndex){
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -619,17 +646,19 @@ void DestroyLock_Syscall(int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 5;
 
 	//pack message
 	char* data = new char[1 + sizeof(int)];
 	data[0] = DESTROY_LOCK;
-	data[1] = lockIndex; //copy into data[1:4]
+	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
 }
 
 void DestroyCondition_Syscall(int conditionIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(conditionIndex < 0 || conditionIndex > conditionArraySize -1){ //array index is out of bounds
@@ -657,6 +686,7 @@ void DestroyCondition_Syscall(int conditionIndex){
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -667,11 +697,12 @@ void DestroyCondition_Syscall(int conditionIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 5;
 
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = DESTROY_CV;
-	data[1] = conditionIndex; //copy into data[1:4]
+	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
@@ -687,10 +718,11 @@ void DestroyMV_Syscall( int index){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 5;
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = DESTROY_MV;
-	data[1] = index;
+	compressIntFromBytes(index, data + 1);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 }
 #endif
@@ -705,12 +737,13 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 13;
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = SET_MV;
-	data[1] = arrIndex;
-	data[1 + sizeof(int)] = indexInArray;
-	data[1 + sizeof(int) * 2] = value;
+	compressIntFromBytes(arrIndex, data + 1);
+	compressIntFromBytes(indexInArray, data + 5);
+	compressIntFromBytes(value, data + 9);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 }
@@ -721,20 +754,23 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 int GetMV_Syscall(int arrIndex, int varIndex){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* messageData = new char[MaxMailSize];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 9;
 
 	char* data = new char[1 + 2 * sizeof(int)];
 	data[0] = GET_MV;
-	data[1] = arrIndex; //copy into data[1:4]
-	data[1 + sizeof(int)] = varIndex; //copy into data[5:8]
+	compressIntFromBytes(arrIndex, data + 1); //copy into data[1:4]
+	compressIntFromBytes(varIndex, data + 5); //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, data);
-	return ((int) data[0]) << 24 + ((int) data[1]) << 16 + ((int) data[2]) << 8 + ((int) data[3]);
+
+	char* messageData = new char[MaxMailSize];
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
+	//cout << "received mv, value: " << extractIntFromBytes(messageData) << endl;
+	return extractIntFromBytes(messageData);
 }
 #endif
 
@@ -744,6 +780,7 @@ void Yield_Syscall(){
 
 
 void Acquire_Syscall(int lockIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
@@ -766,28 +803,33 @@ void Acquire_Syscall(int lockIndex){
 	lockTable[lockIndex].lock->Acquire();
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* buff = new char[MaxMailSize];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
-
+	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 5;
 
 	char* data = new char[1 + sizeof(int)];
 
 	data[0] = ACQUIRE;
-	data[1] = lockIndex; //copy into data[1:4]
+	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
+
+	cout << "about to send acquire message to server from: " << packetHeader->from << "-" << mailHeader->from << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+
+	char* buff = new char[MaxMailSize];
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //must get response for user program to continue
 #endif
 }
 
 void Release_Syscall(int lockIndex){
+#ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	if(lockIndex < 0 || lockIndex > lockArraySize -1){ //array index is out of bounds
@@ -816,6 +858,7 @@ void Release_Syscall(int lockIndex){
 	}
 	(void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 #endif
+#endif
 
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
@@ -826,11 +869,12 @@ void Release_Syscall(int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->length = 5;
 
 
 	char* data = new char[1 + sizeof(int)];
 	data[0] = RELEASE;
-	data[1] = lockIndex; //copy into data[1:4]
+	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif
@@ -921,7 +965,7 @@ int Exec_Syscall(unsigned int fileName, int filenameLength, unsigned int nameInd
 int NEncode2to1_Syscall(int v1, int v2) {
 	if( ((v1 & 0xffff0000) != 0) || ((v2 & 0xffff0000) != 0)) { //decode algorithm zero extends numbers, so we shouldn't get passed negative numbers
 		//cout << "WARNING: values passed to NEncode2to1 should be limited to 16 bits.  "
-			//	<< v1 << " and " << v2 << " were passed" << endl;
+		//	<< v1 << " and " << v2 << " were passed" << endl;
 	}
 
 	int res = (v2 << 16) | (v1 & 0x0000ffff);
@@ -1167,21 +1211,21 @@ int Evict(){
 	int pageToEvict;
 	switch(evictionPolicy){
 	case RAND:;
+	pageToEvict = rand() % NumPhysPages;
+	while(IPT[pageToEvict].use){ //make sure IPTEntry isn't in use, otherwise pick a new one
 		pageToEvict = rand() % NumPhysPages;
-		while(IPT[pageToEvict].use){ //make sure IPTEntry isn't in use, otherwise pick a new one
-			pageToEvict = rand() % NumPhysPages;
-		}
-		break;
+	}
+	break;
 	case FIFO:
 	default: //policy if FIFO if not specified
 
-			int* pageToEvictAddr = (int*) (evictionList->Remove());
+		int* pageToEvictAddr = (int*) (evictionList->Remove());
+		pageToEvict = *pageToEvictAddr;
+		while(IPT[pageToEvict].use){ // if page was in use, put it back on and grab another
+			evictionList->Append((void*)pageToEvictAddr);
+			pageToEvictAddr = (int*) (evictionList->Remove());
 			pageToEvict = *pageToEvictAddr;
-			while(IPT[pageToEvict].use){ // if page was in use, put it back on and grab another
-				evictionList->Append((void*)pageToEvictAddr);
-				pageToEvictAddr = (int*) (evictionList->Remove());
-				pageToEvict = *pageToEvictAddr;
-			}
+		}
 
 
 		delete pageToEvictAddr;
@@ -1269,7 +1313,7 @@ int HandleIPTMiss(int vpn, int p){
 //with a translation entry in the tlb
 void HandlePageFault(){
 	iptLock->Acquire(); //acquire lock because IPT access needs to be in a critical section
-						//problems would occur if we found our page only to have it evicted in some other thread
+	//problems would occur if we found our page only to have it evicted in some other thread
 
 	int vpn = machine->ReadRegister(BadVAddrReg)/PageSize; //register holds the offending virtual address than caused PageFaultException
 	int ppn = -1;
@@ -1283,7 +1327,7 @@ void HandlePageFault(){
 	}
 
 	while(ppn == -1){ //just in case we don't find something on first pass however
-					// shouldn't ever execute more than once
+		// shouldn't ever execute more than once
 
 		iptLock->Acquire();
 		ppn = mainMemoryBitmap->Find(); //check if there's a free page in memory for us to take
@@ -1304,7 +1348,7 @@ void HandlePageFault(){
 
 	//essentially evicting a page from tlb to make room for the new page we are bringing in
 	IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty; //propagate dirty bit from tlb entry being evicted
-																					//otherwise, on eviction from memory we wouldn't know if page has been modified
+	//otherwise, on eviction from memory we wouldn't know if page has been modified
 
 	//put information of the page we need into the tlb
 	machine->tlb[currentTLB].virtualPage = IPT[ppn].virtualPage;
@@ -1316,7 +1360,7 @@ void HandlePageFault(){
 	currentTLB++;
 	currentTLB %= TLBSize;
 	IPT[ppn].use = FALSE; //can let other threads alter our IPT entry now. worst case scenario it happens before we run our instruction again and we have
-				//another page fault
+	//another page fault
 	machine->tlb[currentTLB].use = FALSE;
 	(void)interrupt->SetLevel(old);
 }
@@ -1465,7 +1509,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 #ifdef NETWORK
 		case SC_CreateMV:
-			CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+			rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 			break;
 		case SC_DestroyMV:
 			DestroyMV_Syscall(machine->ReadRegister(4));
@@ -1474,7 +1518,7 @@ void ExceptionHandler(ExceptionType which) {
 			SetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
 			break;
 		case SC_GetMV:
-			GetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+			rv = GetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 			break;
 #endif
 		}
@@ -1490,7 +1534,7 @@ void ExceptionHandler(ExceptionType which) {
 	else if(which == PageFaultException){
 		HandlePageFault();
 	}
-		else {
+	else {
 		cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
 		interrupt->Halt();
 	}

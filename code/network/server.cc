@@ -11,6 +11,7 @@
 #include "synch.h"
 #include "messagetypes.h"
 #include <queue>
+#include <string>
 
 #define MAX_SERVER_LOCKS 500
 #define MAX_SERVER_CVS 500
@@ -113,7 +114,7 @@ ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex) {
 	return serverLockTable[lockIndex].lock->Acquire(new ClientRequest(machineID, mailbox));
 }
 
-ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex){
+ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex) {
 
 	if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Release with an invalid index %d\n", currentThread->getName(), lockIndex);
@@ -322,8 +323,9 @@ int ServerGetMV(int mvIndex, int entryIndex) {
 		printf("Thread %s tried to get a MV at invalid entry index %d in MV array %d\n", currentThread->getName(), entryIndex, mvIndex);
 		return -1;
 	}
-
-	return serverMVTable[mvIndex].mvEntries[entryIndex];
+	int value = serverMVTable[mvIndex].mvEntries[entryIndex];
+	printf("Getting MV %d entry %d, value %d\n", mvIndex, entryIndex, value);
+	return value;
 }
 
 void ServerSetMV(int mvIndex, int entryIndex, int value) {
@@ -340,6 +342,7 @@ void ServerSetMV(int mvIndex, int entryIndex, int value) {
 		return;
 	}
 
+	printf("Setting MV %d entry %d to value %d\n", mvIndex, entryIndex, value);
 	serverMVTable[mvIndex].mvEntries[entryIndex] = value;
 }
 
@@ -356,6 +359,8 @@ void compressInt(int x, char dest[4]) {
 }
 
 void Server() {
+	cout << "Nachos server starting up with machine ID " << myMachineID << endl;
+	cout << " -note, all clients expect a server with machineID 0" << endl;
 
 	while(true) {
 		//get message
@@ -363,12 +368,69 @@ void Server() {
 		MailHeader *mailHeader = new MailHeader;
 		char* messageData = new char[MaxMailSize];
 
-		postOffice->Receive(0, packetHeader, mailHeader, messageData);	//server is always mailbox 0 for now
+		postOffice->Receive(0, packetHeader, mailHeader, messageData);	//server is always mailbox 0 for now?
 
 		//parse message
 		char messageType = messageData[0];
 		int machineID = packetHeader->from;
 		int mailbox = mailHeader->from;
+
+		/*cout << "myMachineID " << myMachineID << "  myMailbox " << 0 << endl;
+		for(int i = 0; i < 10; i++) {
+			cout << messageData[i] << endl;
+		}*/
+
+		string messageTypeName;
+
+		switch(messageType) {	//first byte is the message type
+		case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
+			messageTypeName = "Create Lock";
+			break;
+		case DESTROY_LOCK:
+			messageTypeName = "Destroy Lock";
+			break;
+		case ACQUIRE:
+			messageTypeName = "Acquire";
+			break;
+		case RELEASE:
+			messageTypeName = "Release";
+			break;
+		case CREATE_CV:
+			messageTypeName = "Create CV";
+			break;
+		case DESTROY_CV:
+			messageTypeName = "Destroy CV";
+			break;
+		case SIGNAL:
+			messageTypeName = "Signal";
+			break;
+		case WAIT:
+			messageTypeName = "Wait";
+			break;
+		case BROADCAST:
+			messageTypeName = "Broadcast";
+			break;
+		case CREATE_MV:
+			messageTypeName = "Create MV";
+			break;
+		case DESTROY_MV:
+			messageTypeName = "Destroy MV";
+			break;
+		case GET_MV:
+			messageTypeName = "Get MV";
+			break;
+		case SET_MV:
+			messageTypeName = "Set MV";
+			break;
+		default:
+			messageTypeName = "UNKNOWN";
+			cout << "Oops, no message type?" << endl;
+			break;
+		}
+
+
+		cout << "Server received message of type: " << messageTypeName << " from machine "
+			 << machineID << " mailbox " << mailbox << endl;
 
 		int replyMachineID = machineID;
 		int replyMailbox = mailbox;
@@ -403,7 +465,10 @@ void Server() {
 		{
 			int lockIndex = extractInt(messageData + 1);
 			ClientRequest* temp = ServerAcquire(machineID, mailbox, lockIndex);
-			if(temp->respond){
+			if(temp == NULL) {
+				respond = true;
+			}
+			else if(temp->respond){
 				response.toMachine = temp->machineID;
 				response.toMailbox = temp->mailboxNumber;
 				necessaryResponses.push(response);
@@ -415,7 +480,10 @@ void Server() {
 		{
 			int lockIndex = extractInt(messageData + 1);
 			ClientRequest* temp = ServerRelease(machineID, mailbox, lockIndex);
-			if(temp->respond){
+			if(temp == NULL) {
+				respond = false;
+			}
+			else if(temp->respond){
 				response.toMachine = temp->machineID;
 				response.toMailbox = temp->mailboxNumber;
 				necessaryResponses.push(response);
@@ -445,7 +513,10 @@ void Server() {
 			int cvIndex = extractInt(messageData + 1);
 			int lockIndex = extractInt(messageData + 5);
 			ClientRequest *temp = ServerSignal(machineID, mailbox, cvIndex, lockIndex);
-			if(temp->respond){
+			if(temp == NULL) {
+				respond = false;
+			}
+			else if(temp->respond){
 				response.toMachine = temp->machineID;
 				response.toMailbox = temp->mailboxNumber;
 				necessaryResponses.push(response);
@@ -508,6 +579,7 @@ void Server() {
 		default:
 		{
 			//oops...
+			cout << "Opps, no message type?" << endl;
 			break;
 		}
 
@@ -517,18 +589,25 @@ void Server() {
 			while(!necessaryResponses.empty()) {
 				PacketHeader *responsePacketHeader = new PacketHeader;
 				MailHeader *responseMailHeader = new MailHeader;
-				char* responseData = new char[MaxMailSize];
+				char* responseData = new char[4];
 
 				responsePacketHeader->to = necessaryResponses.front().toMachine; //machine i'm responding to
 				responsePacketHeader->from = myMachineID; //this machine's number
-				mailHeader->to = necessaryResponses.front().toMailbox;	//mailbox i'm responding to
-				mailHeader->from = 0; //server mailbox?  TODO
+				responseMailHeader->to = necessaryResponses.front().toMailbox;	//mailbox i'm responding to
+				responseMailHeader->from = 0; //server mailbox?  TODO
+				responseMailHeader->length = 4;	//length of response data
 
 				//pack message
 				compressInt(necessaryResponses.front().data, (responseData + 0));
 
+				cout << "Server sending response message:" << endl;
+				cout << "to: " << responsePacketHeader->to << " - " << responseMailHeader->to;
+				cout << "  from: " << responsePacketHeader->from << " - " << responseMailHeader->from;
+				//cout << "  with data: " << (int)responseData[0] << (int)responseData[1] << (int)responseData[2] << (int)responseData[3] << endl;
+				printf("  with data: 0x%.2x%.2x%.2x%.2x\n", responseData[0], responseData[1], responseData[2], responseData[3]);
+
 				//send
-				bool success = postOffice->Send(*packetHeader, *mailHeader, responseData);
+				bool success = postOffice->Send(*responsePacketHeader, *responseMailHeader, responseData);
 
 				//remove response from list
 				necessaryResponses.pop();
