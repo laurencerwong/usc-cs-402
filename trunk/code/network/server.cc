@@ -604,7 +604,7 @@ void Server() {
 				cout << "to: " << responsePacketHeader->to << " - " << responseMailHeader->to;
 				cout << "  from: " << responsePacketHeader->from << " - " << responseMailHeader->from;
 				//cout << "  with data: " << (int)responseData[0] << (int)responseData[1] << (int)responseData[2] << (int)responseData[3] << endl;
-				printf("  with data: 0x%.2x%.2x%.2x%.2x\n", responseData[0], responseData[1], responseData[2], responseData[3]);
+				printf("  with data: 0x%.2x%.2x%.2x%.2x\n", (unsigned char)responseData[0], (unsigned char)responseData[1], (unsigned char)responseData[2], (unsigned char)responseData[3]);
 
 				//send
 				bool success = postOffice->Send(*responsePacketHeader, *responseMailHeader, responseData);
