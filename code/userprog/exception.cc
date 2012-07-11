@@ -1532,6 +1532,20 @@ void ExceptionHandler(ExceptionType which) {
 			NSrand_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "Srand syscall.\n");
 			break;
+#ifdef NETWORK
+		case SC_CreateMV:
+			rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+			break;
+		case SC_DestroyMV:
+			DestroyMV_Syscall(machine->ReadRegister(4));
+			break;
+		case SC_SetMV:
+			SetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+			break;
+		case SC_GetMV:
+			rv = GetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+			break;
+#endif
 		}
 
 		// Put in the return value and increment the PC
