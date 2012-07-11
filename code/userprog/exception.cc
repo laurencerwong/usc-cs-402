@@ -819,7 +819,7 @@ void Acquire_Syscall(int lockIndex){
 	data[0] = ACQUIRE;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 
-	cout << "about to send acquire message to server from: " << packetHeader->from << "-" << mailHeader->from << endl;
+	//cout << "about to send acquire message to server from: " << packetHeader->from << "-" << mailHeader->from << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* buff = new char[MaxMailSize];

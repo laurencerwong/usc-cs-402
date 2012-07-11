@@ -301,7 +301,7 @@ int ServerCreateMV(int machineID, int mailboxID, char* name, int numEntries, int
 	for(int i = 0; i < MAX_SERVER_MV_ARRAYS; i++) {
 		if(serverMVMap->Test(i) == 1) {
 			if(strcmp(serverMVTable[i].name, name) == 0) {	//if they have the same name
-				printf("A Lock with name %s has already been created at index %d\n", name, i);
+				printf("An MV with name %s has already been created at index %d\n", name, i);
 				return i;
 			}
 		}
