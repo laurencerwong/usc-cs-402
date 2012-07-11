@@ -262,7 +262,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	copyin(nameIndex, length, name);
 #ifndef NETWORK
 #ifdef USER_PROGRAM
-	cout << "userprog create lock" << endl;
+	//cout << "userprog create lock" << endl;
 	//this lock protects the BitMap of free locks
 	lockTableLock->Acquire();
 	if(lockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
@@ -289,7 +289,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
-	cout << "network create lock" << endl;
+	//cout << "network create lock" << endl;
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
@@ -299,7 +299,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
 	mailHeader->length = 2 + length;
-	cout << "mheader length " << mailHeader->length << endl;
+	//cout << "mheader length " << mailHeader->length << endl;
 
 	char* data = new char[2 + length];
 	data[0] = CREATE_LOCK;
@@ -382,7 +382,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	copyin(nameIndex, length, name);
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* data = new char[2 + length + sizeof(int)];
+	char* data = new char[2 + length + 2 * sizeof(int)];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
@@ -732,7 +732,6 @@ void DestroyMV_Syscall( int index){
 void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* messageData = new char[MaxMailSize];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
@@ -740,7 +739,7 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
 	mailHeader->length = 13;
 
-	char* data = new char[1 + sizeof(int)];
+	char* data = new char[mailHeader->length];
 	data[0] = SET_MV;
 	compressIntFromBytes(arrIndex, data + 1);
 	compressIntFromBytes(indexInArray, data + 5);

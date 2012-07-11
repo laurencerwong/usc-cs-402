@@ -24,9 +24,9 @@ int main(){
 	Acquire(lock);
 	NPrint("acquired lock %d\n", sizeof("acquired lock %d\n"), lock, 0);
 
-	/*for(i = 0; i < 3; i++){
+	for(i = 0; i < 3; i++){
 		NPrint("var value at entry %d is %d\n", sizeof("var value at entry %d is %d\n"), NEncode2to1(i, GetMV(var, i)), 0);
-	}*/
+	}
 	for(i = 0; i < 3; i++){
 		SetMV(var, i, i);
 		NPrint("var value at entry %d was set to %d\n", sizeof("var value at entry %d was set to %d\n"), NEncode2to1(i, i), 0);

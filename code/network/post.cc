@@ -264,6 +264,7 @@ PostOffice::PostalDelivery()
 bool
 PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
 {
+	//cout << "sending..." << endl;
     char* buffer = new char[MaxPacketSize];	// space to hold concatenated
 						// mailHdr + data
 
