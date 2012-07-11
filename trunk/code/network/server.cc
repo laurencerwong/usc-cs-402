@@ -159,7 +159,7 @@ int ServerCreateCV(int machineID, int mailbox, char* name){
 	for(int i = 0; i < MAX_SERVER_CVS; i++) {
 		if(serverConditionMap->Test(i) == 1) {
 			if(strcmp(serverConditionTable[i].condition->getName(), name) == 0) {	//if they have the same name
-				printf("A Lock with name %s has already been created at index %d\n", name, i);
+				printf("A CV with name %s has already been created at index %d\n", name, i);
 				return i;
 			}
 		}
