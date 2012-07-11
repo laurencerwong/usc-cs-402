@@ -7,7 +7,7 @@
 
 
 void main() {
-	int mv1, mv2, mv3;
+	int mv1, mv2, mv3, mv4;
 	int i = 0;
 
 	NPrint("Creating 2 MVs initialized to 0 and 5...\n", sizeof("Creating 2 MVs initialized to 0 and 5...\n"), 0, 0);
@@ -22,15 +22,14 @@ void main() {
 	SetMV(mv2, 0, 3);
 	NPrint("MVs have values of: %d, %d\n", sizeof("MVs have values of: %d, %d\n"), NEncode2to1(GetMV(mv1, 0), GetMV(mv2, 0)), 0);
 
+	NPrint("\nCreating MV (mv3) initialized to 0 with 3 entries\n", sizeof("Creating MV (mv3) initialized to 0 with 3 entries\n"), 0, 0);
+	mv3 = CreateMV("mv3", sizeof("mv3"), 3, 0);
+
 	NPrint("Destroying 2 MVs\n", sizeof("Destroying 2 MVs\n"), 0, 0);
 	DestroyMV(mv1);
 	DestroyMV(mv2);
 
-
-	NPrint("\nCreating MV initialized to 0 with 3 entries\n", sizeof("Creating MV initialized to 0 with 3 entries\n"), 0, 0);
-	mv3 = CreateMV("mv3", sizeof("mv3"), 3, 0);
-
-	NPrint("MV is: %d\n", sizeof("MV is: %d\n"), NEncode2to1(mv3, 0), 0);
+	NPrint("MV 3 is: %d\n", sizeof("MV 3 is: %d\n"), NEncode2to1(mv3, 0), 0);
 	for(i = 0; i < 3; i++) {
 		NPrint("With value of MV[%d]: %d\n", sizeof("With value of MV[%d]: %d\n"), NEncode2to1(i, GetMV(mv3, i)), 0);
 	}
@@ -51,7 +50,11 @@ void main() {
 	SetMV(mv3, 12, 100);
 	GetMV(mv3, 12);
 
-	NPrint("Destroying the MV with 3 entries\n", sizeof("Destroying MV initialized to 0 with 3 entries\n"), 0, 0);
+	NPrint("\nCreating MV (mv4) with same name as mv3\n", sizeof("\nCreating MV (mv4) with same name as mv3\n"), 0, 0);
+	mv4 = CreateMV("mv3", sizeof("mv3"), 3, 0);
+	NPrint("mv3: %d and mv4: %d\n", sizeof("mv3: %d and mv4: %d\n"), NEncode2to1(mv3, mv4), 0);
+
+	NPrint("Destroying the MV with 3 entries\n", sizeof("Destroying the MV with 3 entries\n"), 0, 0);
 	DestroyMV(mv3);
 
 	NPrint("\nServer MV test complete\n", sizeof("\nServer MV test complete\n"), 0, 0);
