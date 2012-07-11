@@ -64,6 +64,16 @@ int ServerCreateLock(int machineID, int mailboxID, char* name) {
 		serverLockArraySize = MAX_SERVER_LOCKS;
 	}
 
+	//check if there already is a lock with this name
+	for(int i = 0; i < MAX_SERVER_LOCKS; i++) {
+		if(serverLockMap->Test(i) == 1) {
+			if(strcmp(serverLockTable[i].lock->getName(), name) == 0) {	//if they have the same name
+				printf("A Lock with name %s has already been created at index %d\n", name, i);
+				return i;
+			}
+		}
+	}
+
 	int nextFreeIndex = serverLockMap->Find(); //returns a free index in lockTable
 	if(nextFreeIndex == -1){ //error, kernel is out of memory for locks and should terminate
 		printf("Out of space for user program locks!\n");
@@ -144,6 +154,17 @@ int ServerCreateCV(int machineID, int mailbox, char* name){
 		serverConditionMap = new BitMap(MAX_SERVER_CVS);
 		serverConditionArraySize = MAX_SERVER_CVS;
 	}
+
+	//check if there already is a CV with this name
+	for(int i = 0; i < MAX_SERVER_CVS; i++) {
+		if(serverConditionMap->Test(i) == 1) {
+			if(strcmp(serverConditionTable[i].condition->getName(), name) == 0) {	//if they have the same name
+				printf("A Lock with name %s has already been created at index %d\n", name, i);
+				return i;
+			}
+		}
+	}
+
 	int nextFreeIndex = serverConditionMap->Find();
 	if(nextFreeIndex == -1){ //error, kernel is out of memory for CVs and should terminate
 		printf("Fatal system error, too many condition variables! Shut it down!\n");
@@ -274,6 +295,16 @@ int ServerCreateMV(int machineID, int mailboxID, char* name, int numEntries, int
 	if(numEntries > MAX_SERVER_ENTRIES_PER_MV_ARRAY) {
 		printf("User program requested too many MVs!  Max is %d entries per MV array\n", MAX_SERVER_ENTRIES_PER_MV_ARRAY);
 		return -1;
+	}
+
+	//check if there already is a lock with this name
+	for(int i = 0; i < MAX_SERVER_MV_ARRAYS; i++) {
+		if(serverMVMap->Test(i) == 1) {
+			if(strcmp(serverMVTable[i].name, name) == 0) {	//if they have the same name
+				printf("A Lock with name %s has already been created at index %d\n", name, i);
+				return i;
+			}
+		}
 	}
 
 	int nextFreeIndex = serverMVMap->Find(); //returns a free index in lockTable

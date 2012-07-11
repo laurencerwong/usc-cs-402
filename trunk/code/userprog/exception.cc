@@ -399,7 +399,8 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 
 	char* messageData = new char[MaxMailSize];
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
-	return ((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3]);
+	//((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3])
+	return extractIntFromBytes(messageData + 0);
 }
 #endif
 
