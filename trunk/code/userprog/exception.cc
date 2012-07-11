@@ -27,8 +27,9 @@
 #include "exception.h"
 #ifdef NETWORK
 #include "post.h"
-#endif
 #include "../network/messagetypes.h"
+#endif
+
 #include <time.h>
 #include <cstring>
 #include <stdio.h>
@@ -1053,15 +1054,24 @@ void Exit_Syscall(int input) {
 
 		//conditionTableLock->Release();
 		numLivingProcesses--;
-		for(i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
+		/*for(i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
 			//mainMemoryBitmap->Clear(currentThread->space->pageTable[lastStackPage - i].physicalPage);
 			IPT[currentThread->space->pageTable[lastStackPage -i].virtualPage].valid = FALSE;
-		}
+		}*/
 
-		for(i = 0; i < currentSpace->numExecutablePages; i++) {
+		/*for(i = 0; i < currentSpace->numExecutablePages; i++) {
 			//mainMemoryBitmap->Clear(currentThread->space->pageTable[i].physicalPage);
-		}
+		}*/
 		processIDLock.Release();
+		iptLock->Acquire();
+		for( i = 0; i <NumPhysPages; i++){
+			if(IPT[i].space == currentThread->space){
+				IPT[i].valid = FALSE;
+				IPT[i].use = FALSE;
+				mainMemoryBitmap->Clear(i);
+			}
+		}
+		iptLock->Release();
 		delete currentThread->space->executable;
 		currentThread->Finish();
 		delete currentThread->space;
@@ -1077,14 +1087,25 @@ void Exit_Syscall(int input) {
 		processTable[currentThread->space->processID].numThreadsAlive--;
 
 		int lastStackPage = processTable[currentThread->space->processID].threadStacks[currentThread->threadID];
+		iptLock->Acquire();
+		for (int i = 0; i < UserStackSize /PageSize; i++){
+			int ppn = currentThread->space->pageTable[lastStackPage-i].physicalPage;
+			if(IPT[ppn].valid == TRUE && IPT[ppn].use == FALSE && IPT[ppn].space == currentThread->space){
+				IPT[ppn].valid = FALSE;
+				IPT[ppn].use = FALSE;
+				mainMemoryBitmap->Clear(ppn);
+			}
+		}
+		iptLock->Release();
 		//cout << "last stack page" << lastStackPage << endl;
 
-		for(int i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
+		/*for(int i = 0; i < UserStackSize / PageSize; i++) { //clear each page of the thread stack so other process can grab them
 			//cout << "clearing out stack... virtpage: " << lastStackPage - i
 			//		<<  "  phys page: " << machine->pageTable[lastStackPage - i].physicalPage << endl;
 			//mainMemoryBitmap->Clear(currentThread->space->pageTable[lastStackPage - i].physicalPage);
 			IPT[currentThread->space->pageTable[lastStackPage -i].virtualPage].valid = FALSE;
-		}
+		}*/
+
 
 		processIDLock.Release();
 		currentThread->Finish();
@@ -1210,7 +1231,7 @@ int RandInt_Syscall() {
 int Evict(){
 	int pageToEvict;
 	switch(evictionPolicy){
-	case RAND:;
+	case RAND:
 	pageToEvict = rand() % NumPhysPages;
 	while(IPT[pageToEvict].use){ //make sure IPTEntry isn't in use, otherwise pick a new one
 		pageToEvict = rand() % NumPhysPages;
@@ -1229,6 +1250,7 @@ int Evict(){
 
 
 		delete pageToEvictAddr;
+		//evictionList.pop();
 		break;
 	}
 	IPT[pageToEvict].use = true; //makr this as used so no one can grab it
@@ -1237,8 +1259,9 @@ int Evict(){
 	IntStatus old = interrupt->SetLevel(IntOff);
 	for(int i = 0; i < TLBSize; i++){
 		if(machine->tlb[i].physicalPage == pageToEvict && machine->tlb[i].valid){
-			machine->tlb[i].valid = false;
-			IPT[pageToEvict].dirty = machine->tlb[i].dirty;
+
+			if(machine->tlb[currentTLB].valid == TRUE) IPT[pageToEvict].dirty = machine->tlb[i].dirty;
+			machine->tlb[i].valid = FALSE;
 		}
 	}
 	(void)interrupt->SetLevel(old);
@@ -1254,7 +1277,10 @@ int Evict(){
 		else{
 			swapFilePageNum = swapMap->Find(); //if this page has never been in the swap file
 		}
-		swapFile->WriteAt(&(machine->mainMemory[pageToEvict * PageSize]), PageSize, swapFilePageNum * PageSize); //do write
+		if(swapFile->WriteAt(&(machine->mainMemory[pageToEvict * PageSize]), PageSize, swapFilePageNum * PageSize) == -1){
+			cout << "Write to swap file failed" << endl;
+			interrupt->Halt();
+		}
 		IPT[pageToEvict].space->pageTable[IPT[pageToEvict].virtualPage].location = IN_SWAP;
 		IPT[pageToEvict].space->pageTable[IPT[pageToEvict].virtualPage].offset = swapFilePageNum * PageSize;
 	}
@@ -1273,9 +1299,12 @@ int HandleIPTMiss(int vpn, int p){
 		break;
 	case IN_MEMORY: //unused case
 		break;
-	case IN_SWAP: //information has been modified at some point in time and was stored in the swap file
+	case IN_SWAP://information has been modified at some point in time and was stored in the swap file
 		//do read from swap file
-		swapFile->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset);
+		if(swapFile->ReadAt(&(machine->mainMemory[tempPhysAddr]), PageSize, currentThread->space->pageTable[vpn].offset) == -1){
+			cout <<"Read from swap file failed" << endl;
+			interrupt->Halt();
+		}
 		break;
 	case UNINIT:
 		//for data that isn't part of the executable (i.e. thread stack pages) but has not yet been written to the swapfile
@@ -1312,23 +1341,21 @@ int HandleIPTMiss(int vpn, int p){
 //by the end of this function, the necessary page needs to be in physical memory
 //with a translation entry in the tlb
 void HandlePageFault(){
-	iptLock->Acquire(); //acquire lock because IPT access needs to be in a critical section
+	currentThread->space->pageTableLock->Acquire();
+	iptLock->Acquire();//acquire lock because IPT access needs to be in a critical section
 	//problems would occur if we found our page only to have it evicted in some other thread
+	int vpn = machine->ReadRegister(BadVAddrReg)/128;
 
-	int vpn = machine->ReadRegister(BadVAddrReg)/PageSize; //register holds the offending virtual address than caused PageFaultException
-	int ppn = -1;
-	for(int i = 0; i < NumPhysPages; i++){
-		if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){ //check that the physical page still belongs to this thread
-			//here, we found the virtual page already in physical memory
-			ppn = i;
-			IPT[i].use = TRUE; //this will allow us to release lock but still prevent other threads from changing the IPT entry
-			iptLock->Release();
-		}
+
+	int ppn = currentThread->space->pageTable[vpn].physicalPage;
+	if(IPT[ppn].valid && vpn == IPT[ppn].virtualPage && IPT[ppn].space == currentThread->space && IPT[ppn].use == FALSE){
+		IPT[ppn].use = TRUE;
 	}
-
+	else ppn = -1;
+	iptLock->Release();
 	while(ppn == -1){ //just in case we don't find something on first pass however
 		// shouldn't ever execute more than once
-
+		
 		iptLock->Acquire();
 		ppn = mainMemoryBitmap->Find(); //check if there's a free page in memory for us to take
 		if(ppn == -1){ //all physical memory has been allocated
@@ -1343,17 +1370,15 @@ void HandlePageFault(){
 	}
 
 
-	IntStatus old = interrupt->SetLevel(IntOff); //turn off interrupts to update tlb since we can't put a lock around it in machine code
+	IntStatus old = interrupt->SetLevel(IntOff);
 
-
+	currentThread->space->pageTableLock->Release();
 	//essentially evicting a page from tlb to make room for the new page we are bringing in
-	IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty; //propagate dirty bit from tlb entry being evicted
+	if(machine->tlb[currentTLB].valid == TRUE) IPT[machine->tlb[currentTLB].physicalPage].dirty = machine->tlb[currentTLB].dirty;
 	//otherwise, on eviction from memory we wouldn't know if page has been modified
-
-	//put information of the page we need into the tlb
 	machine->tlb[currentTLB].virtualPage = IPT[ppn].virtualPage;
 	machine->tlb[currentTLB].physicalPage = IPT[ppn].physicalPage;
-	machine->tlb[currentTLB].valid = IPT[ppn].valid;
+	machine->tlb[currentTLB].valid = TRUE;
 	machine->tlb[currentTLB].use = IPT[ppn].use;
 	machine->tlb[currentTLB].dirty = IPT[ppn].dirty;
 	machine->tlb[currentTLB].readOnly = IPT[ppn].readOnly;
@@ -1507,20 +1532,6 @@ void ExceptionHandler(ExceptionType which) {
 			NSrand_Syscall(machine->ReadRegister(4));
 			DEBUG('a', "Srand syscall.\n");
 			break;
-#ifdef NETWORK
-		case SC_CreateMV:
-			rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
-			break;
-		case SC_DestroyMV:
-			DestroyMV_Syscall(machine->ReadRegister(4));
-			break;
-		case SC_SetMV:
-			SetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
-			break;
-		case SC_GetMV:
-			rv = GetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-			break;
-#endif
 		}
 
 		// Put in the return value and increment the PC
@@ -1534,7 +1545,7 @@ void ExceptionHandler(ExceptionType which) {
 	else if(which == PageFaultException){
 		HandlePageFault();
 	}
-	else {
+		else {
 		cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
 		interrupt->Halt();
 	}
