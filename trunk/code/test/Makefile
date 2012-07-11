@@ -34,7 +34,7 @@ CFLAGS = -G 0 -c $(INCDIR)
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
 exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
-testsequencing test_server_create_destroy
+testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -52,6 +52,24 @@ test_server_create_destroy.o: test_server_create_destroy.c
 test_server_create_destroy: test_server_create_destroy.o start.o
 	$(LD) $(LDFLAGS) start.o test_server_create_destroy.o -o test_server_create_destroy.coff
 	../bin/coff2noff test_server_create_destroy.coff test_server_create_destroy
+
+test_server_creates.o: test_server_creates.c
+	$(CC) $(CFLAGS) -c test_server_creates.c
+test_server_creates: test_server_creates.o start.o
+	$(LD) $(LDFLAGS) start.o test_server_creates.o -o test_server_creates.coff
+	../bin/coff2noff test_server_creates.coff test_server_creates
+
+test_server_acquire_release.o: test_server_acquire_release.c
+	$(CC) $(CFLAGS) -c test_server_acquire_release.c
+test_server_acquire_release: test_server_acquire_release.o start.o
+	$(LD) $(LDFLAGS) start.o test_server_acquire_release.o -o test_server_acquire_release.coff
+	../bin/coff2noff test_server_acquire_release.coff test_server_acquire_release
+
+test_server_MV.o: test_server_MV.c
+	$(CC) $(CFLAGS) -c test_server_MV.c
+test_server_MV: test_server_MV.o start.o
+	$(LD) $(LDFLAGS) start.o test_server_MV.o -o test_server_MV.coff
+	../bin/coff2noff test_server_MV.coff test_server_MV
 
 testBroadcast.o: testBroadcast.c
 	$(CC) $(CFLAGS) -c testBroadcast.c

@@ -15,13 +15,14 @@ int main(){
 	Acquire(lock);
 	SetMV(numClients, 0, GetMV(counter, 0) + 1);
 	NPrint("Printing when counter is %d\n", sizeof("Printing when counter is %d\n"), GetMV(counter, 0));
-	NPrint("Now incrementing counter\n", sizeof("NOw incrementing counter\n"));
+	NPrint("Now incrementing counter\n", sizeof("Now incrementing counter\n"));
 	SetMV(GetMV(counter, 0) + 1);
+	NPrint("Waiting...\n", sizeof("Waiting...\n"), 0, 0);
 	Wait(condition, lock);
-	NPrint("Woken up after wait, counter is now %d", GetMV(counter, 0));
-	NPrint("Now incrementing counter\n", sizeof("NOw incrementing counter\n"));
+	NPrint("Woken up after wait, counter is now %d\n", sizeof("Woken up after wait, counter is now %d\n"), GetMV(counter, 0));
+	NPrint("Now incrementing counter\n", sizeof("Now incrementing counter\n"));
 	SetMV(counter, 0, GetMV(counter, 0) + 1);
 	Release(lock);
-	NPrint("Released lock", sizeof("Released lock"));
+	NPrint("Released lock\n", sizeof("Released lock\n"), 0, 0);
 
 }
