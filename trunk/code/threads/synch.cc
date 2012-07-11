@@ -78,6 +78,7 @@ Semaphore::P()
 }
 
 //----------------------------------------------------------------------
+
 // Semaphore::V
 // 	Increment semaphore value, waking up a waiter if necessary.
 //	As with P(), this operation must be atomic, so we need to disable
@@ -227,6 +228,7 @@ ClientRequest* ServerLock::Acquire(ClientRequest* cr) {
 						cr->respond = true;
 	}
   else{
+    DEBUG('z', "Client with MachineID: %d, Mailbox: %d is waiting on lock\n", cr->machineID, cr->mailboxNumber);
   	queue->Append( (void *) cr); //go into waiting queue
   	cr->respond = false;
   }
