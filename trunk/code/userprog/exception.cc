@@ -394,7 +394,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	compressIntFromBytes(numArrayEntries, data + 1);
 	compressIntFromBytes(initialValue, data + 5); //copy into data[5:8]
 	data[9] = (char) length; //copy into data[9]
-	strncpy(data + 2 + 2 * sizeof(int), name, length); 	//copy into data[10: 10 + sizeof(name)]
+	strncpy(data + 10, name, length); 	//copy into data[10: 10 + sizeof(name)]
 	postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];

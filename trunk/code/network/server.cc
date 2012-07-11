@@ -283,7 +283,7 @@ int ServerCreateMV(int machineID, int mailboxID, char* name, int numEntries, int
 		//on the server, don't halt, send a -1 as index response
 	}
 	else {
-		printf("Creating MV set %s with %d entries at index %d\n", name, numEntries, nextFreeIndex);
+		printf("Creating MV set %s with %d entries at index %d, initialized to %d\n", name, numEntries, nextFreeIndex, initialValue);
 		//initialize the MVtable entry
 		serverMVTable[nextFreeIndex].mvEntries = new int[numEntries];
 		serverMVTable[nextFreeIndex].numEntries = numEntries;
@@ -310,7 +310,7 @@ void ServerDestroyMV(int mvIndex) {
 	serverMVMap->Clear(mvIndex);
 }
 
-int ServerGetMV(int mvIndex, int entryIndex) {
+int ServerGetMV(int mvIndex, int entryIndex) {	//TODO this call could use a fail bit instead of returning -1, or else we won't know when it doesn't work client side
 	if(mvIndex < 0 || mvIndex > serverMVArraySize - 1) {
 		printf("Thread %s tried to get a MV with an invalid index %d\n", currentThread->getName(), mvIndex);
 		return -1;
