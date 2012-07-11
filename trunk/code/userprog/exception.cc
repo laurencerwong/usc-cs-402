@@ -292,7 +292,6 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	//cout << "network create lock" << endl;
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* messageData = new char[MaxMailSize];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
@@ -308,12 +307,12 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
-	char buff[MaxMailSize];
+	char messageData[MaxMailSize];
 	//wait for index, sent in message back from server
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
 
 	//parse int, as it will come in char form
-	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
+	return extractIntFromBytes(messageData + 0);
 #endif
 }
 
@@ -351,7 +350,6 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 #ifdef NETWORK
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
-	char* messageData = new char[MaxMailSize];
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
@@ -368,10 +366,10 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
-	char buff[MaxMailSize];
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //wait for response from server (should be an index)
+	char messageData[MaxMailSize];
+	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData); //wait for response from server (should be an index)
 
-	return (int) (buff[0]) << 24 + (int) (buff[1]) << 16 + (int)(buff[2]) << 8 + (int)(buff[3]);
+	return extractIntFromBytes(messageData + 0);
 #endif
 
 }
