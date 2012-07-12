@@ -10,7 +10,7 @@ int main(){
 	int lock = CreateLock("A lock", sizeof("A lock"));
 	int condition = CreateCondition("A condition", sizeof("A condition"));
 	int counter = CreateMV("Counter", sizeof("Counter"), 1, 0);
-	int numClients = CreateMV("number of clients", sizeof("number of clients"), 0, 0);
+	int numClients = CreateMV("number of clients", sizeof("number of clients"), 1, 0);
 	int counterIsInitialized = CreateMV("boolean", sizeof("boolean"), 1, 0);
 	Acquire(lock);
 	SetMV(numClients, 0, GetMV(counter, 0) + 1);
