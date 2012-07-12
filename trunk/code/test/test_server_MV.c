@@ -12,10 +12,10 @@ void main() {
 
 	NPrint("Creating 2 MVs initialized to 0 and 5...\n", sizeof("Creating 2 MVs initialized to 0 and 5...\n"), 0, 0);
 	mv1 = CreateMV("mv1", sizeof("mv1"), 1, 0);
-	mv2 = CreateMV("mv2", sizeof("mv2"), 1, 0);
+	mv2 = CreateMV("mv2", sizeof("mv2"), 1, 5);
 
 	NPrint("MVs are: %d, %d\n", sizeof("MVs are: %d, %d\n"), NEncode2to1(mv1, mv2), 0);
-	NPrint("With values of: %d, %d\n", sizeof("With values of: %d, %d\n"), NEncode2to1(GetMV(mv1), GetMV(mv2, 0)), 0);
+	NPrint("With values of: %d, %d\n", sizeof("With values of: %d, %d\n"), NEncode2to1(GetMV(mv1, 0), GetMV(mv2, 0)), 0);
 
 	NPrint("Setting 2 MVs to 3\n", sizeof("Setting 2 MVs to 3\n"), 0, 0);
 	SetMV(mv1, 0, 3);
@@ -45,10 +45,12 @@ void main() {
 	SetMV(12, 0, 1);
 	GetMV(12, 0);
 	DestroyMV(12);
+	NPrint("Invalid operations were unsuccessful\n", sizeof("Invalid operations were unsuccessful\n"), 0, 0);
 
 	NPrint("Trying to set and get a nonexistant entry in an MV\n", sizeof("Trying to set and get a nonexistant entry in an MV\n"), 0, 0);
 	SetMV(mv3, 12, 100);
 	GetMV(mv3, 12);
+	NPrint("Invalid operations were unsuccessful\n", sizeof("Invalid operations were unsuccessful\n"), 0, 0);
 
 	NPrint("\nCreating MV (mv4) with same name as mv3\n", sizeof("\nCreating MV (mv4) with same name as mv3\n"), 0, 0);
 	mv4 = CreateMV("mv3", sizeof("mv3"), 3, 0);
