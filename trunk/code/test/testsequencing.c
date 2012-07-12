@@ -16,7 +16,7 @@ int main(){
 	SetMV(numClients, 0, GetMV(counter, 0) + 1);
 	NPrint("Printing when counter is %d\n", sizeof("Printing when counter is %d\n"), GetMV(counter, 0));
 	NPrint("Now incrementing counter\n", sizeof("Now incrementing counter\n"));
-	SetMV(GetMV(counter, 0) + 1);
+	SetMV(counter, 0, GetMV(counter, 0) + 1);
 	NPrint("Waiting...\n", sizeof("Waiting...\n"), 0, 0);
 	Wait(condition, lock);
 	NPrint("Woken up after wait, counter is now %d\n", sizeof("Woken up after wait, counter is now %d\n"), GetMV(counter, 0));
