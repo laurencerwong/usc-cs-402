@@ -460,7 +460,7 @@ void Server() {
 		}
 
 
-		cout << "Server received message of type: " << messageTypeName << " from machine "
+		cout << "\nServer received message of type: " << messageTypeName << " from machine "
 			 << machineID << " mailbox " << mailbox << endl;
 
 		int replyMachineID = machineID;
