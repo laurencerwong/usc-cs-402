@@ -256,7 +256,7 @@ void Close_Syscall(int fd) {
 
 //Create a lock to be stored in kernel array lockTable.
 //Can at most have MAX_LOCK_CONDITIONS number of locks, or abort
-int CreateLock_Syscall(unsigned int nameIndex, int length){
+int CreateLock_Syscall(unsigned int nameIndex, int length, int numEntries){
 
 	char* name = new char[length]; //allow user to pass in lock name for debug pruposes
 	copyin(nameIndex, length, name);
@@ -297,13 +297,14 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 2 + length;
+	mailHeader->length = 2 + length + 4;
 	//cout << "mheader length " << mailHeader->length << endl;
 
-	char* data = new char[2 + length];
+	char* data = new char[2 + length + 4];
 	data[0] = CREATE_LOCK;
 	data[1] = (char) length;
 	strncpy(data + 2, name, length ); 	//copy into data[2: 2 + sizeof(name)]
+	compressIntFromBytes(numEntries, data + 2 + length);
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
@@ -318,7 +319,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 
 //Create a condition to be stored in kernel array conditionTable.
 //Can at most have MAX_LOCK_CONDITIONS number of condition or abort
-int CreateCondition_Syscall(unsigned int nameIndex, int length){
+int CreateCondition_Syscall(unsigned int nameIndex, int length, int numEntries){
 	char* name = new char [length];
 	copyin(nameIndex, length, name);
 #ifndef NETWORK
@@ -355,14 +356,16 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 2 + length;
+	mailHeader->length = 2 + length + 4;
 
 
-	char* data = new char[2 + length];
+	char* data = new char[2 + length + 4];
 	data[0] = CREATE_CV;
 	data[1] = (char) length;
 
 	strncpy(data + 2, name, length); 	//copy into data[2: 2 + sizeof(name)]
+
+	compressIntFromBytes(numEntries, data + 2 + length);
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
@@ -402,7 +405,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 }
 #endif
 
-void Signal_Syscall(int conditionIndex, int lockIndex){
+void Signal_Syscall(int conditionIndex, int conditionEntry, int lockIndex, int lockEntry){
 #ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff); //turn off interrupts since we need our validations to be atomic
@@ -451,18 +454,20 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 9;
+	mailHeader->length = 17;
 
-	char* data = new char[1 + 2* sizeof(int)];
+	char* data = new char[1 + 16];
 	data[0] = SIGNAL;
 	compressIntFromBytes(conditionIndex, data + 1);
-	compressIntFromBytes(lockIndex, data + 5);
+	compressIntFromBytes(conditionEntry, data + 5);
+	compressIntFromBytes(lockIndex, data + 9);
+	compressIntFromBytes(lockEntry, data + 13);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for a response
 #endif
 }
 
-void Broadcast_Syscall(int conditionIndex, int lockIndex){
+void Broadcast_Syscall(int conditionIndex, int conditionEntry, int lockIndex, int lockEntry){
 #ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
@@ -511,18 +516,20 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 9;
+	mailHeader->length = 17;
 
 	//pack message
-	char* data = new char[1 + 2* sizeof(int)];
+	char* data = new char[17];
 	data[0] = BROADCAST;
-	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
-	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
+	compressIntFromBytes(conditionIndex, data + 1);
+	compressIntFromBytes(conditionEntry, data + 5);
+	compressIntFromBytes(lockIndex, data + 9);
+	compressIntFromBytes(lockEntry, data + 13);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 #endif
 }
 
-void Wait_Syscall(int conditionIndex, int lockIndex){
+void Wait_Syscall(int conditionIndex, int conditionEntry, int lockIndex, int lockEntry){
 #ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
@@ -579,13 +586,15 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 9;
+	mailHeader->length = 17;
 
-	char* data = new char[1 + 2 * sizeof(int)];
+	char* data = new char[17];
 	data[0] = WAIT;
 	char buff[MaxMailSize];
-	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
-	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
+	compressIntFromBytes(conditionIndex, data + 1);
+	compressIntFromBytes(conditionEntry, data + 5);
+	compressIntFromBytes(lockIndex, data + 9);
+	compressIntFromBytes(lockEntry, data + 13);
 	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
@@ -778,7 +787,7 @@ void Yield_Syscall(){
 }
 
 
-void Acquire_Syscall(int lockIndex){
+void Acquire_Syscall(int lockIndex, int lockEntry){
 #ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
@@ -812,12 +821,13 @@ void Acquire_Syscall(int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 5;
+	mailHeader->length = 9;
 
-	char* data = new char[1 + sizeof(int)];
+	char* data = new char[9];
 
 	data[0] = ACQUIRE;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
+	compressIntFromBytes(lockEntry, data + 5); //copy into data[5:8]
 
 	//cout << "about to send acquire message to server from: " << packetHeader->from << "-" << mailHeader->from << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
@@ -827,7 +837,7 @@ void Acquire_Syscall(int lockIndex){
 #endif
 }
 
-void Release_Syscall(int lockIndex){
+void Release_Syscall(int lockIndex, int lockEntry){
 #ifndef NETWORK
 #ifdef USER_PROGRAM
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
@@ -868,12 +878,13 @@ void Release_Syscall(int lockIndex){
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 5;
+	mailHeader->length = 9;
 
 
-	char* data = new char[1 + sizeof(int)];
+	char* data = new char[9];
 	data[0] = RELEASE;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
+	compressIntFromBytes(lockEntry, data + 5); //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	//don't need to wait for response
 #endif

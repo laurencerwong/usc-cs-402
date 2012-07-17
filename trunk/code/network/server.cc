@@ -14,20 +14,26 @@
 #include <string>
 
 #define MAX_SERVER_LOCKS 500
+#define MAX_SERVER_ENTRIES_PER_LOCK_ARRAY 500
 #define MAX_SERVER_CVS 500
+#define MAX_SERVER_ENTRIES_PER_CV_ARRAY 500
 #define MAX_SERVER_MV_ARRAYS 500
 #define MAX_SERVER_ENTRIES_PER_MV_ARRAY 500
 
 using namespace std;
 
 struct ServerLockEntry{
-	ServerLock *lock;
+	ServerLock **lockArray;
+	char *name;
+	int numEntries;
 	bool isToBeDeleted;
 	int acquireCount;
 };
 
 struct ServerConditionEntry{
-	ServerCondition *condition;
+	ServerCondition **condition;
+	char *name;
+	int numEntries;
 	bool isToBeDeleted;
 };
 
@@ -57,7 +63,7 @@ struct ServerResponse {
 
 queue<ServerResponse> necessaryResponses;
 
-int ServerCreateLock(int machineID, int mailboxID, char* name) {
+int ServerCreateLock(int machineID, int mailboxID, char* name, numEntries) {
 	if(serverLockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
 		serverLockTable = new ServerLockEntry[MAX_SERVER_LOCKS];
 		serverLockMap = new BitMap(MAX_SERVER_LOCKS);
@@ -67,11 +73,17 @@ int ServerCreateLock(int machineID, int mailboxID, char* name) {
 	//check if there already is a lock with this name
 	for(int i = 0; i < MAX_SERVER_LOCKS; i++) {
 		if(serverLockMap->Test(i) == 1) {
-			if(strcmp(serverLockTable[i].lock->getName(), name) == 0) {	//if they have the same name
-				printf("A Lock with name %s has already been created at index %d\n", name, i);
+//			if(strcmp(serverLockTable[i].lock->getName(), name) == 0) {	//if they have the same name
+			if(strcmp(serverLockTable[i].name, name) == 0) {	//if they have the same name
+				printf("A Lock array with name %s has already been created at index %d\n", name, i);
 				return i;
 			}
 		}
+	}
+
+	if(numEntries < 0 || numEntries > MAX_SERVER_ENTRIES_PER_LOCK_ARRAY) {
+		printf("Cannot create a lock array with %d entries!\n", numEntries);
+		return -1;
 	}
 
 	int nextFreeIndex = serverLockMap->Find(); //returns a free index in lockTable
@@ -83,7 +95,10 @@ int ServerCreateLock(int machineID, int mailboxID, char* name) {
 	else {
 		printf("Creating %s lock of index of %d\n", name, nextFreeIndex);
 		//initialize the lockTable entry we grabbed for this lock
-		serverLockTable[nextFreeIndex].lock = new ServerLock (name);
+		serverLockTable[nextFreeIndex].lockArray = new ServerLock[numEntries];
+		for(int i = 0; i < numEntries; i++) {
+			serverLockTable[nextFreeIndex].lockArray[i] = new ServerLock(name);	//TODO concatenate index to name maybe?
+		}
 		serverLockTable[nextFreeIndex].isToBeDeleted = false;
 		serverLockTable[nextFreeIndex].acquireCount = 0;
 	}
@@ -100,8 +115,8 @@ void ServerDestroyLock(int lockIndex) {
 		return;
 	}
 	//validation done, ok to perform operation
-	if(!(serverLockTable[lockIndex].lock->isBusy() && serverLockTable[lockIndex].acquireCount == 0)){ //delete now if no one has called an Acquire syscall without a Release syscall
-		delete serverLockTable[lockIndex].lock;
+	if(!(serverLockTable[lockIndex].lockArray->isBusy() && serverLockTable[lockIndex].acquireCount == 0)){ //delete now if no one has called an Acquire syscall without a Release syscall
+		delete serverLockTable[lockIndex].lockArray;
 		serverLockMap->Clear(lockIndex);
 	}
 	else{ //some thread is depending on the thread being there, so just defer deletion
@@ -109,9 +124,13 @@ void ServerDestroyLock(int lockIndex) {
 	}
 }
 
-ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex) {
-	if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
+ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex, int lockEntry) {
+	if(lockIndex < 0 || lockIndex > serverLockArraySize - 1){ //array index is out of bounds
 		printf("Thread %s called Acquire with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return NULL;
+	}
+	if(lockEntry < 0 || lockEntry > serverLockTable->numEntries - 1){ //array index is out of bounds
+		printf("Thread %s called Acquire with an invalid entry %d on lock at index %d\n", currentThread->getName(), lockEntry, lockIndex);
 		return NULL;
 	}
 	if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
@@ -121,13 +140,17 @@ ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex) {
 
 	//validation done, ok to perform operation
 	serverLockTable[lockIndex].acquireCount++; //marks this lock as being held by a user thread, protects lock from deletion til same thread call Release syscall
-	return serverLockTable[lockIndex].lock->Acquire(new ClientRequest(machineID, mailbox));
+	return serverLockTable[lockIndex].lockArray[lockEntry]->Acquire(new ClientRequest(machineID, mailbox));
 }
 
-ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex) {
+ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex, int lockEntry) {
 
 	if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Release with an invalid index %d\n", currentThread->getName(), lockIndex);
+		return NULL;
+	}
+	if(lockEntry < 0 || lockEntry > serverLockTable->numEntries - 1){ //array index is out of bounds
+		printf("Thread %s called Release with an invalid entry %d on lock at index %d\n", currentThread->getName(), lockEntry, lockIndex);
 		return NULL;
 	}
 	if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
@@ -137,17 +160,17 @@ ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex) {
 
 	//validation done, ok to perform operation
 	serverLockTable[lockIndex].acquireCount--; //decrease count since currentThread no longer depends on lock
-	ClientRequest* rv =  serverLockTable[lockIndex].lock->Release(new ClientRequest(machineID, mailbox));
+	ClientRequest* rv =  serverLockTable[lockIndex].lockArray[lockEntry]->Release(new ClientRequest(machineID, mailbox));
 	if(serverLockTable[lockIndex].isToBeDeleted && serverLockTable[lockIndex].acquireCount == 0){ //check if needs to be deleted, delete if no one is waiting
-		if(!(serverLockTable[lockIndex].lock->isBusy())){
-			delete serverLockTable[lockIndex].lock;
+		if(!(serverLockTable[lockIndex].lockArray->isBusy())){
+			delete serverLockTable[lockIndex].lockArray;
 			serverLockMap->Clear(lockIndex);
 		}
 	}
 	return rv;
 }
 
-int ServerCreateCV(int machineID, int mailbox, char* name){
+int ServerCreateCV(int machineID, int mailbox, char* name, int numEntries){
 
 	if(serverConditionArraySize == 0){ //should only execute on first call to this function in a run of nachos
 		serverConditionTable = new ServerConditionEntry[MAX_SERVER_CVS];
@@ -158,11 +181,16 @@ int ServerCreateCV(int machineID, int mailbox, char* name){
 	//check if there already is a CV with this name
 	for(int i = 0; i < MAX_SERVER_CVS; i++) {
 		if(serverConditionMap->Test(i) == 1) {
-			if(strcmp(serverConditionTable[i].condition->getName(), name) == 0) {	//if they have the same name
+			if(strcmp(serverConditionTable[i].name, name) == 0) {	//if they have the same name
 				printf("A CV with name %s has already been created at index %d\n", name, i);
 				return i;
 			}
 		}
+	}
+
+	if(numEntries < 0 || numEntries > MAX_SERVER_ENTRIES_PER_CV_ARRAY) {
+		printf("Cannot create a CV array with %d entries!\n", numEntries);
+		return -1;
 	}
 
 	int nextFreeIndex = serverConditionMap->Find();
@@ -174,7 +202,7 @@ int ServerCreateCV(int machineID, int mailbox, char* name){
 	else {
 		printf("Creating %s CV of index of %d\n", name, nextFreeIndex);
 		//initialize the conditionTable entry we grabbed for this CV
-		serverConditionTable[nextFreeIndex].condition = new ServerCondition (name);
+		serverConditionTable[nextFreeIndex].condition = new ServerCondition[numEntries];
 		serverConditionTable[nextFreeIndex].isToBeDeleted = false;
 	}
 	return nextFreeIndex;
@@ -219,7 +247,7 @@ ClientRequest* ServerSignal(int machineID, int mailbox, int conditionIndex, int 
 	}
 
 	//validation done, ok to perform operation
-	return serverConditionTable[conditionIndex].condition->Signal(serverLockTable[lockIndex].lock, new ClientRequest(machineID, mailbox));
+	return serverConditionTable[conditionIndex].condition->Signal(serverLockTable[lockIndex].lockArray, new ClientRequest(machineID, mailbox));
 }
 
 void ServerWait(int machineID, int mailbox, int conditionIndex, int lockIndex){
@@ -242,7 +270,7 @@ void ServerWait(int machineID, int mailbox, int conditionIndex, int lockIndex){
 	}
 
 	//validation done, ok to perform operation
-	serverConditionTable[conditionIndex].condition->Wait(serverLockTable[lockIndex].lock, new ClientRequest(machineID, mailbox));
+	serverConditionTable[conditionIndex].condition->Wait(serverLockTable[lockIndex].lockArray, new ClientRequest(machineID, mailbox));
 	//need to check if the condition has been marked for deletion.  if it has,
 	//okay to delete if no one is currently in the condition's queue (this is an atomic operation, so no thread is in the middle of calling wait right now either)
 	if(serverConditionTable[conditionIndex].isToBeDeleted){
@@ -275,7 +303,7 @@ void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockInd
 	//validation done, ok to perform operation
 	//signal everyone in the CV and remember who to respond to
 	while(serverConditionTable[conditionIndex].condition->hasWaiting()) {
-		ClientRequest *cr = serverConditionTable[conditionIndex].condition->Signal(serverLockTable[lockIndex].lock, new ClientRequest(machineID, mailbox));
+		ClientRequest *cr = serverConditionTable[conditionIndex].condition->Signal(serverLockTable[lockIndex].lockArray, new ClientRequest(machineID, mailbox));
 		ServerResponse r;
 		r.toMachine = cr->machineID;
 		r.toMailbox = cr->mailboxNumber;
