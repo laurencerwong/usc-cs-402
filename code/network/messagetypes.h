@@ -31,6 +31,27 @@
 #define DO_NOT_HAVE_MV 'v'
 
 
+//------------------------Server-Server messages-------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------
+/*
+::::: Message Formats :::::
+---= FOR QUERY/QUERY RESPONSE MESSAGES ==---
+data[0] = message type
+data[1:4] = array index
+data[5:8] = entry index
+
+
+---= FOR OPERATION REQUEST MESSAGES =====
+pass on original data buffer
+
+
+
+
+
+
+
+//-------------------------------------------------------------------------------------------------------------
+//--------------------Client-Server messages-----------------------------------------------------------------
 /*
 Note: When ints are in messages, the MSByte comes first, ie. read the int from left to right in the order the bytes are received
 
