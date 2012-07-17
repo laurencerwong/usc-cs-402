@@ -20,6 +20,16 @@
 #define DESTROY_MV 'k'
 #define GET_MV 'l'
 #define SET_MV 'm'
+#define DO_YOU_HAVE_LOCK 'n'
+#define HAVE_LOCK 'o'
+#define DO_NOT_HAVE_LOCK 'p'
+#define DO_YOU_HAVE_CV 'q'
+#define HAVE_CV 'r'
+#define DO_NOT_HAVE_CV 's'
+#define DO_YOU_HAVE_MV 't'
+#define HAVE_MV 'u'
+#define DO_NOT_HAVE_MV 'v'
+
 
 /*
 Note: When ints are in messages, the MSByte comes first, ie. read the int from left to right in the order the bytes are received
