@@ -169,15 +169,15 @@ void Yield();
 
 #ifdef CHANGED
 
-int CreateLock(char *, int, int);
-int CreateCondition(char *, int, int);
+int CreateLock(char *, int);
+int CreateCondition(char *, int);
 void DestroyLock(int, int);
 void DestroyCondition(int, int);
-void Wait(int, int, int, int);
-void Signal(int, int, int, int);
-void Broadcast(int, int, int, int);
-void Acquire(int, int);
-void Release(int, int);
+void Wait(int, int);
+void Signal(int, int);
+void Acquire(int);
+void Release(int);
+void Broadcast(int, int);
 /*Semaphore stuff*/
 int CreateSemaphore(char *, int, int);
 void DestroySemaphore(int, int);

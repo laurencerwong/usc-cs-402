@@ -66,46 +66,36 @@ data[0] = message type
 Create:
 data[1] = nameLength, the length of the name for this lock
 data[2:2 + nameLength] = the data for the name itself
-data[nameLength + 3:nameLength + 6] = the number of entries in the Lock array
 
 Destroy:
 data[1:4] = lockIndex, the index of the lock that we want to delete
 
 Acquire:
 data[1:4] = lockIndex, the index of the lock that we want to acquire
-data[5:8] = lockEntry, the entry in the Lock array that you want to use
 
 Release:
 data[1:4] = lockIndex, the index of the lock that we want to release
-data[5:8] = lockEntry, the entry in the Lock array that you want to use
 
 
 ---- CV messages ----
 Create:
 data[1] = nameLength, the length of the name for this CV
 data[2:2 + nameLength] = the data for the name itself
-data[nameLength + 3:nameLength + 6] = the number of entries in the CV array
 
 Destroy:
-data[1:4] = cvIndex, the index of the CV that we want to delete
+data[1:4] = lockIndex, the index of the CV that we want to delete
 
 Signal:
 data[1:4] = cvIndex, the index of the CV you want to signal
-data[5:8] = cvEntry, the entry in the CV array that you want to use
-data[9:12] = lockIndex, the index of the Lock that you want to use
-data[13:16] = lockEntry, the entry in the Lock array that you want to use
+data[5:8] = lockIndex, the index of the lock you want to use
 
 Wait:
 data[1:4] = cvIndex, the index of the CV you want to signal
-data[5:8] = cvEntry, the entry in the CV array that you want to use
-data[9:12] = lockIndex, the index of the Lock that you want to use
-data[13:16] = lockEntry, the entry in the Lock array that you want to use
+data[5:8] = lockIndex, the index of the lock you want to use
 
 Broadcast:
 data[1:4] = cvIndex, the index of the CV you want to signal
-data[5:8] = cvEntry, the entry in the CV array that you want to use
-data[9:12] = lockIndex, the index of the Lock that you want to use
-data[13:16] = lockEntry, the entry in the Lock array that you want to use
+data[5:8] = lockIndex, the index of the lock you want to use
 
 
 ---- MV messages ----
