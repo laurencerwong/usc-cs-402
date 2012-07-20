@@ -320,11 +320,11 @@ void ServerToServerMessageHandler(){
 						break;
 				case Query_All_Servers:
 						QueryStatus* qs = new QueryStatus;
-						//need to set up each query Status... includes needing to change the from fields to the client server that will need a response
-						//and rearranging the data char array to imitate an originial client message
 						for(int i = 0; i < totalNumServers; i++){
 							if(i == myMachineID) continue;
-
+							qs->packetHeader = packetHeader;
+							qs->mailHeader = mailHeader;
+							qs->data = data;
 							PacketHeader* outPacketHeader = new PacketHeader;
 							MailHeader* outMailHeader = new MailHeader;
 							outPacketHeader->from = myMachineID;
@@ -333,6 +333,7 @@ void ServerToServerMessageHandler(){
 							outMailHeader->to = mailHeader->from;
 							outMailHeader->size = 1;
 							bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
+							queryQueue.push(qs);
 						}
 						break;
 
@@ -674,6 +675,276 @@ void compressInt(int x, char dest[4]) {
 	dest[1] = (x >> 16) & 0x000000ff;
 	dest[2] = (x >> 8) & 0x000000ff;
 	dest[3] = (x >> 0) & 0x000000ff;
+}
+
+
+void ServerToServerMessageHandler(){
+	while(true){ //infinitely check for messages to handle
+		PacketHeader *packetHeader = new PacketHeader;
+		MailHeader *mailHeader = new MailHeader;
+		char* messageData = new char[MaxMailSize];
+
+		postOffice->Receive(1, packetHeader, mailHeader, messageData);	//server is always mailbox 1
+		//parse message
+				char messageType = messageData[0];
+				int machineID = packetHeader->from;
+				int mailbox = mailHeader->from;
+
+				/*cout << "myMachineID " << myMachineID << "  myMailbox " << 0 << endl;
+				for(int i = 0; i < 10; i++) {
+					cout << messageData[i] << endl;
+				}*/
+
+				string messageTypeName;
+
+				switch(messageType) {	//first byte is the message type
+				case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
+					messageTypeName = "Create Lock";
+					break;
+				case DESTROY_LOCK:
+					messageTypeName = "Destroy Lock";
+					break;
+				case ACQUIRE:
+					messageTypeName = "Acquire";
+					break;
+				case RELEASE:
+					messageTypeName = "Release";
+					break;
+				case CREATE_CV:
+					messageTypeName = "Create CV";
+					break;
+				case DESTROY_CV:
+					messageTypeName = "Destroy CV";
+					break;
+				case SIGNAL:
+					messageTypeName = "Signal";
+					break;
+				case WAIT:
+					messageTypeName = "Wait";
+					break;
+				case BROADCAST:
+					messageTypeName = "Broadcast";
+					break;
+				case CREATE_MV:
+					messageTypeName = "Create MV";
+					break;
+				case DESTROY_MV:
+					messageTypeName = "Destroy MV";
+					break;
+				case GET_MV:
+					messageTypeName = "Get MV";
+					break;
+				case SET_MV:
+					messageTypeName = "Set MV";
+					break;
+				case DO_YOU_HAVE_LOCK:
+					messageTypeName = "Do you have Lock";
+					break;
+				case HAVE_LOCK:
+					messageTypeName = "Have lock";
+					break;
+				case DO_NOT_HAVE_LOCK:
+					messageTypeName = "Do not have lock";
+					break;
+				case DO_YOU_HAVE_CV:
+					messageTypeName = "Do you have CV";
+					break;
+				case HAVE_CV:
+					messageTypeName = "Have CV";
+					break;
+				case DO_NOT_HAVE_CV:
+					messageTypeName = "Do not have CV";
+					break;
+				case DO_YOU_HAVE_MV:
+					messageTypeName = "Do you have MV";
+					break;
+				case HAVE_MV:
+					messageTypeName = "Have MV";
+					break;
+				case DO_NOT_HAVE_MV:
+					messageTypeName = "Do not have MV";
+					break;
+				default:
+					messageTypeName = "UNKNOWN";
+					cout << "Oops, no message type?" << endl;
+					break;
+				}
+
+
+				cout << "\nServer received message of type: " << messageTypeName << " from machine "
+					 << machineID << " mailbox " << mailbox << endl;
+
+				int replyMachineID = machineID;
+				int replyMailbox = mailbox;
+				bool respond = false;
+				int replyData = 0;
+
+				QueryStatus queryStatus;
+				queryStatus.packetHeader = packetHeader;
+				queryStatus.mailHeader = mailHeader;
+				queryStatus.data = messageData;
+
+				PacketHeader* outPacketHeader = new PacketHeader;
+				MailHeader* outMailHeader = new MailHeader;
+				char* outData = new char[MAX_MAIL_SIZE];
+
+				int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
+				//handle the message
+				switch(messageType) {	//first byte is the message type
+
+				case DO_YOU_HAVE_LOCK:
+					outData[0] = (serverLockMap->Test(index)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
+					action = Respond_Once;
+					break;
+				case DO_YOU_HAVE_CV:
+					outData[0] = (serverCVMap->Test(index)) ? HAVE_CV : DO_NOT_HAVE_CV;
+					action = Respond_Once;
+					break;
+				case DO_YOU_HAVE_MV:
+					outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
+					action = Respond_Once;
+					break;
+
+
+				case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
+				case ACQUIRE:
+				case RELEASE:
+				case DESTROY_LOCK:
+					outData[0] = DO_YOU_HAVE_LOCK;
+					action = Query_All_Servers;
+					break;
+
+
+				case CREATE_CV:
+				case DESTROY_CV:
+				case SIGNAL:	//condition, then lock in message
+				case WAIT:
+				case BROADCAST:
+					outData[0] = DO_YOU_HAVE_CV;
+					action = Query_All_Servers;
+					break;
+
+				case CREATE_MV:
+				case DESTROY_MV:
+				case GET_MV:
+				case SET_MV:
+					outData[0] = DO_YOU_HAVE_MV;
+					action = Query_All_Servers;
+					break;
+
+				case DO_HAVE_LOCK:
+				case DO_HAVE_CV:
+				case DO_HAVE_MV:
+					action = Do_Bookkeeping;
+					int id = (int) data[1] << 24  + (int)data[2] << 16 + (int)data[3] << 8 + (int) data[4];
+					for(int i = 0; i < queryQueue.size(); i++){
+						QueryStatus* temp = queryQueue.at(queryQueue.begin() + i);
+						if(i->id == id){
+							temp->packetHeader->to = packetHeader->from;
+							temp->mailHeader->to = 0;
+							postOffice->Send(*temp->packetHeader, *temp->mailHeader, temp->data);
+							queryQueue.erase(queryQueue.begin() + i);
+							/*
+							 * delete temp;
+							 */
+							break;
+						}
+					}
+					break;
+				case DO_NOT_HAVE_LOCK:
+				case DO_NOT_HAVE_CV:
+				case DO_NOT_HAVE_MV:
+					action = Do_Bookkeeping;
+
+					int id = (int) data[1] << 24  + (int)data[2] << 16 + (int)data[3] << 8 + (int) data[4];
+					for(int i = 0; i < queryQueue.size(); i++){
+						QueryStatus* temp = queryQueue.at(queryQueue.begin() + i);
+						if(i->id == id){
+							temp->numResponsesReceived++; //separate variable for No/yes count? if so that means we would wait for everyone to message back before sending message off
+							if(temp->numResponsesReceived == totalNumServer - 1){
+								//do creates
+
+								if(temp->isCreateOperation){
+									switch(type){
+									case Lock:
+
+										break;
+									case CV:
+										cout << "Condition did not exist." << endl;
+										break;
+									case MV:
+										cout << "Monitor variable did not exist." << endl;
+										break;
+									default:
+										break;
+									}
+								}
+								else switch(type){
+								case Lock:
+									cout << "Lock did not exist." << endl;
+									break;
+								case CV:
+									cout << "Condition did not exist." << endl;
+									break;
+								case MV:
+									cout << "Monitor variable did not exist." << endl;
+									break;
+								default:
+									break;
+								}
+							}
+						}
+						break;
+					}
+					break;
+					break;
+				default:
+				{
+					//oops...
+					cout << "Opps, no message type?" << endl;
+					break;
+				}
+
+				}
+
+				switch(action){
+				case Respond_Once:
+						PacketHeader* outPacketHeader = new PacketHeader;
+						MailHeader* outMailHeader = new MailHeader;
+						outPacketHeader->from = myMachineID;
+						outPacketHeader->to = packetHeader->from;
+						outMailHeader->from = mailHeader->to;
+						outMailHeader->to = mailHeader->from;
+						outMailHeader->size = 1;
+						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
+
+						break;
+				case Query_All_Servers:
+						QueryStatus* qs = new QueryStatus;
+						for(int i = 0; i < totalNumServers; i++){
+							if(i == myMachineID) continue;
+							qs->packetHeader = packetHeader;
+							qs->mailHeader = mailHeader;
+							qs->data = data;
+							PacketHeader* outPacketHeader = new PacketHeader;
+							MailHeader* outMailHeader = new MailHeader;
+							outPacketHeader->from = myMachineID;
+							outPacketHeader->to = i;
+							outMailHeader->from = 1;
+							outMailHeader->to = mailHeader->from;
+							outMailHeader->size = 1;
+							bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
+							queryQueue.push(qs);
+						}
+						break;
+
+				case Do_Bookkeeping:
+
+					break;
+				}
+
+
+	}
 }
 
 void Server() {
