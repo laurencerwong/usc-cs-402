@@ -203,7 +203,7 @@ class ServerCondition {
 					// ServerCondition variables; releasing the
 					// lock and going to sleep are
 					// *atomic* in Wait()
-    ClientRequest* Signal(int *serverConditionLock, ClientRequest*);   // ServerConditionLock must be held by
+    ClientRequest* Signal(int serverConditionLock, ClientRequest*);   // ServerConditionLock must be held by
     //ClientRequest* Broadcast(ServerLock *serverConditionLock);// the currentThread for all of
 					// these operations
 //#ifdef CHANGED

@@ -424,9 +424,9 @@ ClientRequest* ServerCondition::Wait(int serverConditionLock, ClientRequest* cr)
 	}
 	//OK to wait
 
-	ClientRequest* temp = serverConditionLock->Release(cr); //release lock
+
 	queue->Append((void *) cr);
-	cr = temp;
+
 	//must find server equivalent of following line:
 	//ServerConditionLock->Acquire(); //reacquire lock before returning ensures mutual exclusivity until current thread manually releases lock
     (void) interrupt->SetLevel(oldLevel);	// re-enable interrupts (atomic operation finished)
