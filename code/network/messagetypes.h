@@ -47,6 +47,11 @@ data[0] = message type
 ---= FOR CREATES --==========
 data[1] = name size
 data[2 : 2 + name size - 1] = name
+---= FOR CREATE MV --======
+data[1:4] = number of entries
+data[5:8] = inital values
+data[9] = name size
+data[10 : 10 + name size - 1] = name
 
 
 ---== FOR ACQUIRE, RELEASE, DESTROYS ---=

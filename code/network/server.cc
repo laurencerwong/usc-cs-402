@@ -345,7 +345,7 @@ void ServerToServerMessageHandler(){
 
 	}
 }
-int ServerCreateLock(int machineID, int mailboxID, char* name) {
+int ServerCreateLock(char* name) {
 	if(serverLockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
 		serverLockTable = new ServerLockEntry[MAX_SERVER_LOCKS];
 		serverLockMap = new BitMap(MAX_SERVER_LOCKS);
@@ -435,7 +435,7 @@ ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex) {
 	return rv;
 }
 
-int ServerCreateCV(int machineID, int mailbox, char* name){
+int ServerCreateCV(char* name){
 
 	if(serverConditionArraySize == 0){ //should only execute on first call to this function in a run of nachos
 		serverConditionTable = new ServerConditionEntry[MAX_SERVER_CVS];
@@ -573,7 +573,7 @@ void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockInd
 	}
 }
 
-int ServerCreateMV(int machineID, int mailboxID, char* name, int numEntries, int initialValue) {
+int ServerCreateMV(char* name, int numEntries, int initialValue) {
 	if(serverMVArraySize == 0){ //instantiate serverMVTable on first call to CreateMV_Syscall
 		serverMVTable = new ServerMVEntry[MAX_SERVER_MV_ARRAYS];
 		serverMVMap = new BitMap(MAX_SERVER_MV_ARRAYS);
@@ -867,13 +867,21 @@ void ServerToServerMessageHandler(){
 								if(temp->isCreateOperation){
 									switch(type){
 									case Lock:
-
+										char* name = new char[temp->data[1]];
+										strncpy(name, temp->data + 2, temp->data[1]);
+										ServerCreateLock(name);
 										break;
 									case CV:
-										cout << "Condition did not exist." << endl;
+										char* name = new char[temp->data[1]];
+										strncpy(name, temp->data + 2, temp->data[1]);
+										ServerCreateCV(name);
 										break;
 									case MV:
-										cout << "Monitor variable did not exist." << endl;
+										char* name = new char[temp->data[9]];
+										strncpy(name, temp->data + 10, temp->data[9]);
+										int numEntries = (int)(temp->data[1]) << 24 + (int)(temp->data[2]) << 16 + (int)(temp->data[3]) << 8 + (int) temp->data[4];
+										int val = (int)(temp->data[6]) << 24 + (int)(temp->data[6]) << 16 + (int)(temp->data[7]) << 8 + (int) temp->data[8];
+										ServerCreateMV(name, numEntries, val);
 										break;
 									default:
 										break;
