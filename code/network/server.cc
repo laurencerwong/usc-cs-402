@@ -677,6 +677,83 @@ void compressInt(int x, char dest[4]) {
 	dest[3] = (x >> 0) & 0x000000ff;
 }
 
+string getMessageTypeName(char messageType){
+	string messageTypeName;
+	switch(messageType) {	//first byte is the message type
+	case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
+		messageTypeName = "Create Lock";
+		break;
+	case DESTROY_LOCK:
+		messageTypeName = "Destroy Lock";
+		break;
+	case ACQUIRE:
+		messageTypeName = "Acquire";
+		break;
+	case RELEASE:
+		messageTypeName = "Release";
+		break;
+	case CREATE_CV:
+		messageTypeName = "Create CV";
+		break;
+	case DESTROY_CV:
+		messageTypeName = "Destroy CV";
+		break;
+	case SIGNAL:
+		messageTypeName = "Signal";
+		break;
+	case WAIT:
+		messageTypeName = "Wait";
+		break;
+	case BROADCAST:
+		messageTypeName = "Broadcast";
+		break;
+	case CREATE_MV:
+		messageTypeName = "Create MV";
+		break;
+	case DESTROY_MV:
+		messageTypeName = "Destroy MV";
+		break;
+	case GET_MV:
+		messageTypeName = "Get MV";
+		break;
+	case SET_MV:
+		messageTypeName = "Set MV";
+		break;
+	case DO_YOU_HAVE_LOCK:
+		messageTypeName = "Do you have Lock";
+		break;
+	case HAVE_LOCK:
+		messageTypeName = "Have lock";
+		break;
+	case DO_NOT_HAVE_LOCK:
+		messageTypeName = "Do not have lock";
+		break;
+	case DO_YOU_HAVE_CV:
+		messageTypeName = "Do you have CV";
+		break;
+	case HAVE_CV:
+		messageTypeName = "Have CV";
+		break;
+	case DO_NOT_HAVE_CV:
+		messageTypeName = "Do not have CV";
+		break;
+	case DO_YOU_HAVE_MV:
+		messageTypeName = "Do you have MV";
+		break;
+	case HAVE_MV:
+		messageTypeName = "Have MV";
+		break;
+	case DO_NOT_HAVE_MV:
+		messageTypeName = "Do not have MV";
+		break;
+	default:
+		messageTypeName = "UNKNOWN";
+		cout << "Oops, no message type?" << endl;
+		break;
+	}
+	return messageTypeName;
+
+}
 
 void ServerToServerMessageHandler(){
 	while(true){ //infinitely check for messages to handle
@@ -695,114 +772,32 @@ void ServerToServerMessageHandler(){
 					cout << messageData[i] << endl;
 				}*/
 
-				string messageTypeName;
-
-				switch(messageType) {	//first byte is the message type
-				case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
-					messageTypeName = "Create Lock";
-					break;
-				case DESTROY_LOCK:
-					messageTypeName = "Destroy Lock";
-					break;
-				case ACQUIRE:
-					messageTypeName = "Acquire";
-					break;
-				case RELEASE:
-					messageTypeName = "Release";
-					break;
-				case CREATE_CV:
-					messageTypeName = "Create CV";
-					break;
-				case DESTROY_CV:
-					messageTypeName = "Destroy CV";
-					break;
-				case SIGNAL:
-					messageTypeName = "Signal";
-					break;
-				case WAIT:
-					messageTypeName = "Wait";
-					break;
-				case BROADCAST:
-					messageTypeName = "Broadcast";
-					break;
-				case CREATE_MV:
-					messageTypeName = "Create MV";
-					break;
-				case DESTROY_MV:
-					messageTypeName = "Destroy MV";
-					break;
-				case GET_MV:
-					messageTypeName = "Get MV";
-					break;
-				case SET_MV:
-					messageTypeName = "Set MV";
-					break;
-				case DO_YOU_HAVE_LOCK:
-					messageTypeName = "Do you have Lock";
-					break;
-				case HAVE_LOCK:
-					messageTypeName = "Have lock";
-					break;
-				case DO_NOT_HAVE_LOCK:
-					messageTypeName = "Do not have lock";
-					break;
-				case DO_YOU_HAVE_CV:
-					messageTypeName = "Do you have CV";
-					break;
-				case HAVE_CV:
-					messageTypeName = "Have CV";
-					break;
-				case DO_NOT_HAVE_CV:
-					messageTypeName = "Do not have CV";
-					break;
-				case DO_YOU_HAVE_MV:
-					messageTypeName = "Do you have MV";
-					break;
-				case HAVE_MV:
-					messageTypeName = "Have MV";
-					break;
-				case DO_NOT_HAVE_MV:
-					messageTypeName = "Do not have MV";
-					break;
-				default:
-					messageTypeName = "UNKNOWN";
-					cout << "Oops, no message type?" << endl;
-					break;
-				}
-
-
+				string messageTypeName = getMessageTypeName(messageType);
 				cout << "\nServer received message of type: " << messageTypeName << " from machine "
 					 << machineID << " mailbox " << mailbox << endl;
-
-				int replyMachineID = machineID;
-				int replyMailbox = mailbox;
-				bool respond = false;
-				int replyData = 0;
-
-				QueryStatus queryStatus;
-				queryStatus.packetHeader = packetHeader;
-				queryStatus.mailHeader = mailHeader;
-				queryStatus.data = messageData;
 
 				PacketHeader* outPacketHeader = new PacketHeader;
 				MailHeader* outMailHeader = new MailHeader;
 				char* outData = new char[MAX_MAIL_SIZE];
 
-				int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
+
 				//handle the message
 				switch(messageType) {	//first byte is the message type
 
 				case DO_YOU_HAVE_LOCK:
+					int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
 					outData[0] = (serverLockMap->Test(index)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
-					action = Respond_Once;
+					action = Respond_Once_To_Server;
 					break;
 				case DO_YOU_HAVE_CV:
+					int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
 					outData[0] = (serverCVMap->Test(index)) ? HAVE_CV : DO_NOT_HAVE_CV;
-					action = Respond_Once;
+					action = Respond_Once_To_Server;
 					break;
 				case DO_YOU_HAVE_MV:
+					int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
 					outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
-					action = Respond_Once;
+					action = Respond_Once_To_Server;
 					break;
 
 
@@ -865,23 +860,30 @@ void ServerToServerMessageHandler(){
 								//do creates
 
 								if(temp->isCreateOperation){
+									action = Respond_Once_To_Client;
+									delete mailHeader;
+									delete packetHeader;
+									delete messageData;
+									mailHeader = temp->mailHeader;
+									packetHeader = temp->packetHeader;
+									messageData = temp->data;
 									switch(type){
 									case Lock:
 										char* name = new char[temp->data[1]];
 										strncpy(name, temp->data + 2, temp->data[1]);
-										ServerCreateLock(name);
+										compressInt(ServerCreateLock(name), messageData);
 										break;
 									case CV:
 										char* name = new char[temp->data[1]];
 										strncpy(name, temp->data + 2, temp->data[1]);
-										ServerCreateCV(name);
+										compressInt(ServerCreateCV(name), messageData);
 										break;
 									case MV:
 										char* name = new char[temp->data[9]];
 										strncpy(name, temp->data + 10, temp->data[9]);
 										int numEntries = (int)(temp->data[1]) << 24 + (int)(temp->data[2]) << 16 + (int)(temp->data[3]) << 8 + (int) temp->data[4];
 										int val = (int)(temp->data[6]) << 24 + (int)(temp->data[6]) << 16 + (int)(temp->data[7]) << 8 + (int) temp->data[8];
-										ServerCreateMV(name, numEntries, val);
+										compressInt(ServerCreateMV(name, numEntries, val), messageData);
 										break;
 									default:
 										break;
@@ -916,7 +918,10 @@ void ServerToServerMessageHandler(){
 				}
 
 				switch(action){
-				case Respond_Once:
+				case Respond_Once_To_Client:
+						postOffice->Send(*packetHeader, *mailHeader, messageData);
+						break;
+				case Respond_Once_To_Server:
 						PacketHeader* outPacketHeader = new PacketHeader;
 						MailHeader* outMailHeader = new MailHeader;
 						outPacketHeader->from = myMachineID;
