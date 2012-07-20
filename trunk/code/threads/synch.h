@@ -199,11 +199,11 @@ class ServerCondition {
     ~ServerCondition();			// deallocate the ServerCondition
     char* getName() { return (name); }
 
-    ClientRequest* Wait(ServerLock*, ClientRequest*); 	// these are the 3 operations on
+    ClientRequest* Wait(int, ClientRequest*); 	// these are the 3 operations on
 					// ServerCondition variables; releasing the
 					// lock and going to sleep are
 					// *atomic* in Wait()
-    ClientRequest* Signal(ServerLock *serverConditionLock, ClientRequest*);   // ServerConditionLock must be held by
+    ClientRequest* Signal(int *serverConditionLock, ClientRequest*);   // ServerConditionLock must be held by
     //ClientRequest* Broadcast(ServerLock *serverConditionLock);// the currentThread for all of
 					// these operations
 //#ifdef CHANGED
@@ -213,7 +213,7 @@ class ServerCondition {
   private:
     char* name;
     List* queue;
-	ServerLock* waitingLock;
+	int waitingLock;
     // plus some other stuff you'll need to define
 };
 
