@@ -41,8 +41,21 @@ data[1:4] = array index
 data[5:8] = entry index
 
 
----= FOR OPERATION REQUEST MESSAGES =====
-pass on original data buffer
+---= FOR ALL OPERATION REQUEST MESSAGES =====
+data[0] = message type
+
+---= FOR CREATES --==========
+data[1] = name size
+data[2 : 2 + name size - 1] = name
+
+
+---== FOR ACQUIRE, RELEASE, DESTROYS ---=
+data[1 : 4] = index
+
+---== FOR SIGNAL, WAIT, BROADCAST ---=
+data [1:4] = condition index
+data [5: 8] = lock index
+
 
 
 
