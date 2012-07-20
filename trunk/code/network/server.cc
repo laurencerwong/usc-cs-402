@@ -37,7 +37,7 @@ struct ServerMVEntry {
 	char *name;
 };
 
-enum ServerActions{ Query_All_Servers, Respond_Once_To_Server, Respond_Once_To_Client
+enum ServerActions{ Query_All_Servers, Respond_Once_To_Server, Respond_Once_To_Client, Do_Bookkeeping
 };
 class PendingRequest{
 public:
