@@ -29,6 +29,11 @@
 #define DO_YOU_HAVE_MV 't'
 #define HAVE_MV 'u'
 #define DO_NOT_HAVE_MV 'v'
+#define DO_YOU_HAVE_LOCK_NAME 'w'
+#define DO_YOU_HAVE_CV_NAME 'x'
+#define DO_YOU_HAVE_MV_NAME 'y'
+
+
 
 
 //------------------------Server-Server messages-------------------------------------------------------------

@@ -37,6 +37,23 @@ struct ServerMVEntry {
 	char *name;
 };
 
+enum ServerActions{ Query_All_Servers, Respond_Once_To_Server, Respond_Once_To_Client
+};
+class PendingRequest{
+public:
+	char* name;
+	StructureType type;
+	bool responseTracker[totalNumServers];
+	PendingRequest(char* name, StructureType type){
+		this->name = name;
+		this->type = type;
+		responseTracker[myMachineID] = true;
+	}
+	bool isAMatch(char* otherName, StructureType structType){
+		return !strcmp(name, otherName) && structType == type;
+	}
+};
+
 BitMap *serverLockMap;
 BitMap *serverConditionMap;
 BitMap *serverMVMap;
@@ -48,7 +65,7 @@ ServerLockEntry *serverLockTable;
 ServerConditionEntry *serverConditionTable;
 ServerMVEntry *serverMVTable;
 deque<QueryStatus> queryQueue;
-
+int nextQueryID = 0;
 struct ServerResponse {
 	int toMachine;
 	int toMailbox;
@@ -77,274 +94,49 @@ int encodeIndex(int internalIndex){
 int decodeIndex(int encodedIndex){
 	return encodedIndex - (myMachineID * MAX_SERVER_LOCKS);
 }
-void ServerToServerMessageHandler(){
-	while(true){ //infinitely check for messages to handle
-		PacketHeader *packetHeader = new PacketHeader;
-		MailHeader *mailHeader = new MailHeader;
-		char* messageData = new char[MaxMailSize];
 
-		postOffice->Receive(1, packetHeader, mailHeader, messageData);	//server is always mailbox 1
-		//parse message
-				char messageType = messageData[0];
-				int machineID = packetHeader->from;
-				int mailbox = mailHeader->from;
-
-				/*cout << "myMachineID " << myMachineID << "  myMailbox " << 0 << endl;
-				for(int i = 0; i < 10; i++) {
-					cout << messageData[i] << endl;
-				}*/
-
-				string messageTypeName;
-
-				switch(messageType) {	//first byte is the message type
-				case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
-					messageTypeName = "Create Lock";
-					break;
-				case DESTROY_LOCK:
-					messageTypeName = "Destroy Lock";
-					break;
-				case ACQUIRE:
-					messageTypeName = "Acquire";
-					break;
-				case RELEASE:
-					messageTypeName = "Release";
-					break;
-				case CREATE_CV:
-					messageTypeName = "Create CV";
-					break;
-				case DESTROY_CV:
-					messageTypeName = "Destroy CV";
-					break;
-				case SIGNAL:
-					messageTypeName = "Signal";
-					break;
-				case WAIT:
-					messageTypeName = "Wait";
-					break;
-				case BROADCAST:
-					messageTypeName = "Broadcast";
-					break;
-				case CREATE_MV:
-					messageTypeName = "Create MV";
-					break;
-				case DESTROY_MV:
-					messageTypeName = "Destroy MV";
-					break;
-				case GET_MV:
-					messageTypeName = "Get MV";
-					break;
-				case SET_MV:
-					messageTypeName = "Set MV";
-					break;
-				case DO_YOU_HAVE_LOCK:
-					messageTypeName = "Do you have Lock";
-					break;
-				case HAVE_LOCK:
-					messageTypeName = "Have lock";
-					break;
-				case DO_NOT_HAVE_LOCK:
-					messageTypeName = "Do not have lock";
-					break;
-				case DO_YOU_HAVE_CV:
-					messageTypeName = "Do you have CV";
-					break;
-				case HAVE_CV:
-					messageTypeName = "Have CV";
-					break;
-				case DO_NOT_HAVE_CV:
-					messageTypeName = "Do not have CV";
-					break;
-				case DO_YOU_HAVE_MV:
-					messageTypeName = "Do you have MV";
-					break;
-				case HAVE_MV:
-					messageTypeName = "Have MV";
-					break;
-				case DO_NOT_HAVE_MV:
-					messageTypeName = "Do not have MV";
-					break;
-				default:
-					messageTypeName = "UNKNOWN";
-					cout << "Oops, no message type?" << endl;
-					break;
-				}
-
-
-				cout << "\nServer received message of type: " << messageTypeName << " from machine "
-					 << machineID << " mailbox " << mailbox << endl;
-
-				int replyMachineID = machineID;
-				int replyMailbox = mailbox;
-				bool respond = false;
-				int replyData = 0;
-
-				QueryStatus queryStatus;
-				queryStatus.packetHeader = packetHeader;
-				queryStatus.mailHeader = mailHeader;
-				queryStatus.data = messageData;
-
-				PacketHeader* outPacketHeader = new PacketHeader;
-				MailHeader* outMailHeader = new MailHeader;
-				char* outData = new char[MAX_MAIL_SIZE];
-
-				int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
-				//handle the message
-				switch(messageType) {	//first byte is the message type
-
-				case DO_YOU_HAVE_LOCK:
-					outData[0] = (serverLockMap->Test(index)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
-					action = Respond_Once;
-					break;
-				case DO_YOU_HAVE_CV:
-					outData[0] = (serverCVMap->Test(index)) ? HAVE_CV : DO_NOT_HAVE_CV;
-					action = Respond_Once;
-					break;
-				case DO_YOU_HAVE_MV:
-					outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
-					action = Respond_Once;
-					break;
-
-
-				case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
-				case ACQUIRE:
-				case RELEASE:
-				case DESTROY_LOCK:
-					outData[0] = DO_YOU_HAVE_LOCK;
-					action = Query_All_Servers;
-					break;
-
-
-				case CREATE_CV:
-				case DESTROY_CV:
-				case SIGNAL:	//condition, then lock in message
-				case WAIT:
-				case BROADCAST:
-					outData[0] = DO_YOU_HAVE_CV;
-					action = Query_All_Servers;
-					break;
-
-				case CREATE_MV:
-				case DESTROY_MV:
-				case GET_MV:
-				case SET_MV:
-					outData[0] = DO_YOU_HAVE_MV;
-					action = Query_All_Servers;
-					break;
-
-				case DO_HAVE_LOCK:
-				case DO_HAVE_CV:
-				case DO_HAVE_MV:
-					action = Do_Bookkeeping;
-					int id = (int) data[1] << 24  + (int)data[2] << 16 + (int)data[3] << 8 + (int) data[4];
-					for(int i = 0; i < queryQueue.size(); i++){
-						QueryStatus* temp = queryQueue.at(queryQueue.begin() + i);
-						if(i->id == id){
-							temp->packetHeader->to = packetHeader->from;
-							temp->mailHeader->to = 0;
-							postOffice->Send(*temp->packetHeader, *temp->mailHeader, temp->data);
-							queryQueue.erase(queryQueue.begin() + i);
-							/*
-							 * delete temp;
-							 */
-							break;
-						}
-					}
-					break;
-				case DO_NOT_HAVE_LOCK:
-				case DO_NOT_HAVE_CV:
-				case DO_NOT_HAVE_MV:
-					action = Do_Bookkeeping;
-
-					int id = (int) data[1] << 24  + (int)data[2] << 16 + (int)data[3] << 8 + (int) data[4];
-					for(int i = 0; i < queryQueue.size(); i++){
-						QueryStatus* temp = queryQueue.at(queryQueue.begin() + i);
-						if(i->id == id){
-							temp->numResponsesReceived++; //separate variable for No/yes count? if so that means we would wait for everyone to message back before sending message off
-							if(temp->numResponsesReceived == totalNumServer - 1){
-								//do creates
-
-								if(temp->isCreateOperation){
-									switch(type){
-									case Lock:
-
-										break;
-									case CV:
-										cout << "Condition did not exist." << endl;
-										break;
-									case MV:
-										cout << "Monitor variable did not exist." << endl;
-										break;
-									default:
-										break;
-									}
-								}
-								else switch(type){
-								case Lock:
-									cout << "Lock did not exist." << endl;
-									break;
-								case CV:
-									cout << "Condition did not exist." << endl;
-									break;
-								case MV:
-									cout << "Monitor variable did not exist." << endl;
-									break;
-								default:
-									break;
-								}
-							}
-						}
-						break;
-					}
-					break;
-					break;
-				default:
-				{
-					//oops...
-					cout << "Opps, no message type?" << endl;
-					break;
-				}
-
-				}
-
-				switch(action){
-				case Respond_Once:
-						PacketHeader* outPacketHeader = new PacketHeader;
-						MailHeader* outMailHeader = new MailHeader;
-						outPacketHeader->from = myMachineID;
-						outPacketHeader->to = packetHeader->from;
-						outMailHeader->from = mailHeader->to;
-						outMailHeader->to = mailHeader->from;
-						outMailHeader->size = 1;
-						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
-
-						break;
-				case Query_All_Servers:
-						QueryStatus* qs = new QueryStatus;
-						for(int i = 0; i < totalNumServers; i++){
-							if(i == myMachineID) continue;
-							qs->packetHeader = packetHeader;
-							qs->mailHeader = mailHeader;
-							qs->data = data;
-							PacketHeader* outPacketHeader = new PacketHeader;
-							MailHeader* outMailHeader = new MailHeader;
-							outPacketHeader->from = myMachineID;
-							outPacketHeader->to = i;
-							outMailHeader->from = 1;
-							outMailHeader->to = mailHeader->from;
-							outMailHeader->size = 1;
-							bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
-							queryQueue.push(qs);
-						}
-						break;
-
-				case Do_Bookkeeping:
-
-					break;
-				}
-
-
+bool checkIfLockExists(char* name){
+	//check if there already is a lock with this name
+	if(serverLockArraySize == 0) return false;
+	for(int i = 0; i < MAX_SERVER_LOCKS; i++) {
+		if(serverLockMap->Test(i) == 1) {
+			if(strcmp(serverLockTable[i].lock->getName(), name) == 0) {	//if they have the same name
+				printf("A Lock with name %s has already been created at index %d\n", name, i);
+				return true;
+			}
+		}
 	}
+	return false;
 }
+
+bool checkIfCVExists(char* name){
+	//check if there already is a CV with this name
+	if(serverConditionArraySize == 0) return false;
+	for(int i = 0; i < MAX_SERVER_CVS; i++) {
+		if(serverConditionMap->Test(i) == 1) {
+			if(strcmp(serverConditionTable[i].condition->getName(), name) == 0) {	//if they have the same name
+				printf("A CV with name %s has already been created at index %d\n", name, i);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool checkIfMVExists(char* name){
+	//check if there already is a lock with this name
+	if(serverMVArraySize == 0) return false;
+	for(int i = 0; i < MAX_SERVER_MV_ARRAYS; i++) {
+		if(serverMVMap->Test(i) == 1) {
+			if(strcmp(serverMVTable[i].name, name) == 0) {	//if they have the same name
+				printf("An MV with name %s has already been created at index %d\n", name, i);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 int ServerCreateLock(char* name) {
 	if(serverLockArraySize == 0){ //instantiate lockTable on first call to CreateLock_Syscall
 		serverLockTable = new ServerLockEntry[MAX_SERVER_LOCKS];
@@ -755,21 +547,62 @@ string getMessageTypeName(char messageType){
 
 }
 
+StructureType getType(char messageType){
+	switch(messageType){
+	case CREATE_LOCK:
+	case DESTROY_LOCK:
+	case ACQUIRE:
+	case RELEASE:
+		return Lock;
+		break;
+	case CREATE_CV:
+	case DESTROY_CV:
+	case SIGNAL:
+	case BROADCAST:
+	case WAIT:
+		return CV;
+		break;
+	case CREATE_MV:
+	case DESTROY_MV:
+	case SET_MV:
+	case GET_MV:
+		return MV;
+		break;
+	default:
+		cout << "incorrect messageType passed to getType() function" << endl;
+		break;
+	}
+	return Lock;
+}
+bool isCreation(char messageType){
+	switch(messageType){
+	case CREATE_LOCK:
+		return true;
+		break;
+	case CREATE_CV:
+		return true;
+		break;
+	case CREATE_CV:
+		return true;
+		break;
+	}
+	return false;
+}
 void ServerToServerMessageHandler(){
 	while(true){ //infinitely check for messages to handle
 		PacketHeader *packetHeader = new PacketHeader;
 		MailHeader *mailHeader = new MailHeader;
-		char* messageData = new char[MaxMailSize];
+		char* inData = new char[MaxMailSize];
 
-		postOffice->Receive(1, packetHeader, mailHeader, messageData);	//server is always mailbox 1
+		postOffice->Receive(1, packetHeader, mailHeader, inData);	//server is always mailbox 1
 		//parse message
-				char messageType = messageData[0];
+				char messageType = inData[0];
 				int machineID = packetHeader->from;
 				int mailbox = mailHeader->from;
 
 				/*cout << "myMachineID " << myMachineID << "  myMailbox " << 0 << endl;
 				for(int i = 0; i < 10; i++) {
-					cout << messageData[i] << endl;
+					cout << inData[i] << endl;
 				}*/
 
 				string messageTypeName = getMessageTypeName(messageType);
@@ -783,47 +616,100 @@ void ServerToServerMessageHandler(){
 
 				//handle the message
 				switch(messageType) {	//first byte is the message type
-
+				/**These cases would be received from another ServerToServerHandler.
+				 * Thus, they will have messageIDs in inData[1:4].
+				 */
 				case DO_YOU_HAVE_LOCK:
-					int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
-					outData[0] = (serverLockMap->Test(index)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
+					int index = extractInt(inData + 5);
+					outData[0] = (decodeIndex(serverLockMap->Test(index))) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
+					action = Respond_Once_To_Server;
+					break;
+				case DO_YOU_HAVE_LOCK_NAME:
+					int nameLength = inData[5];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 6, nameLength);
+					outData[0] = (checkIfLockExists(name)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
 					action = Respond_Once_To_Server;
 					break;
 				case DO_YOU_HAVE_CV:
-					int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
-					outData[0] = (serverCVMap->Test(index)) ? HAVE_CV : DO_NOT_HAVE_CV;
+					int index = extractInt(inData + 5);
+					outData[0] = (serverCVMap->Test(decodeIndex(index))) ? HAVE_CV : DO_NOT_HAVE_CV;
+					action = Respond_Once_To_Server;
+					break;
+				case DO_YOU_HAVE_CV_NAME:
+					int nameLength = inData[5];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 6, nameLength);
+					outData[0] = (checkIfCVExists(name)) ? HAVE_CV : DO_NOT_HAVE_CV;
 					action = Respond_Once_To_Server;
 					break;
 				case DO_YOU_HAVE_MV:
-					int index = messageData[1] << 24 + messageData[2] << 16 + messageData[3] << 8 + messageData[4];
-					outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
+					int index = extractInt(inData + 5);
+					outData[0] = (decodeIndex(serverMVMap->Test(index))) ? HAVE_MV : DO_NOT_HAVE_MV;
+					action = Respond_Once_To_Server;
+					break;
+				case DO_YOU_HAVE_MV_NAME:
+					int nameLength = inData[5];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 6, nameLength);
+					outData[0] = (checkIfMVExists(name)) ? HAVE_MV : DO_NOT_HAVE_MV;
 					action = Respond_Once_To_Server;
 					break;
 
-
-				case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
+				/**These cases are passed on from the Server function on our machine.
+				 * Thus, there will be no messageID, and we must put one in if we are to send
+				 * off a message to another ServerToServerHandler.
+				 */
+				case CREATE_LOCK:
+					int nameLength = inData[1];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 2, nameLength);
+					outData[0] = DO_YOU_HAVE_LOCK_NAME;
+					outData[5] = nameLength;
+					strncpy(outData + 6, inData + 2, nameLength);
+					action = Query_All_Servers;
+					break;//inData[1] = nameLength, inData[2:2+nameLength] = name
 				case ACQUIRE:
 				case RELEASE:
 				case DESTROY_LOCK:
 					outData[0] = DO_YOU_HAVE_LOCK;
+					strncpy(outData + 5, inData + 1, 4);
 					action = Query_All_Servers;
 					break;
 
 
 				case CREATE_CV:
+					int nameLength = inData[1];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 2, nameLength);
+					outData[0] = DO_YOU_HAVE_CV_NAME;
+					outData[5] = nameLength;
+					strncpy(outData + 6, inData + 2, nameLength);
+					action = Query_All_Servers;
+					break;
 				case DESTROY_CV:
 				case SIGNAL:	//condition, then lock in message
 				case WAIT:
 				case BROADCAST:
 					outData[0] = DO_YOU_HAVE_CV;
+					strncpy(outData + 5, inData + 1, 4);
 					action = Query_All_Servers;
 					break;
 
 				case CREATE_MV:
+					int nameLength = inData[1];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 2, nameLength);
+					outData[0] = DO_YOU_HAVE_MV_NAME;
+					outData[5] = nameLength;
+					strncpy(outData + 6, inData + 2, nameLength);
+					action = Query_All_Servers;
+					break;
 				case DESTROY_MV:
 				case GET_MV:
 				case SET_MV:
 					outData[0] = DO_YOU_HAVE_MV;
+					strncpy(outData + 5, inData + 1, 4);
 					action = Query_All_Servers;
 					break;
 
@@ -831,13 +717,13 @@ void ServerToServerMessageHandler(){
 				case DO_HAVE_CV:
 				case DO_HAVE_MV:
 					action = Do_Bookkeeping;
-					int id = (int) data[1] << 24  + (int)data[2] << 16 + (int)data[3] << 8 + (int) data[4];
+					int id = extractInt(inData + 1);
 					for(int i = 0; i < queryQueue.size(); i++){
 						QueryStatus* temp = queryQueue.at(queryQueue.begin() + i);
 						if(i->id == id){
 							temp->packetHeader->to = packetHeader->from;
 							temp->mailHeader->to = 0;
-							postOffice->Send(*temp->packetHeader, *temp->mailHeader, temp->data);
+							postOffice->Send(*temp->packetHeader, *temp->mailHeader, temp->inData);
 							queryQueue.erase(queryQueue.begin() + i);
 							/*
 							 * delete temp;
@@ -851,7 +737,7 @@ void ServerToServerMessageHandler(){
 				case DO_NOT_HAVE_MV:
 					action = Do_Bookkeeping;
 
-					int id = (int) data[1] << 24  + (int)data[2] << 16 + (int)data[3] << 8 + (int) data[4];
+					int id = (int) inData[1] << 24  + (int)inData[2] << 16 + (int)inData[3] << 8 + (int) inData[4];
 					for(int i = 0; i < queryQueue.size(); i++){
 						QueryStatus* temp = queryQueue.at(queryQueue.begin() + i);
 						if(i->id == id){
@@ -863,27 +749,27 @@ void ServerToServerMessageHandler(){
 									action = Respond_Once_To_Client;
 									delete mailHeader;
 									delete packetHeader;
-									delete messageData;
+									delete inData;
 									mailHeader = temp->mailHeader;
 									packetHeader = temp->packetHeader;
-									messageData = temp->data;
+									outData = temp->data;
 									switch(type){
 									case Lock:
 										char* name = new char[temp->data[1]];
 										strncpy(name, temp->data + 2, temp->data[1]);
-										compressInt(ServerCreateLock(name), messageData);
+										compressInt(encodeIndex(ServerCreateLock(name)), inData);
 										break;
 									case CV:
 										char* name = new char[temp->data[1]];
 										strncpy(name, temp->data + 2, temp->data[1]);
-										compressInt(ServerCreateCV(name), messageData);
+										compressInt(encodeIndex(ServerCreateCV(name)), inData);
 										break;
 									case MV:
 										char* name = new char[temp->data[9]];
 										strncpy(name, temp->data + 10, temp->data[9]);
 										int numEntries = (int)(temp->data[1]) << 24 + (int)(temp->data[2]) << 16 + (int)(temp->data[3]) << 8 + (int) temp->data[4];
 										int val = (int)(temp->data[6]) << 24 + (int)(temp->data[6]) << 16 + (int)(temp->data[7]) << 8 + (int) temp->data[8];
-										compressInt(ServerCreateMV(name, numEntries, val), messageData);
+										compressInt(encodeIndex(ServerCreateMV(name, numEntries, val)), inData);
 										break;
 									default:
 										break;
@@ -919,7 +805,7 @@ void ServerToServerMessageHandler(){
 
 				switch(action){
 				case Respond_Once_To_Client:
-						postOffice->Send(*packetHeader, *mailHeader, messageData);
+						postOffice->Send(*packetHeader, *mailHeader, outData);
 						break;
 				case Respond_Once_To_Server:
 						PacketHeader* outPacketHeader = new PacketHeader;
@@ -929,6 +815,7 @@ void ServerToServerMessageHandler(){
 						outMailHeader->from = mailHeader->to;
 						outMailHeader->to = mailHeader->from;
 						outMailHeader->size = 1;
+						strncpy(outData + 1, inData + 1, 4); //copy message ID into response
 						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
 
 						break;
@@ -938,7 +825,12 @@ void ServerToServerMessageHandler(){
 							if(i == myMachineID) continue;
 							qs->packetHeader = packetHeader;
 							qs->mailHeader = mailHeader;
-							qs->data = data;
+							qs->data = inData;
+							qs->id = nextQueryID;
+							qs->isCreateOperation = isCreation(messageType);
+							qs->structureType = getType(messageType);
+							compressInt(nextQueryID, outData + 1);
+							nextQueryID++;
 							PacketHeader* outPacketHeader = new PacketHeader;
 							MailHeader* outMailHeader = new MailHeader;
 							outPacketHeader->from = myMachineID;
