@@ -1119,9 +1119,21 @@ void Server() {
 			char nameLength = messageData[1];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 2), nameLength);
-			response.data = ServerCreateLock(name);
-			necessaryResponses.push(response);
-			respond = true;
+			bool alreadyHad = false;
+
+			for(int i = 0; i < serverConditionArraySize; i++) {
+				if(!strcmp(name, serverLockTable[i].lock->getName())) {
+					response.data = encodeIndex(i);
+					necessaryResponses.push(response);
+					respond = true;
+					alreadyHad = true;
+					break;
+				}
+			}
+			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
+				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+				respond = false;
+			}
 			break;
 		}
 		case DESTROY_LOCK:
@@ -1191,9 +1203,21 @@ void Server() {
 			char nameLength = messageData[1];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 2), nameLength);
-			response.data = ServerCreateCV(name);
-			necessaryResponses.push(response);
-			respond = true;
+			bool alreadyHad = false;
+
+			for(int i = 0; i < serverConditionArraySize; i++) {
+				if(!strcmp(name, serverConditionTable[i].condition->getName())) {
+					response.data = encodeIndex(i);
+					necessaryResponses.push(response);
+					respond = true;
+					alreadyHad = true;
+					break;
+				}
+			}
+			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
+				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+				respond = false;
+			}
 			break;
 		}
 		case DESTROY_CV:
@@ -1555,11 +1579,23 @@ void Server() {
 			char nameLength = messageData[9];
 			char* name = new char[nameLength];
 			strncpy(name, (messageData + 10), nameLength);
-			response.data = ServerCreateMV(name, numEntries, initialValue);
-			necessaryResponses.push(response);
+			bool alreadyHad = false;
 
-			respond = true;
+			for(int i = 0; i < serverMVArraySize; i++) {
+				if(!strcmp(name, serverMVTable[i].name)) {
+					response.data = encodeIndex(i);
+					necessaryResponses.push(response);
+					respond = true;
+					alreadyHad = true;
+					break;
+				}
+			}
+			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
+				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+				respond = false;
+			}
 			break;
+
 		}
 		case DESTROY_MV:
 		{
