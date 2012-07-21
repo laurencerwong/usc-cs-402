@@ -178,6 +178,9 @@ int main(int argc, char **argv)
 		}
 		else if(!strcmp(*argv, "-tns")) {
 			totalNumServers = atoi(*(argv + 1));
+			if(DebugIsEnabled('n')) {
+				cout << "totalNumServers set to: " << totalNumServers << endl;
+			}
 			argCount = 2;
 		}
 		else if(!strcmp(*argv, "-server")){
@@ -192,7 +195,6 @@ int main(int argc, char **argv)
 		}
 #endif // NETWORK
 	}
-
 	currentThread->Finish();	// NOTE: if the procedure "main"
 	// returns, then the program "nachos"
 	// will exit (as any other normal program

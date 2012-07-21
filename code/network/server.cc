@@ -1121,7 +1121,7 @@ void Server() {
 			strncpy(name, (messageData + 2), nameLength);
 			bool alreadyHad = false;
 
-			for(int i = 0; i < serverConditionArraySize; i++) {
+			for(int i = 0; i < serverLockArraySize; i++) {
 				if(!strcmp(name, serverLockTable[i].lock->getName())) {
 					response.data = encodeIndex(i);
 					necessaryResponses.push(response);
@@ -1131,8 +1131,15 @@ void Server() {
 				}
 			}
 			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
-				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
-				respond = false;
+				if(totalNumServers == 1) {
+					response.data = ServerCreateLock(name);
+					necessaryResponses.push(response);
+					respond = true;
+				}
+				else {
+					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+					respond = false;
+				}
 			}
 			break;
 		}
@@ -1195,7 +1202,6 @@ void Server() {
 				necessaryResponses.push(response);
 				respond = true;
 			}
-			delete temp;
 			break;
 		}
 		case CREATE_CV:
@@ -1215,8 +1221,15 @@ void Server() {
 				}
 			}
 			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
-				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
-				respond = false;
+				if(totalNumServers == 1) {
+					response.data = ServerCreateCV(name);
+					necessaryResponses.push(response);
+					respond = true;
+				}
+				else {
+					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+					respond = false;
+				}
 			}
 			break;
 		}
@@ -1591,8 +1604,15 @@ void Server() {
 				}
 			}
 			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
-				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
-				respond = false;
+				if(totalNumServers == 1) {
+					response.data = ServerCreateMV(name, numEntries, initialValue);
+					necessaryResponses.push(response);
+					respond = true;
+				}
+				else {
+					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+					respond = false;
+				}
 			}
 			break;
 
