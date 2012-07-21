@@ -37,6 +37,26 @@ void deconstructSalesArg(int val, int target[2]) {
 	target[1] = dept;
 }
 
+void initManagerArrays(){
+	managerLock = CreateLock("mLock", sizeof("mLock"));
+	managerCV = CreateCondition("mCV", sizeof("mCV"));
+	managerItemsLock = CreateLock("mItemsLock", sizeof("mItemsLock"));
+	
+	/*MVs*/
+	cashierTotals = CreateMV("cTotals", sizeof("cTotals"), NUM_CASHIERS, 0); 
+	cashierFlags = CreateMV("cFlags", sizeof("cFlags"), NUM_CASHIERS, -1);
+	numSalesmenOnBreak = CreateMV("numSOnBreak", sizeof("numSOnBreak"), NUM_DEPARTMENTS, 0);
+	numCashiersOnBreak = CreateMV("numCashOnBreak", sizeof("numCashOnBreak"), 1, 0);
+	managerDesk = CreateMV("managerDesk", sizeof("managerDesk"), 1, 0);
+	customersDone = CreateMV("customersDone", sizeof("customersDone"), 1, 0);
+	hasTakenItems = CreateMV("hasTakenItems", sizeof("hasTakenItems"), 1, 0);
+	managerItems[0] = CreateMV("managerItems[0]", sizeof("managerItems[0]"), NUM_ITEMS, 0);
+	managerItems[1] = CreateMV("managerItems[1]", sizeof("managerItems[1]"), NUM_ITEMS, 0);
+	managerItems[2] = CreateMV("managerItems[2]", sizeof("managerItems[2]"), NUM_ITEMS, 0);
+	
+	NPrint("Finished initializing manager arrays\n", sizeof("Finished initializing manager arrays\n"));
+}
+
 void initCustomerArrays(){
   customerIndexLock = CreateLock("cIndexLock", sizeof("cIndexLock"));
   trollyLock  = CreateLock("trollyLock", sizeof("trollyLock"));
@@ -295,26 +315,6 @@ void initSalesmanArrays(){
 
   
   NPrint("Finished initializing salesmen arrays\n", sizeof("Finished initializing salesmen arrays\n"));
-}
-
-void initManagerArrays(){
-	managerLock = CreateLock("mLock", sizeof("mLock"));
-	managerCV = CreateCondition("mCV", sizeof("mCV"));
-	managerItemsLock = CreateLock("mItemsLock", sizeof("mItemsLock"));
-	
-	/*MVs*/
-	cashierTotals = CreateMV("cTotals", sizeof("cTotals"), NUM_CASHIERS, 0);
-	cashierFlags = CreateMV("cFlags", sizeof("cFlags"), NUM_CASHIERS, -1);
-	numSalesmenOnBreak = CreateMV("numSOnBreak", sizeof("numSOnBreak"), NUM_DEPARTMENTS, 0);
-	numCashiersOnBreak = CreateMV("numCashOnBreak", sizeof("numCashOnBreak"), 1, 0);
-	managerDesk = CreateMV("managerDesk", sizeof("managerDesk"), 1, 0);
-	customersDone = CreateMV("customersDone", sizeof("customersDone"), 1, 0);
-	hasTakenItems = CreateMV("hasTakenItems", sizeof("hasTakenItems"), 1, 0);
-	managerItems[0] = CreateMV("managerItems[0]", sizeof("managerItems[0]"), NUM_ITEMS, 0);
-	managerItems[1] = CreateMV("managerItems[1]", sizeof("managerItems[1]"), NUM_ITEMS, 0);
-	managerItems[2] = CreateMV("managerItems[2]", sizeof("managerItems[2]"), NUM_ITEMS, 0);
-	
-	NPrint("Finished initializing manager arrays\n", sizeof("Finished initializing manager arrays\n"));
 }
 
 void setup(){

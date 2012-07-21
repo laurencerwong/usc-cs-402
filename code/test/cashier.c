@@ -8,7 +8,7 @@ void main(){
     setup();
 	
     Acquire(cashierIndexLock);
-    SetMV(myCounter, 0, nextCashierIndex);
+    myCounter = GetMV(nextCashierIndex, 0);
     SetMV(nextCashierIndex, 0, GetMV(nextCashierIndex, 0) + 1);
     Release(cashierIndexLock);
 
