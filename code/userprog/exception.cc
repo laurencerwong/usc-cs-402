@@ -40,13 +40,13 @@ using namespace std;
 
 //takes buf[0:3] and makes an int, where 0 is the MSByte of the int
 int extractIntFromBytes(char *buf) {
-	int a, b, c, d;
-	a = (buf[0] << 24) & 0xff000000;
-	b = (buf[0] << 16) & 0x00ff0000;
-	c = (buf[0] << 8) & 0x0000ff00;
-	d = (buf[0] << 0) & 0x000000ff;
-
-	return a + b + c + d;}
+    int a, b, c, d;
+    a = buf[0] << 24 & 0xff000000;
+    b = buf[1] << 16 & 0x00ff0000;
+    c = buf[2] << 8 & 0x0000ff00;
+    d = buf[3] << 0 & 0x000000ff;
+    return (a + b + c + d);
+}
 
 void compressIntFromBytes(int x, char dest[4]) {
 	dest[0] = (x >> 24) & 0x000000ff;
@@ -294,14 +294,14 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
-	//cout << "network create lock" << endl;
+	cout << "network create lock mailboxNum: " << currentThread->mailboxNum  << endl;
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 2 + length;
 	//cout << "mheader length " << mailHeader->length << endl;
 
@@ -314,7 +314,8 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 
 	char messageData[MaxMailSize];
 	//wait for index, sent in message back from server
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
+
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
 
 	//parse int, as it will come in char form
 	return extractIntFromBytes(messageData + 0);
@@ -353,13 +354,14 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
+
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 2 + length;
 
 
@@ -370,9 +372,10 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	strncpy(data + 2, name, length); 	//copy into data[2: 2 + sizeof(name)]
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-
 	char messageData[MaxMailSize];
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData); //wait for response from server (should be an index)
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData); //wait for response from server (should be an index)
+
+
 
 	return extractIntFromBytes(messageData + 0);
 #endif
@@ -390,7 +393,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 10 + length;
 
 	data[0] = CREATE_MV;
@@ -401,7 +404,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
 	//((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3])
 	return extractIntFromBytes(messageData + 0);
 }
@@ -455,7 +458,7 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
 	char* data = new char[1 + 2* sizeof(int)];
@@ -515,7 +518,7 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
 	//pack message
@@ -583,7 +586,7 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
 	char* data = new char[1 + 2 * sizeof(int)];
@@ -593,7 +596,7 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
 	delete data;
 
 	//pack message for an Acquire.  need to reacquire lock before  user program gets control
@@ -603,10 +606,10 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5; //server mailbox
 	success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff);
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
 #endif
 }
 
@@ -650,7 +653,7 @@ void DestroyLock_Syscall(int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
 	//pack message
@@ -701,7 +704,7 @@ void DestroyCondition_Syscall(int conditionIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
 
@@ -722,7 +725,7 @@ void DestroyMV_Syscall( int index){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
 	char* data = new char[1 + sizeof(int)];
@@ -740,7 +743,7 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 13;
 
 	char* data = new char[mailHeader->length];
@@ -762,7 +765,7 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
 	char* data = new char[1 + 2 * sizeof(int)];
@@ -772,7 +775,7 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, messageData);
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
 	//cout << "received mv, value: " << extractIntFromBytes(messageData) << endl;
 	return extractIntFromBytes(messageData);
 }
@@ -816,7 +819,7 @@ void Acquire_Syscall(int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->threadID; //change if multiple user processes!
+	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
 	char* data = new char[1 + sizeof(int)];
@@ -828,7 +831,7 @@ void Acquire_Syscall(int lockIndex){
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* buff = new char[MaxMailSize];
-	postOffice->Receive(currentThread->threadID, packetHeader, mailHeader, buff); //must get response for user program to continue
+	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff); //must get response for user program to continue
 #endif
 }
 
@@ -872,7 +875,7 @@ void Release_Syscall(int lockIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from =currentThread->threadID; //change if multiple user processes!
+	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
 
@@ -902,6 +905,12 @@ void Create_Kernel_Thread_Fork(unsigned int vaddr){
 //first function a new user thread executes if it is the first in a new user process.  Our Exec_Syscall forks to this unconditionally
 //differs from Create_Kernel_Thread_Fork because we always know what virtual address to execute (the main) and where our stack should be (first slot)
 void Create_Kernel_Thread_Exec() {
+#ifdef CHANGED
+    mailboxIDLock->Acquire();
+    currentThread->mailboxNum = nextMailboxID;
+    nextMailboxID++;
+    mailboxIDLock->Release();
+#endif        
 	currentThread->space->InitRegisters(); //Set up PC/PCNext/StackRegisters
 	currentThread->space->RestoreState(); //ensure machine has correct pageTable
 	machine->Run(); //begin execution of new process
