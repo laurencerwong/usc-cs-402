@@ -20,6 +20,13 @@ Lock *ioLock;
 Lock* lockTableLock;
 Lock* conditionTableLock;
 
+//Global for getting mailbox #
+Lock* mailboxIDLock;
+int nextMailboxID;
+
+//Individual swap files
+char* swapfileName;
+
 ProcessEntry processTable[MAX_PROCESSES];
 int nextProcessID = 0;
 Lock processIDLock = Lock("Process ID Lock");
@@ -35,7 +42,6 @@ List *evictionList;
 EvictionPolicy evictionPolicy;
 
 int myMachineID;
-int totalNumServers;
 bool isServer;
 
 
@@ -189,7 +195,7 @@ Initialize(int argc, char **argv)
 #endif
 
 #ifdef NETWORK
-    postOffice = new PostOffice(netname, rely, 10);
+    postOffice = new PostOffice(netname, rely, 100);
 #endif
 
 #ifdef CHANGED
@@ -200,8 +206,10 @@ Initialize(int argc, char **argv)
     conditionTableLock = new Lock("conditionTable lock");
     IPT = new IPTEntry[NumPhysPages];
     swapMap = new BitMap(8192);
-    fileSystem->Create("SwapFile", NumPhysPages * PageSize);
-    swapFile = fileSystem->Open("SwapFile");
+    swapfileName = new char[10]; //we shouldn't ever have more than 99 machines
+    sprintf(swapfileName, "SwapFile%d", myMachineID);
+    fileSystem->Create(swapfileName, NumPhysPages * PageSize);
+    swapFile = fileSystem->Open(swapfileName);
 
     for(int i = 0; i < MAX_PROCESSES; i++) {
     	processTable[i].numThreadsAlive = 0;
@@ -214,6 +222,8 @@ Initialize(int argc, char **argv)
     iptLock = new Lock("IPT Lock");
     swapLock = new Lock("Swap Lock");
     evictionList = new List();
+    mailboxIDLock = new Lock("mailboxIDLock");
+    nextMailboxID = 0;
 #endif
 }
 
