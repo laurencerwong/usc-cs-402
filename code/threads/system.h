@@ -58,6 +58,9 @@ extern Lock* ioLock;
 extern Lock* lockTableLock;
 extern Lock* conditionTableLock;
 
+extern Lock* mailboxIDLock;
+extern int nextMailboxID;
+
 extern int currentTLB;
 
 extern IPTEntry* IPT;
@@ -73,7 +76,6 @@ enum EvictionPolicy {FIFO, RAND};
 extern EvictionPolicy evictionPolicy;
 
 extern int myMachineID;
-extern int totalNumServers;
 
 
 //#endif
