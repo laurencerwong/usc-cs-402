@@ -249,6 +249,7 @@ ClientRequest* ServerLock::Release(ClientRequest* cr) {
 		delete cr;
 		cr = (ClientRequest *) queue->Remove();
 		currentClientRequest = cr; //give next thread immediate possession of the ServerLoc
+		//cout << "In SERVERLOCK RELEASE, setting currentCR to " << cr << endl;
 		cr->respond = true;
 	}
 	else{ //make sure ServerLock can be grabbed by anyone if no one was waiting in te ready queue

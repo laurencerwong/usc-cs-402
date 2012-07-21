@@ -752,6 +752,7 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	compressIntFromBytes(arrIndex, data + 1);
 	compressIntFromBytes(indexInArray, data + 5);
 	compressIntFromBytes(value, data + 9);
+	cout << currentThread->getName() << " is sending setMV call to server for MV " << arrIndex << " entry " << indexInArray << " value " << value << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 }
@@ -773,6 +774,7 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	data[0] = GET_MV;
 	compressIntFromBytes(arrIndex, data + 1); //copy into data[1:4]
 	compressIntFromBytes(varIndex, data + 5); //copy into data[5:8]
+	cout << currentThread->getName() << " is sending getMV call to server for MV " << arrIndex << " entry " << varIndex << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];

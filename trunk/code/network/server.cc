@@ -1643,8 +1643,8 @@ void Server() {
 		case GET_MV:
 		{
 			int mvNum = extractInt(messageData + 1);
-			//int mvIndex = decodeIndex(mvNum);
-			int mvIndex = mvNum;
+			int mvIndex = decodeIndex(mvNum);
+			//int mvIndex = mvNum;
 			int mvMachineID = decodeMachineIDFromMVNumber(mvIndex);
 
 			if(mvMachineID != myMachineID) {
