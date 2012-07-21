@@ -32,6 +32,8 @@
 #define DO_YOU_HAVE_LOCK_NAME 'w'
 #define DO_YOU_HAVE_CV_NAME 'x'
 #define DO_YOU_HAVE_MV_NAME 'y'
+#define DOES_CLIENT_HAVE_LOCK 'z'
+#define CV_LOCK_TRACKER_RESPONSE 'A'
 
 
 
@@ -68,14 +70,26 @@ data [5: 8] = lock index
 
 
 
+---== For DOES_CLIENT_HAVE_LOCK queries ==---
+data[0] = type
+data[1:4] = client machine ID
+data[5:8] = client mailbox
+data[9:12] = lock number
 
+
+---== For CV_LOCK_TRACKER_RESPONSE ==---
+data[0] = type
+data[1:4] = client machine ID
+data[5:8] = client mailbox
+data[9:12] = lock in question
+data[13] = TRUE or FALSE (1 or 0) did the client have the lock?
 
 
 
 
 //-------------------------------------------------------------------------------------------------------------
 //--------------------Client-Server messages-----------------------------------------------------------------
-/*
+
 Note: When ints are in messages, the MSByte comes first, ie. read the int from left to right in the order the bytes are received
 
 ::::: Message Formats :::::
@@ -106,7 +120,7 @@ data[1] = nameLength, the length of the name for this CV
 data[2:2 + nameLength] = the data for the name itself
 
 Destroy:
-data[1:4] = lockIndex, the index of the CV that we want to delete
+data[1:4] = cvIndex, the index of the CV that we want to delete
 
 Signal:
 data[1:4] = cvIndex, the index of the CV you want to signal
