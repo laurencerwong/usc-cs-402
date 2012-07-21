@@ -1360,11 +1360,16 @@ void HandlePageFault(){
 	int vpn = machine->ReadRegister(BadVAddrReg)/128;
 
 
-	int ppn = currentThread->space->pageTable[vpn].physicalPage;
-	if(IPT[ppn].valid && vpn == IPT[ppn].virtualPage && IPT[ppn].space == currentThread->space && IPT[ppn].use == FALSE){
-		IPT[ppn].use = TRUE;
+	int ppn = -1;
+
+	for(int i = 0; i < NumPhysPages; i++) {
+		if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){
+			IPT[i].use = TRUE;
+			ppn = i;
+			break;
+		}
 	}
-	else ppn = -1;
+
 	iptLock->Release();
 	while(ppn == -1){ //just in case we don't find something on first pass however
 		// shouldn't ever execute more than once
