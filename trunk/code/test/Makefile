@@ -34,7 +34,8 @@ CFLAGS = -G 0 -c $(INCDIR)
 all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
 exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
-testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV
+testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
+cashier customer goodsloader manager salesman p4startsupermarket
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -46,6 +47,44 @@ halt.o: halt.c
 halt: halt.o start.o
 	$(LD) $(LDFLAGS) start.o halt.o -o halt.coff
 	../bin/coff2noff halt.coff halt
+
+p4startsupermarket.o: p4startsupermarket.c
+	$(CC) $(CFLAGS) -c p4startsupermarket.c
+p4startsupermarket: p4startsupermarket.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o p4startsupermarket.o -o p4startsupermarket.coff
+	../bin/coff2noff p4startsupermarket.coff p4startsupermarket
+
+
+cashier.o: cashier.c
+	$(CC) $(CFLAGS) -c cashier.c setup.c
+cashier: cashier.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o cashier.o -o cashier.coff
+	../bin/coff2noff cashier.coff cashier
+
+customer.o: customer.c
+	$(CC) $(CFLAGS) -c customer.c
+customer: customer.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o customer.o -o customer.coff
+	../bin/coff2noff customer.coff customer
+
+goodsloader.o: goodsloader.c
+	$(CC) $(CFLAGS) -c goodsloader.c
+goodsloader: goodsloader.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o goodsloader.o -o goodsloader.coff
+	../bin/coff2noff goodsloader.coff goodsloader
+
+manager.o: manager.c
+	$(CC) $(CFLAGS) -c manager.c
+manager: manager.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o manager.o -o manager.coff
+	../bin/coff2noff manager.coff manager
+
+salesman.o: salesman.c
+	$(CC) $(CFLAGS) -c salesman.c
+salesman: salesman.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o salesman.o -o salesman.coff
+	../bin/coff2noff salesman.coff salesman
+
 
 test_server_create_destroy.o: test_server_create_destroy.c
 	$(CC) $(CFLAGS) -c test_server_create_destroy.c
@@ -106,19 +145,19 @@ test_fork_sort.o: test_fork_sort.c
 test_fork_sort: test_fork_sort.o start.o
 	$(LD) $(LDFLAGS) start.o test_fork_sort.o -o test_fork_sort.coff
 	../bin/coff2noff test_fork_sort.coff test_fork_sort
-	
+
 exec_sort.o: exec_sort.c
 	$(CC) $(CFLAGS) -c exec_sort.c
 exec_sort: exec_sort.o start.o
 	$(LD) $(LDFLAGS) start.o exec_sort.o -o exec_sort.coff
 	../bin/coff2noff exec_sort.coff exec_sort
-	
+
 project2_part1_testsuite.o: project2_part1_testsuite.c
 	$(CC) $(CFLAGS) -c project2_part1_testsuite.c
 project2_part1_testsuite: project2_part1_testsuite.o start.o
 	$(LD) $(LDFLAGS) start.o project2_part1_testsuite.o -o project2_part1_testsuite.coff
 	../bin/coff2noff project2_part1_testsuite.coff project2_part1_testsuite
-	
+
 project2_part2_testsuite.o: project2_part2_testsuite.c
 	$(CC) $(CFLAGS) -c project2_part2_testsuite.c
 project2_part2_testsuite: project2_part2_testsuite.o start.o
@@ -130,7 +169,7 @@ supermarket.o: supermarket.c
 supermarket: supermarket.o start.o
 	$(LD) $(LDFLAGS) start.o supermarket.o -o supermarket.coff
 	../bin/coff2noff supermarket.coff supermarket
-	
+
 startsupermarket.o: startsupermarket.c
 	$(CC) $(CFLAGS) -c startsupermarket.c
 startsupermarket: startsupermarket.o start.o
@@ -142,7 +181,7 @@ addrspace_verification.o: addrspace_verification.c
 addrspace_verification: addrspace_verification.o start.o
 	$(LD) $(LDFLAGS) start.o addrspace_verification.o -o addrspace_verification.coff
 	../bin/coff2noff addrspace_verification.coff addrspace_verification
-	
+
 testmutex.o: testmutex.c
 	$(CC) $(CFLAGS) -c testmutex.c
 testmutex: testmutex.o start.o
