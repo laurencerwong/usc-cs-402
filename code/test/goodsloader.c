@@ -12,7 +12,7 @@ void main(){
 	setup();
 	
 	Acquire(loaderIndexLock);
-	SetMV(myID, 0, GetMV(nextLoaderIndex, 0));
+	myID = GetMV(nextLoaderIndex, 0);
         SetMV(nextLoaderIndex, 0, GetMV(nextLoaderIndex, 0) + 1);
 	Release(loaderIndexLock);
 
