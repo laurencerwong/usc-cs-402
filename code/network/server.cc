@@ -1122,6 +1122,9 @@ void Server() {
 			bool alreadyHad = false;
 
 			for(int i = 0; i < serverLockArraySize; i++) {
+				if(!serverLockMap->Test(i)) {
+					continue;
+				}
 				if(!strcmp(name, serverLockTable[i].lock->getName())) {
 					response.data = encodeIndex(i);
 					necessaryResponses.push(response);
@@ -1212,6 +1215,9 @@ void Server() {
 			bool alreadyHad = false;
 
 			for(int i = 0; i < serverConditionArraySize; i++) {
+				if(!serverConditionMap->Test(i)) {
+					continue;
+				}
 				if(!strcmp(name, serverConditionTable[i].condition->getName())) {
 					response.data = encodeIndex(i);
 					necessaryResponses.push(response);
@@ -1595,6 +1601,9 @@ void Server() {
 			bool alreadyHad = false;
 
 			for(int i = 0; i < serverMVArraySize; i++) {
+				if(!serverMVMap->Test(i)) {
+					continue;
+				}
 				if(!strcmp(name, serverMVTable[i].name)) {
 					response.data = encodeIndex(i);
 					necessaryResponses.push(response);
@@ -1653,6 +1662,7 @@ void Server() {
 			int mvIndex = extractInt(messageData + 1);
 
 			int mvMachineID = decodeMachineIDFromMVNumber(mvIndex);
+			cout << "server got a setMV message thinking mv should be on machine " << mvMachineID << endl;
 			if(mvMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
