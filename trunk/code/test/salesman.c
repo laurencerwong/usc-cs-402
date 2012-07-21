@@ -8,8 +8,6 @@ void main(){
 	int prev;
 	setup();
 	
-	Acquire(departmentIndexLock);
-
 	Acquire(salesmanIndexLock);
 	myIndex = GetMV(nextSalesmanIndex, 0);
 	SetMV(nextSalesmanIndex, 0, (GetMV(nextSalesmanIndex, 0) + 1));
@@ -27,7 +25,6 @@ void main(){
 	}
 	Release(salesmanIndexLock);
 
-	Release(departmentIndexLock);
 	NPrint("Salesman created with index: %d, in department: %d\n", sizeof("Salesman created with index: %d, in department: %d\n"), NEncode2to1(myIndex, myDept));
 	while(1) {
 		Acquire(salesLock[myDept]);

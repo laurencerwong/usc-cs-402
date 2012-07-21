@@ -96,7 +96,6 @@ int loaderWaitingLineCount;
 
 /*Salesman Locks and CVs*/
 int salesmanIndexLock;
-int departmentIndexLock;
 int salesBreakCV[NUM_DEPARTMENTS][NUM_SALESMEN];
 int individualSalesmanLock[NUM_DEPARTMENTS][NUM_SALESMEN];
 int salesLock[NUM_DEPARTMENTS];

@@ -43,16 +43,16 @@ void initManagerArrays(){
 	managerItemsLock = CreateLock("mItemsLock", sizeof("mItemsLock"));
 	
 	/*MVs*/
-	cashierTotals = CreateMV("cTotals", sizeof("cTotals"), NUM_CASHIERS, 0); 
-	cashierFlags = CreateMV("cFlags", sizeof("cFlags"), NUM_CASHIERS, -1);
-	numSalesmenOnBreak = CreateMV("numSOnBreak", sizeof("numSOnBreak"), NUM_DEPARTMENTS, 0);
-	numCashiersOnBreak = CreateMV("numCashOnBreak", sizeof("numCashOnBreak"), 1, 0);
-	managerDesk = CreateMV("managerDesk", sizeof("managerDesk"), 1, 0);
-	customersDone = CreateMV("customersDone", sizeof("customersDone"), 1, 0);
-	hasTakenItems = CreateMV("hasTakenItems", sizeof("hasTakenItems"), 1, 0);
-	managerItems[0] = CreateMV("managerItems[0]", sizeof("managerItems[0]"), NUM_ITEMS, 0);
-	managerItems[1] = CreateMV("managerItems[1]", sizeof("managerItems[1]"), NUM_ITEMS, 0);
-	managerItems[2] = CreateMV("managerItems[2]", sizeof("managerItems[2]"), NUM_ITEMS, 0);
+	cashierTotals = CreateMV("cTotals", sizeof("cTotals"), NUM_CASHIERS, 0); /*MV 0*/
+	cashierFlags = CreateMV("cFlags", sizeof("cFlags"), NUM_CASHIERS, -1);/*MV 1*/
+	numSalesmenOnBreak = CreateMV("numSOnBreak", sizeof("numSOnBreak"), NUM_DEPARTMENTS, 0);/*MV 2*/
+	numCashiersOnBreak = CreateMV("numCashOnBreak", sizeof("numCashOnBreak"), 1, 0);/*MV 3*/
+	managerDesk = CreateMV("managerDesk", sizeof("managerDesk"), 1, 0);/*MV 4*/
+	customersDone = CreateMV("customersDone", sizeof("customersDone"), 1, 0);/*MV 5*/
+	hasTakenItems = CreateMV("hasTakenItems", sizeof("hasTakenItems"), 1, 0);/*MV 6*/
+	managerItems[0] = CreateMV("managerItems[0]", sizeof("managerItems[0]"), NUM_ITEMS, 0);/*MV 7*/
+	managerItems[1] = CreateMV("managerItems[1]", sizeof("managerItems[1]"), NUM_ITEMS, 0);/*MV 8*/
+	managerItems[2] = CreateMV("managerItems[2]", sizeof("managerItems[2]"), NUM_ITEMS, 0);/*MV 9*/
 	
 	NPrint("Finished initializing manager arrays\n", sizeof("Finished initializing manager arrays\n"));
 }
@@ -64,8 +64,8 @@ void initCustomerArrays(){
   displacedTrollyLock = CreateLock("dTrollyLock", sizeof("dTrollyLock"));
 
   /*MVs*/
-  nextCustomerIndex = CreateMV("nCustIndex", sizeof("nCustIndex"), 1, 0);
-  trollyCount = CreateMV("trollyCount", sizeof("trollyCount"), 1, NUM_TROLLY);
+  nextCustomerIndex = CreateMV("nCustIndex", sizeof("nCustIndex"), 1, 0);/*MV 10*/
+  trollyCount = CreateMV("trollyCount", sizeof("trollyCount"), 1, NUM_TROLLY);/*MV 11*/
 
   NPrint("finished initializing customer arrays\n", sizeof("finished initializing customer arrays\n"));
 
@@ -81,13 +81,13 @@ void initLoaderArrays(){
   stockRoomLock = CreateLock("stockRoomLock", sizeof("stockRoomLock"));
 
   /*MVs*/
-  nextLoaderIndex = CreateMV("nextLoaderIndex", sizeof("nextLoaderIndex"), 1, 0);
-  currentLoaderInStock = CreateMV("cLInStock", sizeof("cLInStock"), 1, -1);
-  waitingForStockRoomCount = CreateMV("waitForStRmCnt", sizeof("waitForStRmCnt"), 1, 0);
-  loaderStatus = CreateMV("LoaderStatus", sizeof("LoaderStatus"), NUM_LOADERS, LOAD_NOT_BUSY);
+  nextLoaderIndex = CreateMV("nextLoaderIndex", sizeof("nextLoaderIndex"), 1, 0);/*MV 12*/
+  currentLoaderInStock = CreateMV("cLInStock", sizeof("cLInStock"), 1, -1);/*MV 13*/
+  waitingForStockRoomCount = CreateMV("waitForStRmCnt", sizeof("waitForStRmCnt"), 1, 0);/*MV 14*/
+  loaderStatus = CreateMV("LoaderStatus", sizeof("LoaderStatus"), NUM_LOADERS, LOAD_NOT_BUSY);/*MV 15*/
 
   /*Department 0*/
-  shelfInventory[0] = CreateMV("shelfInventory[0]", sizeof("shelfInventory[0]"), 10, 10);
+  shelfInventory[0] = CreateMV("shelfInventory[0]", sizeof("shelfInventory[0]"), 10, 10);/*MV 16*/
   shelfLock[0][0] = CreateLock("shelfLock[0][0]", sizeof("shelfLock[0][0]"));
   shelfCV[0][0] = CreateCondition("shelfCV[0][0]", sizeof("shelfCV[0][0]"));
 
@@ -119,7 +119,7 @@ void initLoaderArrays(){
   shelfCV[0][9] = CreateCondition("shelfCV[0][9]", sizeof("shelfCV[0][9]"));
 
   /*Department 1*/
-  shelfInventory[1] = CreateMV("shelfInvetory[1]", sizeof("shelfInvetory[1]"), 10, 10);
+  shelfInventory[1] = CreateMV("shelfInvetory[1]", sizeof("shelfInvetory[1]"), 10, 10);/*MV 17*/
   shelfLock[1][0] = CreateLock("shelfLock[1][0]", sizeof("shelfLock[1][0]"));
   shelfCV[1][0] = CreateCondition("shelfCV[1][0]", sizeof("shelfCV[1][0]"));
 
@@ -152,7 +152,7 @@ void initLoaderArrays(){
 
 
   /*Department 2*/
-  shelfInventory[2] = CreateMV("shelfInventory[2]", sizeof("shelfInventory[2]"), 10, 10);
+  shelfInventory[2] = CreateMV("shelfInventory[2]", sizeof("shelfInventory[2]"), 10, 10);/*MV 18*/
   shelfLock[2][0] = CreateLock("shelfLock[2][0]", sizeof("shelfLock[2][0]"));
   shelfCV[2][0] = CreateCondition("shelfCV[2][0]", sizeof("shelfCV[2][0]"));
 
@@ -191,16 +191,16 @@ void initCashierArrays(){
 	cashierIndexLock = CreateLock("cashIndexLock", sizeof("cashIndexLock"));
 
 	/*MVs */
-	total = CreateMV("total", sizeof("total"), NUM_CASHIERS, 0);
-	custID = CreateMV("custID", sizeof("custID"), NUM_CASHIERS, 0);
-	privilegedLineCount = CreateMV("pLineCount", sizeof("pLineCount"), NUM_CASHIERS, 0);
-	unprivilegedLineCount = CreateMV("unpLineCount", sizeof("unpLineCount"), NUM_CASHIERS, 0);
-	privCustomers = CreateMV("privCustomers", sizeof("privCustomers"), NUM_CUSTOMERS, 0);
-	cashierDesk = CreateMV("cashierDesk", sizeof("cashierDesk"), NUM_CASHIERS, 0);
-	cashRegister = CreateMV("cashRegister", sizeof("cashRegister"), NUM_CASHIERS, 0);
-	custType = CreateMV("custType", sizeof("custType"), NUM_CASHIERS, CUSTOMER);
-	cashierStatus = CreateMV("CashierStatus", sizeof("CashierStatus"), NUM_CASHIERS, CASH_NOT_BUSY);
-	nextCashierIndex = CreateMV("nCashierIndex", sizeof("nCashierIndex"), 1, 0);
+	total = CreateMV("total", sizeof("total"), NUM_CASHIERS, 0);/*MV 19*/
+	custID = CreateMV("custID", sizeof("custID"), NUM_CASHIERS, 0);/*MV 20*/
+	privilegedLineCount = CreateMV("pLineCount", sizeof("pLineCount"), NUM_CASHIERS, 0);/*MV 21*/
+	unprivilegedLineCount = CreateMV("unpLineCount", sizeof("unpLineCount"), NUM_CASHIERS, 0);/*MV 22*/
+	privCustomers = CreateMV("privCustomers", sizeof("privCustomers"), NUM_CUSTOMERS, 0);/*MV 23*/
+	cashierDesk = CreateMV("cashierDesk", sizeof("cashierDesk"), NUM_CASHIERS, 0);/*MV 24*/
+	cashRegister = CreateMV("cashRegister", sizeof("cashRegister"), NUM_CASHIERS, 0);/*MV 25*/
+	custType = CreateMV("custType", sizeof("custType"), NUM_CASHIERS, CUSTOMER);/*MV 26*/
+	cashierStatus = CreateMV("CashierStatus", sizeof("CashierStatus"), NUM_CASHIERS, CASH_NOT_BUSY);/*MV 27*/
+	nextCashierIndex = CreateMV("nCashierIndex", sizeof("nCashierIndex"), 1, 0);/*MV 28*/
   
 	/*Cashier 0*/
 	unprivilegedCashierLineCV[0] = CreateCondition("unpCashLineCV0", sizeof("unpCashLineCV0"));
@@ -225,14 +225,13 @@ void initCashierArrays(){
 
 void initSalesmanArrays(){
   salesmanIndexLock = CreateLock("salesIndexLock", sizeof("salesIndexLock"));
-  departmentIndexLock = CreateLock("depIndexLock", sizeof("depIndexLock"));
 
   /*MVs*/
-  greetingCustWaitingLineCount = CreateMV("greetingCustWLC", sizeof("greetingCustWLC"), NUM_DEPARTMENTS, 0);
-  complainingCustWaitingLineCount = CreateMV("complainingCustWLC", sizeof("complainingCustWLC"), NUM_DEPARTMENTS, 0);
-  loaderWaitingLineCount = CreateMV("loaderWLC", sizeof("loaderWLC"), NUM_DEPARTMENTS, 0);
-  nextSalesmanIndex = CreateMV("nextSalesIndex", sizeof("nextSalesIndex"), 1, 0);
-  nextDepartmentIndex = CreateMV("nextDepIndex", sizeof("nextDepIndex"), 1, 0);
+  greetingCustWaitingLineCount = CreateMV("greetingCustWLC", sizeof("greetingCustWLC"), NUM_DEPARTMENTS, 0);/*MV 29*/
+  complainingCustWaitingLineCount = CreateMV("complainingCustWLC", sizeof("complainingCustWLC"), NUM_DEPARTMENTS, 0);/*MV 30*/
+  loaderWaitingLineCount = CreateMV("loaderWLC", sizeof("loaderWLC"), NUM_DEPARTMENTS, 0);/*MV 31*/
+  nextSalesmanIndex = CreateMV("nextSalesIndex", sizeof("nextSalesIndex"), 1, 0);/*MV 32*/
+  nextDepartmentIndex = CreateMV("nextDepIndex", sizeof("nextDepIndex"), 1, 0);/*MV 33*/
   
   
   /*Department 0*/
@@ -240,11 +239,11 @@ void initSalesmanArrays(){
   greetingCustCV[0] = CreateCondition("greetingCustCV0", sizeof("greetingCustCV0"));
   complainingCustCV[0] = CreateCondition("cCustCV0", sizeof("cCustCV0"));
   loaderCV[0] = CreateCondition("loaderCV0", sizeof("loaderCV0"));
-  salesCustNumber[0] = CreateMV("salesCustNumber[0]", sizeof("salesCustNumber[0]"), NUM_SALESMEN, 0);
-  salesDesk[0] = CreateMV("salesDesk[0]", sizeof("salesDesk[0]"), NUM_SALESMEN, 0);
-  salesBreakBoard[0] = CreateMV("salesBreakBoard[0]", sizeof("salesBreakBoard[0]"), NUM_SALESMEN, 0);
-  currentSalesStatus[0]  = CreateMV("cSalesStatus[0] ", sizeof("cSalesStatus[0] "), NUM_SALESMEN, SALES_BUSY);
-  currentlyTalkingTo[0] = CreateMV("clyTalkingTo[0]", sizeof("clyTalkingTo[0]"), NUM_SALESMEN, UNKNOWN);
+  salesCustNumber[0] = CreateMV("salesCustNumber[0]", sizeof("salesCustNumber[0]"), NUM_SALESMEN, 0);/*MV 34*/
+  salesDesk[0] = CreateMV("salesDesk[0]", sizeof("salesDesk[0]"), NUM_SALESMEN, 0);/*MV 35*/
+  salesBreakBoard[0] = CreateMV("salesBreakBoard[0]", sizeof("salesBreakBoard[0]"), NUM_SALESMEN, 0);/*MV 36*/
+  currentSalesStatus[0]  = CreateMV("cSalesStatus[0] ", sizeof("cSalesStatus[0] "), NUM_SALESMEN, SALES_BUSY);/*MV 37*/
+  currentlyTalkingTo[0] = CreateMV("clyTalkingTo[0]", sizeof("clyTalkingTo[0]"), NUM_SALESMEN, UNKNOWN);/*MV 38*/
 
   /*Salesman 0*/
   salesBreakCV[0][0] = CreateCondition("salesBreakCV0-0", sizeof("salesBreakCV0-0"));
@@ -266,11 +265,11 @@ void initSalesmanArrays(){
   greetingCustCV[1] = CreateCondition("greetingCustCV1", sizeof("greetingCustCV1"));
   complainingCustCV[1] = CreateCondition("cCustCV1", sizeof("cCustCV1"));
   loaderCV[1] = CreateCondition("loaderCV1", sizeof("loaderCV1"));
-  salesCustNumber[1] = CreateMV("salesCustNumber[1]", sizeof("salesCustNumber[1]"), NUM_SALESMEN, 0);
-  salesDesk[1] = CreateMV("salesDesk[1]", sizeof("salesDesk[1]"), NUM_SALESMEN, 0);
-  salesBreakBoard[1] = CreateMV("salesBreakBoard[1]", sizeof("salesBreakBoard[1]"), NUM_SALESMEN, 0);
-  currentSalesStatus[1]  = CreateMV("cSalesStatus[1] ", sizeof("cSalesStatus[1] "), NUM_SALESMEN, SALES_BUSY);
-  currentlyTalkingTo[1] = CreateMV("clyTalkingTo[1]", sizeof("clyTalkingTo[1]"), NUM_SALESMEN, UNKNOWN);
+  salesCustNumber[1] = CreateMV("salesCustNumber[1]", sizeof("salesCustNumber[1]"), NUM_SALESMEN, 0);/*MV 39*/
+  salesDesk[1] = CreateMV("salesDesk[1]", sizeof("salesDesk[1]"), NUM_SALESMEN, 0);/*MV 40*/
+  salesBreakBoard[1] = CreateMV("salesBreakBoard[1]", sizeof("salesBreakBoard[1]"), NUM_SALESMEN, 0);/*MV 41*/
+  currentSalesStatus[1]  = CreateMV("cSalesStatus[1] ", sizeof("cSalesStatus[1] "), NUM_SALESMEN, SALES_BUSY);/*MV 42*/
+  currentlyTalkingTo[1] = CreateMV("clyTalkingTo[1]", sizeof("clyTalkingTo[1]"), NUM_SALESMEN, UNKNOWN);/*MV 43*/
   
   /*Salesman 0*/
   salesBreakCV[1][0] = CreateCondition("salesBreakCV1-0", sizeof("salesBreakCV1-0"));
@@ -292,11 +291,11 @@ void initSalesmanArrays(){
   greetingCustCV[2] = CreateCondition("greetingCustCV2", sizeof("greetingCustCV2"));
   complainingCustCV[2] = CreateCondition("cCustCV2", sizeof("cCustCV2"));
   loaderCV[2] = CreateCondition("loaderCV2", sizeof("loaderCV2"));
-  salesCustNumber[2] = CreateMV("salesCustNumber[2]", sizeof("salesCustNumber[2]"), NUM_SALESMEN, 0);
-  salesDesk[2] = CreateMV("salesDesk[2]", sizeof("salesDesk[2]"), NUM_SALESMEN, 0);
-  salesBreakBoard[2] = CreateMV("salesBreakBoard[2]", sizeof("salesBreakBoard[2]"), NUM_SALESMEN, 0);
-  currentSalesStatus[2]  = CreateMV("cSalesStatus[2] ", sizeof("cSalesStatus[2] "), NUM_SALESMEN, SALES_BUSY);
-  currentlyTalkingTo[2] = CreateMV("clyTalkingTo[2]", sizeof("clyTalkingTo[2]"), NUM_SALESMEN, UNKNOWN);
+  salesCustNumber[2] = CreateMV("salesCustNumber[2]", sizeof("salesCustNumber[2]"), NUM_SALESMEN, 0);/*MV 44*/
+  salesDesk[2] = CreateMV("salesDesk[2]", sizeof("salesDesk[2]"), NUM_SALESMEN, 0);/*MV 45*/
+  salesBreakBoard[2] = CreateMV("salesBreakBoard[2]", sizeof("salesBreakBoard[2]"), NUM_SALESMEN, 0);/*MV 46*/
+  currentSalesStatus[2]  = CreateMV("cSalesStatus[2] ", sizeof("cSalesStatus[2] "), NUM_SALESMEN, SALES_BUSY);/*MV 47*/
+  currentlyTalkingTo[2] = CreateMV("clyTalkingTo[2]", sizeof("clyTalkingTo[2]"), NUM_SALESMEN, UNKNOWN);/*MV 48*/
 
   /*Salesman 0*/
   salesBreakCV[2][0] = CreateCondition("salesBreakCV2-0", sizeof("salesBreakCV2-0"));
