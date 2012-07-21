@@ -492,7 +492,7 @@ int ServerGetMV(int mvIndex, int entryIndex) {	//TODO this call could use a fail
 		return -1;
 	}
 	if(entryIndex < 0 || entryIndex > serverMVTable[mvIndex].numEntries - 1) {
-		printf("Thread %s tried to get a MV at invalid entry index %d in MV array %d\n", currentThread->getName(), entryIndex, mvIndex);
+		printf("Thread %s tried to get a MV at invalid entry index %d in MV array %d.  There are only %d entries!\n", currentThread->getName(), entryIndex, mvIndex, serverMVTable[mvIndex].numEntries);
 		return -1;
 	}
 	int value = serverMVTable[mvIndex].mvEntries[entryIndex];
@@ -522,9 +522,9 @@ void ServerSetMV(int mvIndex, int entryIndex, int value) {
 int extractInt(char *buf) {
 	int a, b, c, d;
 	a = (buf[0] << 24) & 0xff000000;
-	b = (buf[0] << 16) & 0x00ff0000;
-	c = (buf[0] << 8) & 0x0000ff00;
-	d = (buf[0] << 0) & 0x000000ff;
+	b = (buf[1] << 16) & 0x00ff0000;
+	c = (buf[2] << 8) & 0x0000ff00;
+	d = (buf[3] << 0) & 0x000000ff;
 
 	return a + b + c + d;
 }
@@ -1642,7 +1642,9 @@ void Server() {
 		}
 		case GET_MV:
 		{
-			int mvIndex = extractInt(messageData + 1);
+			int mvNum = extractInt(messageData + 1);
+			//int mvIndex = decodeIndex(mvNum);
+			int mvIndex = mvNum;
 			int mvMachineID = decodeMachineIDFromMVNumber(mvIndex);
 
 			if(mvMachineID != myMachineID) {
