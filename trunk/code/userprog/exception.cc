@@ -48,6 +48,7 @@ int extractIntFromBytes(char *buf) {
     return (a + b + c + d);
 }
 
+
 void compressIntFromBytes(int x, char dest[4]) {
 	dest[0] = (x >> 24) & 0x000000ff;
 	dest[1] = (x >> 16) & 0x000000ff;

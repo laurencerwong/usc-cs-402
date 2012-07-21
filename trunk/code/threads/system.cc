@@ -42,6 +42,7 @@ List *evictionList;
 EvictionPolicy evictionPolicy;
 
 int myMachineID;
+int totalNumServers = 1;
 bool isServer;
 
 

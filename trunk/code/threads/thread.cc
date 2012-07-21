@@ -41,7 +41,6 @@ Thread::Thread(char* threadName)
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
-
 }
 
 //----------------------------------------------------------------------
