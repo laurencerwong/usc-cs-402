@@ -386,7 +386,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->threadID; //change if multiple user processes!
-	mailHeader->length = 11 + length;
+	mailHeader->length = 10 + length;
 
 	data[0] = CREATE_MV;
 	compressIntFromBytes(numArrayEntries, data + 1);
