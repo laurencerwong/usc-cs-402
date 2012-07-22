@@ -225,7 +225,7 @@ ClientRequest* ServerLock::Acquire(ClientRequest* cr) {
   }
   if(state == FREE){	//ServerLock is free to be taken
 						state = BUSY;
-						cout << "SL ACQUIRE: SETTING CURRENT CLIENT REQUEST TO " << cr << endl;
+						//cout << "SL ACQUIRE: SETTING CURRENT CLIENT REQUEST TO " << cr << endl;
 						currentClientRequest = cr; //make this thread the holder
 						cr->respond = true;
 	}
@@ -250,7 +250,7 @@ ClientRequest* ServerLock::Release(ClientRequest* cr) {
 	if(!queue->IsEmpty()){ //check this condition to avoid segmentation faults or bus errors
 		delete cr;
 		cr = (ClientRequest *) queue->Remove();
-		cout << "SL RELEASE: SETTING CURRENT CLIENT REQUEST TO " << cr << endl;
+		//cout << "SL RELEASE: SETTING CURRENT CLIENT REQUEST TO " << cr << endl;
 		currentClientRequest = cr; //give next thread immediate possession of the ServerLoc
 		//cout << "In SERVERLOCK RELEASE, setting currentCR to " << cr << endl;
 		cr->respond = true;
