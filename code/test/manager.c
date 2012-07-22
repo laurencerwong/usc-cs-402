@@ -7,7 +7,6 @@ void main(){
 	int i, numFullLines, numAnyLines, wakeCashier, chance, r, dept, arg,
 	wakeSalesman, targets[2], customerID, cashierID, amountOwed, custTypeID,
 	    managerCustType, salesmenOnBreak, cashiersOnBreak;
-	int *cashierTotals;
 
 	salesmenOnBreak = CreateQueue();
 	cashiersOnBreak = CreateQueue();
@@ -28,17 +27,18 @@ void main(){
 			for( i = 0; i < NUM_CASHIERS; i++){
 				Acquire(cashierLock[i]);
 				/* -----------------------------Start empty cashier drawers------------------------------------ */
-				if(GetMV(cashRegister, i) > 0){
-				  totalRevenue += GetMV(cashRegister, i);
-				  cashierTotals[i] += GetMV(cashRegister, i);
+				if(GetMV(GetMV(cashRegister, i), i) > 0){
+				  totalRevenue += GetMV(GetMV(cashRegister, i), i);
+				  SetMV(cashierTotals, i, GetMV(cashierTotals,i ) + GetMV(GetMV(cashRegister, i), i));
 				  NPrint("Manager emptied Counter %d draw.\n", sizeof("Manager emptied Counter %d draw.\n"), i, 0);
-				  SetMV(cashRegister, i, 0);
+				  SetMV(GetMV(cashRegister, i), i, 0);
 				  NPrint("Manager has total sale of $%d.\n", sizeof("Manager has total sale of $%d.\n"), totalRevenue, 0);
 					Release(cashierLock[i]);
 				}
 			}
 			for(i = 0; i < NUM_CASHIERS; i++){
-			    NPrint("Total Sale from Counter [%d] is $[%d].\n", sizeof("Total Sale from Counter [%d] is $[%d].\n"), NEncode2to1(i, cashierTotals[i]), 0);
+			    NPrint("Total Sale from Counter [%d] is $[%d].\n", sizeof("Total Sale from Counter [%d] is $[%d].\n"), NEncode2to1(i, GetMV(cashierTotals, i)), 0);
+			    
 
 
 			}
@@ -175,8 +175,7 @@ void main(){
 			/* -----------------------------Start empty cashier drawers------------------------------------ */
 	    if(GetMV(cashRegister, i) > 0){
 				totalRevenue += GetMV(cashRegister, i);
-				/*SetMV(cashierTotals, i, GetMV(cashierTotals, i) + GetMV(cashRegister, i)); /* how we remember totals for each cashier */
-				cashierTotals[i] += GetMV(cashRegister,i );
+				SetMV(cashierTotals, i, GetMV(cashierTotals, i) + GetMV(cashRegister, i)); /* how we remember totals for each cashier */
 				NPrint("Manager emptied Counter [%d] drawer.\n", sizeof("Manager emptied Counter [%d] drawer.\n"), i, 0);
 				SetMV(cashRegister, i, 0);
 				NPrint("Manager has total sale of $[%d].\n", sizeof("Manager has total sale of $[%d].\n"), totalRevenue, 0);
