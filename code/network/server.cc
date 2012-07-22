@@ -983,6 +983,7 @@ void ServerToServerMessageHandler(){
 							char* name = new char[temp2->data[1]];
 							strncpy(name, temp2->data + 2, temp2->data[1]);
 							index = encodeIndex(ServerCreateLock(name));
+							cout << "Server " << myMachineID << " (box 1) created a Lock named " << name << " of encoded index " << index << endl;
 							outData[0] = HAVE_LOCK;
 							break;
 						}
@@ -990,6 +991,7 @@ void ServerToServerMessageHandler(){
 							char* name = new char[temp2->data[1]];
 							strncpy(name, temp2->data + 2, temp2->data[1]);
 							index = encodeIndex(ServerCreateCV(name));
+							cout << "Server " << myMachineID << " (box 1) created a CV named " << name << " of encoded index " << index << endl;
 							outData[0] = HAVE_CV;
 							break;
 						}
@@ -999,6 +1001,7 @@ void ServerToServerMessageHandler(){
 							int numEntries = extractInt(temp2->data + 1); //numEntries should be in data[1:4]
 							int val = extractInt(temp2->data + 5); //initial value should be in data[5:8]
 							index = encodeIndex(ServerCreateMV(name, numEntries, val)); //writes the index into the
+							cout << "Server " << myMachineID << " (box 1) created a MV named " << name << " of encoded index " << index << endl;
 							outData[0] = HAVE_MV;
 							break;
 						}
