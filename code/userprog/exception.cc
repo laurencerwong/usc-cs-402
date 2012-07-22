@@ -40,14 +40,8 @@ using namespace std;
 
 //takes buf[0:3] and makes an int, where 0 is the MSByte of the int
 int extractIntFromBytes(char *buf) {
-    int a, b, c, d;
-    a = buf[0] << 24 & 0xff000000;
-    b = buf[1] << 16 & 0x00ff0000;
-    c = buf[2] << 8 & 0x0000ff00;
-    d = buf[3] << 0 & 0x000000ff;
-    return (a + b + c + d);
+	return (buf[0] << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
 }
-
 
 void compressIntFromBytes(int x, char dest[4]) {
 	dest[0] = (x >> 24) & 0x000000ff;
@@ -295,7 +289,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
-	cout << "network create lock mailboxNum: " << currentThread->mailboxNum  << endl;
+	//cout << "network create lock" << endl;
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
@@ -315,8 +309,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 
 	char messageData[MaxMailSize];
 	//wait for index, sent in message back from server
-
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while (mailHeader->from == 2);
 
 	//parse int, as it will come in char form
 	return extractIntFromBytes(messageData + 0);
@@ -355,7 +350,6 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 #endif
 
 #ifdef NETWORK
-
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
@@ -373,10 +367,11 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	strncpy(data + 2, name, length); 	//copy into data[2: 2 + sizeof(name)]
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+
 	char messageData[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData); //wait for response from server (should be an index)
-
-
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while (mailHeader->from == 2);
 
 	return extractIntFromBytes(messageData + 0);
 #endif
@@ -395,7 +390,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
-	mailHeader->length = 10 + length;
+	mailHeader->length = 11 + length;
 
 	data[0] = CREATE_MV;
 	compressIntFromBytes(numArrayEntries, data + 1);
@@ -405,7 +400,9 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while (mailHeader->from == 2);
 	//((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3])
 	return extractIntFromBytes(messageData + 0);
 }
@@ -467,6 +464,9 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(conditionIndex, data + 1);
 	compressIntFromBytes(lockIndex, data + 5);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while (mailHeader->from == 2);
 	//don't need to wait for a response
 #endif
 }
@@ -528,6 +528,9 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
 	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while (mailHeader->from == 2);
 #endif
 }
 
@@ -610,7 +613,9 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5; //server mailbox
 	success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	} while (mailHeader->from == 2);
 #endif
 }
 
@@ -662,7 +667,9 @@ void DestroyLock_Syscall(int lockIndex){
 	data[0] = DESTROY_LOCK;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	//don't need to wait for response
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while (mailHeader->from == 2);
 #endif
 }
 
@@ -705,7 +712,7 @@ void DestroyCondition_Syscall(int conditionIndex){
 	packetHeader->to = 0; //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
 	mailHeader->to = 0; //server mailbox
-	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
+	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
 
@@ -733,6 +740,9 @@ void DestroyMV_Syscall( int index){
 	data[0] = DESTROY_MV;
 	compressIntFromBytes(index, data + 1);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while (mailHeader->from == 2);
 }
 #endif
 
@@ -752,8 +762,10 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	compressIntFromBytes(arrIndex, data + 1);
 	compressIntFromBytes(indexInArray, data + 5);
 	compressIntFromBytes(value, data + 9);
-	cout << currentThread->getName() << " is sending setMV call to server for MV " << arrIndex << " entry " << indexInArray << " value " << value << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while (mailHeader->from == 2);
 
 }
 #endif
@@ -774,11 +786,12 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	data[0] = GET_MV;
 	compressIntFromBytes(arrIndex, data + 1); //copy into data[1:4]
 	compressIntFromBytes(varIndex, data + 5); //copy into data[5:8]
-	cout << currentThread->getName() << " is sending getMV call to server for MV " << arrIndex << " entry " << varIndex << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while (mailHeader->from == 2);
 	//cout << "received mv, value: " << extractIntFromBytes(messageData) << endl;
 	return extractIntFromBytes(messageData);
 }
@@ -834,7 +847,9 @@ void Acquire_Syscall(int lockIndex){
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* buff = new char[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff); //must get response for user program to continue
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	} while (mailHeader->from == 2);
 #endif
 }
 
@@ -886,7 +901,9 @@ void Release_Syscall(int lockIndex){
 	data[0] = RELEASE;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	//don't need to wait for response
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while (mailHeader->from == 2);
 #endif
 }
 
@@ -908,12 +925,6 @@ void Create_Kernel_Thread_Fork(unsigned int vaddr){
 //first function a new user thread executes if it is the first in a new user process.  Our Exec_Syscall forks to this unconditionally
 //differs from Create_Kernel_Thread_Fork because we always know what virtual address to execute (the main) and where our stack should be (first slot)
 void Create_Kernel_Thread_Exec() {
-#ifdef CHANGED
-    mailboxIDLock->Acquire();
-    currentThread->mailboxNum = nextMailboxID;
-    nextMailboxID++;
-    mailboxIDLock->Release();
-#endif        
 	currentThread->space->InitRegisters(); //Set up PC/PCNext/StackRegisters
 	currentThread->space->RestoreState(); //ensure machine has correct pageTable
 	machine->Run(); //begin execution of new process
@@ -1362,16 +1373,11 @@ void HandlePageFault(){
 	int vpn = machine->ReadRegister(BadVAddrReg)/128;
 
 
-	int ppn = -1;
-
-	for(int i = 0; i < NumPhysPages; i++) {
-		if(IPT[i].valid && vpn == IPT[i].virtualPage && IPT[i].space == currentThread->space && IPT[i].use == FALSE){
-			IPT[i].use = TRUE;
-			ppn = i;
-			break;
-		}
+	int ppn = currentThread->space->pageTable[vpn].physicalPage;
+	if(IPT[ppn].valid && vpn == IPT[ppn].virtualPage && IPT[ppn].space == currentThread->space && IPT[ppn].use == FALSE){
+		IPT[ppn].use = TRUE;
 	}
-
+	else ppn = -1;
 	iptLock->Release();
 	while(ppn == -1){ //just in case we don't find something on first pass however
 		// shouldn't ever execute more than once
