@@ -35,7 +35,8 @@ all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsui
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
 exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
 testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
-cashier customer goodsloader manager salesman p4startsupermarket testCreateRaceConditionDriver testCreateRaceCondition
+cashier customer goodsloader manager salesman p4startsupermarket p4startcustomer p4startloaders \
+p4startcashier p4startsalesmen p4startmanager testCreateRaceConditionDriver testCreateRaceCondition
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
