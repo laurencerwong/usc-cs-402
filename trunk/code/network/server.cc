@@ -1666,7 +1666,7 @@ void Server() {
 			rData[0] = CV_LOCK_TRACKER_RESPONSE;
 			compressInt(clientMID, rData + 1);
 			compressInt(clientMBX, rData + 5);
-			compressInt(lockIndex, rData + 9);
+			compressInt(lockNum, rData + 9);
 			if(held) {
 				rData[13] = 1;
 			}
@@ -1704,6 +1704,7 @@ void Server() {
 			}
 			if(cvltListEntry == -1) {
 				printf("Got a CV_LOCK_TRACKER_RESPONSE, but had no corresponding entry in my CVLT List!\n");
+				printf("  -ClientMID: %d  ClientMBX: %d  lockNum: %d", clientMID, clientMBX, lockNum);
 			}
 			else {
 				cvLockTrackerList.erase(cvLockTrackerList.begin() + cvltListEntry);
