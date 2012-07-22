@@ -49,7 +49,7 @@ int extractIntFromBytes(char *buf) {
 }
 
 
-void compressIntFromBytes(int x, char dest[4]) {
+void compressIntFromBytes(int x, char* dest) {
 	dest[0] = (x >> 24) & 0x000000ff;
 	dest[1] = (x >> 16) & 0x000000ff;
 	dest[2] = (x >> 8) & 0x000000ff;

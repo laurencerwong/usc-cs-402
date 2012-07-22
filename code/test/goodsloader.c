@@ -98,7 +98,7 @@ void main(){
 		}
 		else{	/* It was not the manager who signalled me */
 			Acquire(individualSalesmanLock[currentDept][mySalesID]);
-			SetMV(shelf, 0, GetMV(salesDesk[currentDept], mySalesID));	/* read the shelf that needs stocking in from the desk */
+			shelf =  GetMV(salesDesk[currentDept], mySalesID);	/* read the shelf that needs stocking in from the desk */
 			SetMV(salesDesk[currentDept], mySalesID, -1);		/* write back that i was not on a previous job */
 
 			NPrint("GoodsLoader [%d] is informed by DepartmentSalesman [%d] of Department [%d] to restock [%d]\n", sizeof("GoodsLoader [%d] is informed by DepartmentSalesman [%d] of Department [%d] to restock [%d]\n"), NEncode2to1(myID, mySalesID), NEncode2to1(currentDept, shelf));
@@ -159,6 +159,7 @@ void main(){
 					qtyInHands = 0;
 					break;
 				}
+				NPrint("Goodsloader [%d] shelf [%d] in dept [%d] has inventory [%d]", sizeof("Goodsloader [%d] shelf [%d] in dept [%d] has inventory [%d]"), NEncode2to1(myID, shelf), NEncode2to1(currentDept,GetMV(shelfInventory[currentDept], shelf) ));
 				SetMV(shelfInventory[currentDept], shelf, GetMV(shelfInventory[currentDept], shelf) + qtyInHands);	/* put more items on it */
 				qtyInHands = 0;
 			}
