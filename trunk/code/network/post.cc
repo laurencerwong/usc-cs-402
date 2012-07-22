@@ -277,7 +277,7 @@ PostOffice::Send(PacketHeader pktHdr, MailHeader mailHdr, char* data)
     ASSERT(0 <= mailHdr.to && mailHdr.to < numBoxes);
     
     // fill in pktHdr, for the Network layer
-    pktHdr.from = netAddr;
+    //pktHdr.from = netAddr;
     pktHdr.length = mailHdr.length + sizeof(MailHeader);
 
     // concatenate MailHeader and data
