@@ -54,6 +54,35 @@ p4startsupermarket: p4startsupermarket.o start.o
 	$(LD) $(LDFLAGS) start.o setup.o p4startsupermarket.o -o p4startsupermarket.coff
 	../bin/coff2noff p4startsupermarket.coff p4startsupermarket
 
+p4startcustomer.o: p4startcustomer.c
+	$(CC) $(CFLAGS) -c p4startcustomer.c
+p4startcustomer: p4startcustomer.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o p4startcustomer.o -o p4startcustomer.coff
+	../bin/coff2noff p4startcustomer.coff p4startcustomer
+
+p4startloaders.o: p4startloaders.c
+	$(CC) $(CFLAGS) -c p4startloaders.c
+p4startloaders: p4startloaders.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o p4startloaders.o -o p4startloaders.coff
+	../bin/coff2noff p4startloaders.coff p4startloaders
+
+p4startcashier.o: p4startcashier.c
+	$(CC) $(CFLAGS) -c p4startcashier.c
+p4startcashier: p4startcashier.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o p4startcashier.o -o p4startcashier.coff
+	../bin/coff2noff p4startcashier.coff p4startcashier
+
+p4startmanager.o: p4startmanager.c
+	$(CC) $(CFLAGS) -c p4startmanager.c
+p4startmanager: p4startmanager.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o p4startmanager.o -o p4startmanager.coff
+	../bin/coff2noff p4startmanager.coff p4startmanager
+
+p4startsalesmen.o: p4startsalesmen.c
+	$(CC) $(CFLAGS) -c p4startsalesmen.c
+p4startsalesmen: p4startsalesmen.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o p4startsalesmen.o -o p4startsalesmen.coff
+	../bin/coff2noff p4startsalesmen.coff p4startsalesmen
 
 cashier.o: cashier.c
 	$(CC) $(CFLAGS) -c cashier.c setup.c
