@@ -145,11 +145,13 @@ public:
 		MailHeader* outMailHeader = new MailHeader;
 		outPacketHeader->from = myMachineID;
 		outMailHeader->from = 1;
+		outMailHeader->length = 5;
 		for(unsigned int j = 0; j < serverResponseQueue.size(); j++){
 			//package message based on remembered info in PendingCreate
 			ResponseQueueEntry* temp = serverResponseQueue.at(j);
 			outPacketHeader->to = temp->replyMachine;
 			outMailHeader->to = temp->replyMailbox;
+
 			compressInt(temp->replyMessageID, outData + 1);
 			postOffice->Send(*outPacketHeader, *outMailHeader, outData);
 		}
@@ -924,8 +926,10 @@ void ServerToServerMessageHandler(){
 				 */
 				case DO_YOU_HAVE_LOCK:{ //cases where other server is trying to perform Acquire, Release, or DestroyLock
 					int index = extractInt(inData + 5);
+					cout << "Lock being examined is encoded index " << endl;
 					index = decodeIndex(index);
 					if( index > 0 && index < serverLockArraySize){
+						cout << "inside if statement" << endl;
 						outData[0] = (serverLockMap->Test(index)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
 					}
 					else outData[0] = DO_NOT_HAVE_LOCK;
@@ -1390,7 +1394,7 @@ void ServerToServerMessageHandler(){
 						//grab and package a query id.  this will be so we can
 						//match responses from other servers with this query
 						compressInt(qs->id, outData + 1);
-						cout << " id of object being queried about is " << extractInt(inData + 1) << endl;
+						cout << " encoded index of the object being queried about is " << extractInt(inData + 1) << endl;
 						nextQueryID++;
 						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s in case Query_All_Servers" << endl;
 						//send message to all servers
