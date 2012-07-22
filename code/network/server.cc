@@ -1438,7 +1438,8 @@ void Server() {
 				respond = false;
 			}
 			else {
-				ServerDestroyLock(lockNum);
+				int lockIndex = decodeIndex(lockNum);
+				ServerDestroyLock(lockIndex);
 			}
 			break;
 		}
@@ -1446,7 +1447,7 @@ void Server() {
 		{
 			int lockNum = extractInt(messageData + 1);
 			int lockIndex = decodeIndex(lockNum);
-			int lockMachineID = decodeMachineIDFromLockNumber(lockIndex);
+			int lockMachineID = decodeMachineIDFromLockNumber(lockNum);
 
 			if(lockMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
@@ -1465,13 +1466,16 @@ void Server() {
 				necessaryResponses.push(response);
 				respond = true;
 			}
+			else {
+				respond = false;
+			}
 			break;
 		}
 		case RELEASE:
 		{
 			int lockNum = extractInt(messageData + 1);
 			int lockIndex = decodeIndex(lockNum);
-			int lockMachineID = decodeMachineIDFromLockNumber(lockIndex);
+			int lockMachineID = decodeMachineIDFromLockNumber(lockNum);
 
 			if(lockMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
