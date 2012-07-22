@@ -795,7 +795,7 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
-	char* data = new char[1 + 2 * sizeof(int)];
+	char* data = new char[9];
 	data[0] = GET_MV;
 	compressIntFromBytes(arrIndex, data + 1); //copy into data[1:4]
 	compressIntFromBytes(varIndex, data + 5); //copy into data[5:8]

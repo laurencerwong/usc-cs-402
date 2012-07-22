@@ -1111,7 +1111,7 @@ void ServerToServerMessageHandler(){
 					strncpy(name, inData + 2, nameLength); //parse message
 					int index = checkIfLockExists(name);
 					if(index != -1){ //do I have it already created?
-						compressInt(index, outData);
+						compressInt(encodeIndex(index), outData);
 						action = Respond_Once_To_Client;
 						break;
 					}
@@ -1147,7 +1147,7 @@ void ServerToServerMessageHandler(){
 					strncpy(name, inData + 2, nameLength); //parse message
 					int index = checkIfCVExists(name);
 					if(index != -1){ //do I have it already created?
-						compressInt(index, outData);
+						compressInt(encodeIndex(index), outData);
 						action = Respond_Once_To_Client;
 						break;
 					}
@@ -1185,7 +1185,7 @@ void ServerToServerMessageHandler(){
 					strncpy(name, inData + 10, nameLength); //parse message
 					int index = checkIfMVExists(name);
 					if(index != -1){ //do I have it already created?
-						compressInt(index, outData);
+						compressInt(encodeIndex(index), outData);
 						action = Respond_Once_To_Client;
 						break;
 					}
@@ -1411,7 +1411,7 @@ void ServerToServerMessageHandler(){
 
 				delete outPacketHeader;
 				delete outMailHeader;
-				delete[] outData;
+				//delete[] outData;
 	}
 }
 
@@ -1499,6 +1499,7 @@ void Server() {
 			int lockMachineID = decodeMachineIDFromLockNumber(lockNum);
 
 			if(lockMachineID != myMachineID) {
+				printf("DESTROY_LOCK: I don't think Lock (num %d) should be on my machine (%d), machine %d should have it\n", lockNum, myMachineID, lockMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 			}
@@ -1515,6 +1516,7 @@ void Server() {
 			int lockMachineID = decodeMachineIDFromLockNumber(lockNum);
 
 			if(lockMachineID != myMachineID) {
+				printf("ACQUIRE: I don't think Lock (num %d) should be on my machine (%d), machine %d should have it\n", lockNum, myMachineID, lockMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
@@ -1543,6 +1545,7 @@ void Server() {
 			int lockMachineID = decodeMachineIDFromLockNumber(lockNum);
 
 			if(lockMachineID != myMachineID) {
+				printf("RELEASE: I don't think Lock (num %d) should be on my machine (%d), machine %d should have it\n", lockNum, myMachineID, lockMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
@@ -1802,7 +1805,7 @@ void Server() {
 					response.toMailbox = messageFromMailbox;
 					necessaryResponses.push(response);
 					respond = true;
-					delete temp;
+					//delete temp;
 				}
 				else {	//I don't have the CV, send it to server-server thread
 					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
