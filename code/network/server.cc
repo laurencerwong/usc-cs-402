@@ -421,7 +421,7 @@ void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockInd
 		r.toMachine = cr->machineID;
 		r.toMailbox = cr->mailboxNumber;
 		r.data = -1;
-		delete cr;
+		//delete cr;	//TODO deleted this to be safe?
 		necessaryResponses.push(r);
 	}
 }
@@ -1162,7 +1162,8 @@ void Server() {
 		}
 		case ACQUIRE:
 		{
-			int lockIndex = extractInt(messageData + 1);
+			int lockNum = extractInt(messageData + 1);
+			int lockIndex = decodeIndex(lockNum);
 			int lockMachineID = decodeMachineIDFromLockNumber(lockIndex);
 
 			if(lockMachineID != myMachineID) {
@@ -1186,7 +1187,8 @@ void Server() {
 		}
 		case RELEASE:
 		{
-			int lockIndex = extractInt(messageData + 1);
+			int lockNum = extractInt(messageData + 1);
+			int lockIndex = decodeIndex(lockNum);
 			int lockMachineID = decodeMachineIDFromLockNumber(lockIndex);
 
 			if(lockMachineID != myMachineID) {
@@ -1366,7 +1368,7 @@ void Server() {
 							necessaryResponses.push(response);
 							respond = true;
 						}
-						delete temp;
+						//delete temp;	//TODO commented out for safety?
 					}
 					else if(operation == WAIT) {
 						if(lockNum < 0 || lockNum > serverLockArraySize -1){ //array index is out of bounds
@@ -1456,7 +1458,7 @@ void Server() {
 					necessaryResponses.push(response);
 					respond = true;
 				}
-				delete temp;
+				//delete temp;	//TODO deleted for safety?
 			}
 			else {
 				//some other server has it, do messaging and CVLT
