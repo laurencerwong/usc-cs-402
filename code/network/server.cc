@@ -879,7 +879,7 @@ void ServerToServerMessageHandler(){
 				case DO_YOU_HAVE_MV:{ //cases where other server is trying to perform SetMV, GetMV, or DestroyMV
 					int index = extractInt(inData + 5);
 					index = decodeIndex(index);
-					cout << "Server (box 0) testing MV of encoded index " << index;
+					cout << "Server (box 0) testing MV of encoded index " << index << endl;
 					if(index > 0 && index < serverMVArraySize){
 						outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
 					}
@@ -1252,7 +1252,7 @@ void ServerToServerMessageHandler(){
 				switch(action){
 				case Respond_Once_To_Client:{
 						//everything is pre packaged
-						cout << "Server " << myMachineID " (box 1) found object already created and is messaging back client " << packetHeader->from << "-" << mailHeader->from << endl;
+						cout << "Server " << myMachineID << " (box 1) found object already created and is messaging back client " << packetHeader->from << "-" << mailHeader->from << endl;
 						outPacketHeader->to = packetHeader->from;
 						outPacketHeader->from = myMachineID;
 						outMailHeader->to = mailHeader->from;
