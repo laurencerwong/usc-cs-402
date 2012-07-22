@@ -185,7 +185,7 @@ void  main(){
 	    NPrint("Customer [%d] has found [%d] and placed [%d] in the trolly\n", sizeof("Customer [%d] has found [%d] and placed [%d] in the trolly\n"), NEncode2to1(myID, shelfNum), qtyItemsToBuy[i]);
 	  }
 
-	  SetMV(shelfInventory[currentDepartment], shelfNum, qtyItemsToBuy[i]);
+	  SetMV(shelfInventory[currentDepartment], shelfNum, GetMV(shelfInventory[currentDepartment], shelfNum) - qtyItemsToBuy[i]);
 	  itemsInCart[i] = shelfNum;
 	  qtyItemsInCart[i] += qtyItemsToBuy[i];
 	  Release(shelfLock[currentDepartment][shelfNum]);
