@@ -36,7 +36,8 @@ HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAnd
 exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
 testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
 cashier customer goodsloader manager salesman p4startsupermarket p4startcustomer p4startloaders \
-p4startcashier p4startsalesmen p4startmanager testCreateRaceConditionDriver testCreateRaceCondition
+p4startcashier p4startsalesmen p4startmanager testCreateRaceConditionDriver testCreateRaceCondition \
+testDetectDeadLock
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -49,6 +50,13 @@ halt: halt.o start.o
 	$(LD) $(LDFLAGS) start.o halt.o -o halt.coff
 	../bin/coff2noff halt.coff halt
 
+testDetectDeadLock.o: testDetectDeadLock.c
+	$(CC) $(CFLAGS) -c testDetectDeadLock.c
+	
+testDetectDeadLock: testDetectDeadLock.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o testDetectDeadLock.o -o testDetectDeadLock.coff
+	../bin/coff2noff testDetectDeadLock.coff testDetectDeadLock
+	
 testCreateRaceConditionDriver.o: testCreateRaceConditionDriver.c
 	$(CC) $(CFLAGS) -c testCreateRaceConditionDriver.c
 	
