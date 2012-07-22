@@ -1925,8 +1925,9 @@ void Server() {
 		}
 		case DESTROY_MV:
 		{
-			int mvToDestroy = extractInt(messageData + 1);
-			int mvMachineID = decodeMachineIDFromMVNumber(mvToDestroy);
+			int mvToDestroyNum = extractInt(messageData + 1);
+			int mvToDestroy = decodeIndex(mvToDestroyNum);
+			int mvMachineID = decodeMachineIDFromMVNumber(mvToDestroyNum);
 
 			if(mvMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
@@ -1942,7 +1943,7 @@ void Server() {
 			int mvNum = extractInt(messageData + 1);
 			int mvIndex = decodeIndex(mvNum);
 			//int mvIndex = mvNum;
-			int mvMachineID = decodeMachineIDFromMVNumber(mvIndex);
+			int mvMachineID = decodeMachineIDFromMVNumber(mvNum);
 
 			if(mvMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
@@ -1958,9 +1959,10 @@ void Server() {
 		}
 		case SET_MV:
 		{
-			int mvIndex = extractInt(messageData + 1);
+			int mvNum = extractInt(messageData + 1);
+			int mvIndex = decodeIndex(mvNum);
 
-			int mvMachineID = decodeMachineIDFromMVNumber(mvIndex);
+			int mvMachineID = decodeMachineIDFromMVNumber(mvNum);
 			//cout << "server got a setMV message thinking mv should be on machine " << mvMachineID << endl;
 			if(mvMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
