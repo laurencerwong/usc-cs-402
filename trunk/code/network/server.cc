@@ -223,7 +223,7 @@ bool sendMessageWithData(int fromMachine, int fromMailbox, int toMachine, int to
 	//cout << "  with data: " << (int)responseData[0] << (int)responseData[1] << (int)responseData[2] << (int)responseData[3] << endl;
 	printf("  with data:  ");
 	for(int i = 0; i < dataLength; i++) {
-		printf("0x%.2x  ", (unsigned char)responseData[0]);
+		printf("0x%.2x  ", (unsigned char)responseData[i]);
 	}
 	printf("\n");
 
