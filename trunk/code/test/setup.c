@@ -53,8 +53,6 @@ void initManagerArrays(){
 	managerItems[0] = CreateMV("managerItems[0]", sizeof("managerItems[0]"), NUM_ITEMS, 0);/*MV 7*/
 	managerItems[1] = CreateMV("managerItems[1]", sizeof("managerItems[1]"), NUM_ITEMS, 0);/*MV 8*/
 	managerItems[2] = CreateMV("managerItems[2]", sizeof("managerItems[2]"), NUM_ITEMS, 0);/*MV 9*/
-	
-	NPrint("Finished initializing manager arrays\n", sizeof("Finished initializing manager arrays\n"));
 }
 
 void initCustomerArrays(){
@@ -66,8 +64,6 @@ void initCustomerArrays(){
   /*MVs*/
   nextCustomerIndex = CreateMV("nCustIndex", sizeof("nCustIndex"), 1, 0);/*MV 10*/
   trollyCount = CreateMV("trollyCount", sizeof("trollyCount"), 1, NUM_TROLLY);/*MV 11*/
-
-  NPrint("finished initializing customer arrays\n", sizeof("finished initializing customer arrays\n"));
 
 }
 
@@ -219,8 +215,6 @@ void initCashierArrays(){
 	privilegedCashierLineCV[2] = CreateCondition("pCashLineCV2", sizeof("pCashLineCV2"));
 	cashierLock[2] = CreateLock("cashierLock2", sizeof("cashierLock2"));
 	cashierToCustCV[2] = CreateCondition("cashierToCustCV2", sizeof("cashierToCustCV2"));
-	
-	NPrint("Finished initializing cashier arrays\n", sizeof("Finished initializing cashier arrays\n"));
 }
 
 void initSalesmanArrays(){
@@ -311,9 +305,6 @@ void initSalesmanArrays(){
   salesBreakCV[2][2] = CreateCondition("salesBreakCV2-2", sizeof("salesBreakCV2-2"));
   individualSalesmanLock[2][2] = CreateLock("iSalesLock2-2", sizeof("iSalesLock2-2"));
   salesmanCV[2][2] = CreateCondition("salesmanCV2-2", sizeof("salesmanCV2-2"));
-
-  
-  NPrint("Finished initializing salesmen arrays\n", sizeof("Finished initializing salesmen arrays\n"));
 }
 
 void setup(){
