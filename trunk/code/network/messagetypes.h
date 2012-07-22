@@ -34,9 +34,13 @@
 #define DO_YOU_HAVE_MV_NAME 'y'
 #define DOES_CLIENT_HAVE_LOCK 'z'
 #define CV_LOCK_TRACKER_RESPONSE 'A'
+#define HAVE_LOCK_NAME 'B'
+#define HAVE_CV_NAME 'C'
+#define HAVE_MV_NAME 'D'
+#define DO_NOT_HAVE_LOCK_NAME 'E'
+#define DO_NOT_HAVE_CV_NAME 'F'
+#define DO_NOT_HAVE_MV_NAME 'G'
 #define NO_ACTION 0xff
-
-
 
 
 //------------------------Server-Server messages-------------------------------------------------------------

@@ -20,7 +20,8 @@
 #define MAX_SERVER_ENTRIES_PER_MV_ARRAY 500
 
 using namespace std;
-
+int nextQueryID = 0;
+void compressInt(int, char*);
 struct ServerLockEntry{
 	ServerLock *lock;
 	bool isToBeDeleted;
@@ -38,7 +39,7 @@ struct ServerMVEntry {
 	char *name;
 };
 
-enum ServerAction{ Query_All_Servers, Respond_Once_To_Server, Respond_Once_To_Client, Do_Bookkeeping, No_Action, Do_Create
+enum ServerAction{ Query_All_Servers, Respond_Once_To_Server, Respond_Once_To_Client, Do_Bookkeeping, No_Action, Create_Query
 };
 enum StructureType {Lock, CV, MV};
 class ResponseQueueEntry{
@@ -54,28 +55,96 @@ public:
 	}
 
 };
+class QueryStatus {
+public:
+	PacketHeader *packetHeader;
+	MailHeader *mailHeader;
+	char* data;
+	int numResponsesReceived;
+	int id;
+	StructureType type;
+
+	QueryStatus(PacketHeader* ph, MailHeader* mh, char* inData){
+		packetHeader = ph;
+		mailHeader = mh;
+		data = inData;
+		numResponsesReceived = 0;
+		id = nextQueryID;
+		nextQueryID++;
+	}
+};
+
 class PendingCreate{
 public:
 	char* name;
 	StructureType type;
 	bool *responseTracker;
-	deque<ResponseQueueEntry*> responseQueue;
+	deque<QueryStatus*> waitingClients;
+	deque<ResponseQueueEntry*> serverResponseQueue;
 	int numResponses;
+	int ID;
 	PendingCreate(char* n, StructureType t){
 		this->name = n;
 		this->type = t;
 		this->responseTracker = new bool[totalNumServers];
 		this->responseTracker[myMachineID] = true;
 		numResponses = 0;
+		ID = nextQueryID;
+		nextQueryID++;
 	}
 	~PendingCreate(){
-		for(unsigned int i = 0; i < responseQueue.size(); i++){
-			delete responseQueue.at(i);
+		for(unsigned int i = 0; i < serverResponseQueue.size(); i++){
+			delete serverResponseQueue.at(i);
 		}
 		delete[] responseTracker;
 	}
 	bool isAMatch(char* otherName, StructureType structType){
 		return !strcmp(name, otherName) && structType == type;
+	}
+
+	/**Call this if we had a pending create and another server ended up having the item.
+	 *
+	 */
+	void forwardWaitingClientMessagesToServer(int recipientMachine){
+		for(unsigned int i = 0; i < waitingClients.size(); i++){
+			QueryStatus* temp = waitingClients.at(i);
+			temp->packetHeader->to = recipientMachine;
+			temp->mailHeader->to = 1; //send to other machine's ServerToServerHandler, which must handle creates anyways
+			postOffice->Send(*(temp->packetHeader), *(temp->mailHeader), temp->data);
+			delete temp;
+		}
+	}
+
+	/**Call this if we had a pending create and this server ended up making the item in question.
+	 *
+	 */
+	void messageBackClients(){
+		for(unsigned int i = 0; i < waitingClients.size(); i++){
+			QueryStatus* temp = waitingClients.at(i);
+			temp->packetHeader->to = temp->packetHeader->from;
+			temp->mailHeader->to = temp->mailHeader->from;
+			temp->packetHeader->from = myMachineID;
+			temp->mailHeader->from = 1;
+			postOffice->Send(*(temp->packetHeader), *(temp->mailHeader), temp->data);
+			delete temp;
+		}
+	}
+
+	void notifyServersOfCreation(char* outData){
+		PacketHeader* outPacketHeader = new PacketHeader;
+		MailHeader* outMailHeader = new MailHeader;
+		outPacketHeader->from = myMachineID;
+		outMailHeader->from = 1;
+		for(unsigned int j = 0; j < serverResponseQueue.size(); j++){
+			//package message based on remembered info in PendingCreate
+			ResponseQueueEntry* temp = serverResponseQueue.at(j);
+			outPacketHeader->to = temp->replyMachine;
+			outMailHeader->to = temp->replyMailbox;
+			compressInt(temp->replyMessageID, outData + 1);
+			postOffice->Send(*outPacketHeader, *outMailHeader, outData);
+		}
+		delete outPacketHeader;
+		delete outMailHeader;
 	}
 };
 
@@ -92,17 +161,9 @@ ServerLockEntry *serverLockTable;
 ServerConditionEntry *serverConditionTable;
 ServerMVEntry *serverMVTable;
 
-struct QueryStatus {
-	PacketHeader *packetHeader;
-	MailHeader *mailHeader;
-	char* data;
-	int numResponsesReceived;
-	int id;
-	bool isCreateOperation;
-	StructureType type;
-};
+
 deque<QueryStatus*> queryQueue;
-int nextQueryID = 0;
+
 
 struct ServerResponse {
 	int toMachine;
@@ -174,46 +235,46 @@ int decodeMachineIDFromMVNumber(int mvNum) {
 }
 
 
-bool checkIfLockExists(char* name){
+int checkIfLockExists(char* name){
 	//check if there already is a lock with this name
 	if(serverLockArraySize == 0) return false;
 	for(int i = 0; i < MAX_SERVER_LOCKS; i++) {
 		if(serverLockMap->Test(i) == 1) {
 			if(strcmp(serverLockTable[i].lock->getName(), name) == 0) {	//if they have the same name
 				printf("A Lock with name %s has already been created at index %d\n", name, i);
-				return true;
+				return i;
 			}
 		}
 	}
-	return false;
+	return -1;
 }
 
-bool checkIfCVExists(char* name){
+int checkIfCVExists(char* name){
 	//check if there already is a CV with this name
 	if(serverConditionArraySize == 0) return false;
 	for(int i = 0; i < MAX_SERVER_CVS; i++) {
 		if(serverConditionMap->Test(i) == 1) {
 			if(strcmp(serverConditionTable[i].condition->getName(), name) == 0) {	//if they have the same name
 				printf("A CV with name %s has already been created at index %d\n", name, i);
-				return true;
+				return i;
 			}
 		}
 	}
-	return false;
+	return -1;
 }
 
-bool checkIfMVExists(char* name){
+int checkIfMVExists(char* name){
 	//check if there already is a lock with this name
 	if(serverMVArraySize == 0) return false;
 	for(int i = 0; i < MAX_SERVER_MV_ARRAYS; i++) {
 		if(serverMVMap->Test(i) == 1) {
 			if(strcmp(serverMVTable[i].name, name) == 0) {	//if they have the same name
 				printf("An MV with name %s has already been created at index %d\n", name, i);
-				return true;
+				return i;
 			}
 		}
 	}
-	return false;
+	return -1;
 }
 
 int ServerCreateLock(char* name) {
@@ -661,18 +722,21 @@ bool isCreation(char messageType){
 	return false;
 }
 
-
+/** encapsulate the logic behind whether we can reply back with regards to a pending create on our server.  Basically, we should respond remember who
+ * is requesting the wait and message them back the eventual index if we end up creating the object.  However, if our machineID is greater than the requesting server and
+ * we did not already have the other server process our create request, our convention is that this server will not create the object and can message back in the negative.
+ */
 void determineResponseToCreateRequest(StructureType type, char* name, ServerAction* serverAction, char* responseMessage, PacketHeader* packetHeader, MailHeader* mailHeader, char* inData){
 	bool receivedResponse = false;
-	PendingCreate* pc;
+	PendingCreate* pc; //temp pointer to remember which PendingCreate object we should be modifying
 	for(unsigned int i = 0; i < pendingCreates.size(); i++){ //check for pending create
 		if(pendingCreates.at(i)->isAMatch(name, type)){
-			//I do have a pending create
-			pc = pendingCreates.at(i);
+			//I do have a pending create for this lock/CV/MV
+			pc = pendingCreates.at(i); //
 			int serverRequesting = packetHeader->from;
 			if(pc->responseTracker[serverRequesting]){ //has the requesting server told me it doesn't have this object previously?
 				//if so, put it on queue until we know where the object is
-				pc->responseQueue.push_back(new ResponseQueueEntry(packetHeader->from, mailHeader->from, extractInt(inData + 1)));
+				pc->serverResponseQueue.push_back(new ResponseQueueEntry(packetHeader->from, mailHeader->from, extractInt(inData + 1)));
 				*serverAction = No_Action;
 				receivedResponse = true;
 				break;
@@ -681,16 +745,55 @@ void determineResponseToCreateRequest(StructureType type, char* name, ServerActi
 	}
 	if(!receivedResponse){ // do this only if we haven't heard an answer from the requesting server
 		if(myMachineID < packetHeader->from){ //gives precedence to server with lower ID. if my ID is lower, let's remember to tell this guy later
-			pc->responseQueue.push_back(new ResponseQueueEntry(packetHeader->from, mailHeader->from, extractInt(inData + 1)));
+			pc->serverResponseQueue.push_back(new ResponseQueueEntry(packetHeader->from, mailHeader->from, extractInt(inData + 1)));
 			*serverAction = No_Action;
 		}
 		else{
-			*responseMessage = DO_NOT_HAVE_LOCK;
+			//if we have the higher ID and had not already heard a "I don't have" from the other server, we can tell the other server definitively we don't have the lock
+			//giving the burden of greating it to the other person
+			switch(type){
+			case Lock:
+				*responseMessage = DO_NOT_HAVE_LOCK_NAME;
+				break;
+			case CV:
+				*responseMessage = DO_NOT_HAVE_CV_NAME;
+				break;
+			case MV:
+				*responseMessage = DO_NOT_HAVE_MV_NAME;
+				break;
+			}
 			*serverAction = Respond_Once_To_Server;
 		}
 	}
 }
 
+void LockWatcher(){
+	while(true){
+		PacketHeader* packetHeader = new PacketHeader;
+		MailHeader* mailHeader = new MailHeader;
+		packetHeader->from = myMachineID;
+		char* data = new char[MaxMailSize];
+		mailHeader->to = 2;
+
+		for( int i; i < serverLockArraySize; i++){
+			if(serverLockMap->Test(i)){
+				ClientRequest* temp = serverLockTable[i].lock->getOwner();
+				if(temp == NULL) continue;
+				bool success = postOffice->Send(*packetHeader, *mailHeader, data );
+				if(!success){
+					temp = serverLockTable[i].lock->Release(temp);
+					if(temp->respond){
+						packetHeader->to = temp->machineID;
+						mailHeader->to = temp->mailboxNumber;
+						postOffice->Send(*packetHeader, *mailHeader, data );
+					}
+				}
+
+			}
+			usleep(50);
+		}
+	}
+}
 void ServerToServerMessageHandler(){
 	while(true){ //infinitely check for messages to handle
 		PacketHeader *packetHeader = new PacketHeader;
@@ -722,67 +825,171 @@ void ServerToServerMessageHandler(){
 				/**These cases would be received from another ServerToServerHandler.
 				 * Thus, they will have messageIDs in inData[1:4].
 				 */
-				case DO_YOU_HAVE_LOCK:{
+
+				/**The following three cases will result in a message being sent with the data format
+				 * outData[0] = message type
+				 * outData[1:4] = message ID of incoming message
+				 */
+				case DO_YOU_HAVE_LOCK:{ //cases where other server is trying to perform Acquire, Release, or DestroyLock
 					int index = extractInt(inData + 5);
-					outData[0] = (decodeIndex(serverLockMap->Test(index))) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
+					index = decodeIndex(index);
+					if( index > 0 && index < serverLockArraySize){
+						outData[0] = (serverLockMap->Test(index)) ? HAVE_LOCK : DO_NOT_HAVE_LOCK;
+					}
+					else outData[0] = DO_NOT_HAVE_LOCK;
 					action = Respond_Once_To_Server;
 					outMailHeader->length = 5;
 					break;
 				}
-				case DO_YOU_HAVE_LOCK_NAME:{
+				case DO_YOU_HAVE_CV:{ //cases where other server is trying to perform Signal, Broadcast, Wait, or DestroyCondition
+					int index = extractInt(inData + 5);
+					index = decodeIndex(index);
+					if(index > 0 && index < serverConditionArraySize){
+						outData[0] = (serverConditionMap->Test(index)) ? HAVE_CV : DO_NOT_HAVE_CV;
+					}
+					else outData[0] = DO_NOT_HAVE_CV;
+					action = Respond_Once_To_Server;
+					outMailHeader->length = 5;
+					break;
+				}
+				case DO_YOU_HAVE_MV:{ //cases where other server is trying to perform SetMV, GetMV, or DestroyMV
+					int index = extractInt(inData + 5);
+					index = decodeIndex(index);
+					if(index > 0 && index < serverMVArraySize){
+						outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
+					}
+					else outData[0] = DO_NOT_HAVE_MV;
+					action = Respond_Once_To_Server;
+					outMailHeader->length = 5;
+					break;
+				}
+
+
+				case DO_YOU_HAVE_LOCK_NAME:{//case where another server is looking to create a Lock
 					int nameLength = inData[5];
 					char* name = new char[nameLength];
 					strncpy(name, inData + 6, nameLength);
-					if(checkIfLockExists(name)){ //do I have it already created?
-						outData[0] = HAVE_LOCK;
+					if(checkIfLockExists(name) != -1){ //do I have it already created?
+						outData[0] = HAVE_LOCK_NAME;
 						action = Respond_Once_To_Server;
 					}
 					else{ //I do not already have it
 						determineResponseToCreateRequest(Lock, name, &action, outData, packetHeader, mailHeader, inData);
 					}
-					outMailHeader->length = 5 + 1 /*char that tells size of name*/ + nameLength;
-					break;
-				}
-				case DO_YOU_HAVE_CV:{
-					int index = extractInt(inData + 5);
-					outData[0] = (serverConditionMap->Test(decodeIndex(index))) ? HAVE_CV : DO_NOT_HAVE_CV;
-					action = Respond_Once_To_Server;
 					outMailHeader->length = 5;
+					//outMailHeader->length = 5 + 1 /*char that tells size of name*/ + nameLength;
 					break;
 				}
-				case DO_YOU_HAVE_CV_NAME:{
+
+				case DO_YOU_HAVE_CV_NAME:{ //means another server is looking to create a CV
 					int nameLength = inData[5];
 					char* name = new char[nameLength];
 					strncpy(name, inData + 6, nameLength);
-					if(checkIfCVExists(name)){
-						outData[0] = HAVE_CV;
+					if(checkIfCVExists(name) != -1){ //if the CV has already been created on this server, reply in the affirmative
+						outData[0] = HAVE_CV_NAME;
 						action = Respond_Once_To_Server;
 					}
 					else{
 						determineResponseToCreateRequest(CV, name, &action, outData, packetHeader, mailHeader, inData);
 					}
-					outMailHeader->length = 5 + 1 /*char that tells size of name*/ + nameLength;
-					break;
-				}
-				case DO_YOU_HAVE_MV:{
-					int index = extractInt(inData + 5);
-					outData[0] = (decodeIndex(serverMVMap->Test(index))) ? HAVE_MV : DO_NOT_HAVE_MV;
-					action = Respond_Once_To_Server;
 					outMailHeader->length = 5;
+					//outMailHeader->length = 5 + 1 /*char that tells size of name*/ + nameLength;
 					break;
 				}
-				case DO_YOU_HAVE_MV_NAME:{
+
+				case DO_YOU_HAVE_MV_NAME:{ //case where another server is looking to create an MV
 					int nameLength = inData[5];
 					char* name = new char[nameLength];
 					strncpy(name, inData + 6, nameLength);
-					if(checkIfMVExists(name)){
-						outData[0] = HAVE_MV;
+					if(checkIfMVExists(name) != -1){ //if the MV has already been created here, reply in the affirmative
+						outData[0] = HAVE_MV_NAME;
 						action = Respond_Once_To_Server;
 					}
 					else{
 						determineResponseToCreateRequest(MV, name, &action, outData, packetHeader, mailHeader, inData);
 					}
-					outMailHeader->length = 5 + 1 /*char that tells size of name*/ + nameLength;
+					outMailHeader->length = 5;
+					//outMailHeader->length = 5 + 1 /*char that tells size of name*/ + nameLength;
+					break;
+				}
+
+				case HAVE_LOCK_NAME:
+				case HAVE_CV_NAME:
+				case HAVE_MV_NAME:{
+					int pendingCreateID = extractInt(inData + 1);
+					PendingCreate* pc;
+					//find the pending create this was resopnding to
+					for(unsigned int i = 0; i < pendingCreates.size(); i++){
+						if(pendingCreates.at(i)->ID == pendingCreateID){
+							pc = pendingCreates.at(i);
+							pc->forwardWaitingClientMessagesToServer(packetHeader->from);
+							delete pendingCreates.at(i);
+							pendingCreates.erase(pendingCreates.begin() + i);
+							break;
+						}
+					}
+					action = No_Action;
+					break;
+				}
+				case DO_NOT_HAVE_LOCK_NAME:
+				case DO_NOT_HAVE_CV_NAME:
+				case DO_NOT_HAVE_MV_NAME:{
+					int id = extractInt(inData + 1);
+					PendingCreate* temp;
+					for(unsigned int i = 0; i < pendingCreates.size(); i++){
+						if(pendingCreates.at(i)->ID == id){
+							temp = pendingCreates.at(i);
+							temp->numResponses++;
+							temp->responseTracker[packetHeader->from] = true;
+							if(temp->numResponses == totalNumServers -1) pendingCreates.erase(pendingCreates.begin() + i);
+							break;
+						}
+					}
+
+					if(temp->numResponses == totalNumServers - 1){
+
+						QueryStatus* temp2 = temp->waitingClients.front();
+						int index;
+						switch(temp2->type){
+						case Lock:{
+							char* name = new char[temp2->data[1]];
+							strncpy(name, temp2->data + 2, temp2->data[1]);
+							index = encodeIndex(ServerCreateLock(name));
+							outData[0] = HAVE_LOCK;
+							break;
+						}
+						case CV:{
+							char* name = new char[temp2->data[1]];
+							strncpy(name, temp2->data + 2, temp2->data[1]);
+							index = encodeIndex(ServerCreateCV(name));
+							outData[0] = HAVE_CV;
+							break;
+						}
+						case MV:{
+							char* name = new char[temp2->data[9]];
+							strncpy(name, temp2->data + 10, temp2->data[9]);
+							int numEntries = extractInt(temp2->data + 1); //numEntries should be in data[1:4]
+							int val = extractInt(temp2->data + 5); //initial value should be in data[5:8]
+							index = encodeIndex(ServerCreateMV(name, numEntries, val)); //writes the index into the
+							outData[0] = HAVE_MV;
+							break;
+						}
+						default:
+							cout << "Error case received in ServerToServerHandler in DO_NOT_HAVE_XXX_NAME switch block.  PendingCreate's temp not set" << endl;
+							break;
+						}
+						outPacketHeader->from = myMachineID;
+						outMailHeader->from = 1;
+
+						//tell every server with a PendingCreate on the object we just made
+						//that we have it
+						temp->notifyServersOfCreation(outData);
+						temp->messageBackClients();
+						action = No_Action;
+
+
+						delete temp;
+					}
 					break;
 				}
 
@@ -790,18 +997,126 @@ void ServerToServerMessageHandler(){
 				 * Thus, there will be no messageID, and we must put one in if we are to send
 				 * off a message to another ServerToServerHandler.
 				 */
+
+
+				/**the following three messages must query other servers to see if an object has been created.
+				 * messages are sent with the following format:
+				 * data[0] = message type
+				 * data[1:4] = my ID for the query
+				 * data[5] = name length
+				 * data[6 : 6 + name length] = char array for name
+				 */
 				case CREATE_LOCK:{
 					int nameLength = inData[1];
 					char* name = new char[nameLength];
-					strncpy(name, inData + 2, nameLength);
-					outData[0] = DO_YOU_HAVE_LOCK_NAME;
-					outData[5] = nameLength;
-					strncpy(outData + 6, inData + 2, nameLength);
-					outMailHeader->length = 5 + 1 + nameLength;
-					action = Query_All_Servers;
-					pendingCreates.push_back(new PendingCreate(name, Lock));
+					strncpy(name, inData + 2, nameLength); //parse message
+					int index = checkIfLockExists(name);
+					if(index != -1){ //do I have it already created?
+						compressInt(index, outData);
+						action = Respond_Once_To_Client;
+						break;
+					}
+					else{
+						//package response queries
+						outData[0] = DO_YOU_HAVE_LOCK_NAME;
+						outData[5] = nameLength;
+						strncpy(outData + 6, inData + 2, nameLength);
+						outMailHeader->length = 5 + 1 + nameLength;
+						action = Create_Query; //need to poll other servers before deciding action
+						bool createNew = true;
+						for(unsigned int i = 0; i < pendingCreates.size(); i++){
+							if(pendingCreates.at(i)->isAMatch(name, Lock)){
+								pendingCreates.at(i)->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
+
+								createNew = false;
+								action = No_Action;
+								break;
+							}
+						}
+						if(createNew){
+							pendingCreates.push_back(new PendingCreate(name, Lock)); //so we can track responses from other servers and remember we are trying to create
+							compressInt(pendingCreates.back()->ID, outData + 1);
+							pendingCreates.back()->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
+						}
+					}
 					break;
-				}//inData[1] = nameLength, inData[2:2+nameLength] = name
+				}
+				case CREATE_CV:{
+					int nameLength = inData[1];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 2, nameLength); //parse message
+					int index = checkIfCVExists(name);
+					if(index != -1){ //do I have it already created?
+						compressInt(index, outData);
+						action = Respond_Once_To_Client;
+						break;
+					}
+					else{
+						//package response queries
+						outData[0] = DO_YOU_HAVE_CV_NAME;
+						outData[5] = nameLength;
+						strncpy(outData + 6, inData + 2, nameLength);
+						outMailHeader->length = 5 + 1 + nameLength;
+						action = Create_Query; //need to poll other servers before deciding action
+						bool createNew = true;
+						for(unsigned int i = 0; i < pendingCreates.size(); i++){
+							if(pendingCreates.at(i)->isAMatch(name, CV)){
+								pendingCreates.at(i)->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
+								createNew = false;
+								action = No_Action;
+								break;
+							}
+						}
+						if(createNew){
+							pendingCreates.push_back(new PendingCreate(name, CV)); //so we can track responses from other servers and remember we are trying to create
+							pendingCreates.back()->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
+							compressInt(pendingCreates.back()->ID, outData + 1);
+						}
+
+					}
+					break;
+				}
+				case CREATE_MV:{
+					int nameLength = inData[9];
+					char* name = new char[nameLength];
+					strncpy(name, inData + 10, nameLength); //parse message
+					int index = checkIfMVExists(name);
+					if(index != -1){ //do I have it already created?
+						compressInt(index, outData);
+						action = Respond_Once_To_Client;
+						break;
+					}
+					else{
+						//package response queries
+						outData[0] = DO_YOU_HAVE_MV_NAME;
+						outData[5] = nameLength;
+						strncpy(outData + 6, inData + 2, nameLength);
+						outMailHeader->length = 5 + 1 + nameLength;
+						action = Create_Query; //need to poll other servers before deciding action
+						bool createNew = true;
+						for(unsigned int i = 0; i < pendingCreates.size(); i++){
+							if(pendingCreates.at(i)->isAMatch(name, MV)){
+								pendingCreates.at(i)->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
+								compressInt(pendingCreates.at(i)->ID, outData + 1);
+								createNew = false;
+								action = No_Action;
+								break;
+							}
+						}
+						if(createNew){
+							pendingCreates.push_back(new PendingCreate(name, MV)); //so we can track responses from other servers and remember we are trying to create
+							pendingCreates.back()->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
+							compressInt(pendingCreates.back()->ID, outData + 1);
+						}
+					}
+					break;
+				}
+
+				/**The following messages need a format of the following:
+				 * data[0] = message type
+				 * data[1: 4] = my id for the query
+				 * data[5:8] = encoded index of the object
+				 */
 				case ACQUIRE:
 				case RELEASE:
 				case DESTROY_LOCK:{
@@ -813,18 +1128,9 @@ void ServerToServerMessageHandler(){
 				}
 
 
-				case CREATE_CV:{
-					int nameLength = inData[1];
-					char* name = new char[nameLength];
-					strncpy(name, inData + 2, nameLength);
-					outData[0] = DO_YOU_HAVE_CV_NAME;
-					outData[5] = nameLength;
-					strncpy(outData + 6, inData + 2, nameLength);
-					action = Query_All_Servers;
-					outMailHeader->length = 5 + 1 + nameLength;
-					pendingCreates.push_back(new PendingCreate(name, CV));
-					break;
-				}
+				/**when we get these CV operation messages, the lock validation/ownership should have already been performed which is why we
+				 * only send one message with the CV index
+				 */
 				case DESTROY_CV:{
 					outData[0] = DO_YOU_HAVE_CV;
 					strncpy(outData + 5, inData + 1, 4);
@@ -842,18 +1148,7 @@ void ServerToServerMessageHandler(){
 					break;
 				}
 
-				case CREATE_MV:{
-					int nameLength = inData[1];
-					char* name = new char[nameLength];
-					strncpy(name, inData + 2, nameLength);
-					outData[0] = DO_YOU_HAVE_MV_NAME;
-					outData[5] = nameLength;
-					strncpy(outData + 6, inData + 2, nameLength);
-					action = Query_All_Servers;
-					outMailHeader->length = 5 + 1 + nameLength;
-					pendingCreates.push_back(new PendingCreate(name, MV));
-					break;
-				}
+
 				case DESTROY_MV:
 				case GET_MV:
 				case SET_MV:{
@@ -863,18 +1158,19 @@ void ServerToServerMessageHandler(){
 					outMailHeader->length = 9;
 					break;
 				}
+
 				case HAVE_LOCK:
 				case HAVE_CV:
 				case HAVE_MV:{
 					action = Do_Bookkeeping;
-					int id = extractInt(inData + 1);
-					for(unsigned int i = 0; i < queryQueue.size(); i++){
+					int id = extractInt(inData + 1); //get our query ID so we can find the pending QuerySTatus object
+					for(unsigned int i = 0; i < queryQueue.size(); i++){ //search and ifnd the matching query
 						QueryStatus* temp = queryQueue.at(i);
 						if(temp->id == id){
-							temp->packetHeader->to = packetHeader->from;
-							temp->mailHeader->to = 0;
-							postOffice->Send(*temp->packetHeader, *temp->mailHeader, temp->data);
-							queryQueue.erase(queryQueue.begin() + i);
+							temp->packetHeader->to = packetHeader->from; //repackage original client message to send to machine with the object
+							temp->mailHeader->to = 0; //send to mailbox 0, this allows the server to handle the message like a miss never happend
+							postOffice->Send(*temp->packetHeader, *temp->mailHeader, temp->data); //send the message
+							queryQueue.erase(queryQueue.begin() + i); //delete the query
 							/*
 							 * delete temp;
 							 */
@@ -886,63 +1182,16 @@ void ServerToServerMessageHandler(){
 				case DO_NOT_HAVE_LOCK:
 				case DO_NOT_HAVE_CV:
 				case DO_NOT_HAVE_MV:{
-					action = Do_Bookkeeping;
+					action = No_Action;
 
-					int id = (int) inData[1] << 24  + (int)inData[2] << 16 + (int)inData[3] << 8 + (int) inData[4];
-					for(unsigned int i = 0; i < queryQueue.size(); i++){
+					int id = extractInt(inData + 1); //get our query ID so we can find the pending QuerySTatus object
+					for(unsigned int i = 0; i < queryQueue.size(); i++){ //find the query so we can update it
 						QueryStatus* temp = queryQueue.at(i);
 						if(temp->id == id){
-							temp->numResponsesReceived++; //separate variable for No/yes count? if so that means we would wait for everyone to message back before sending message off
-							if(temp->numResponsesReceived == totalNumServers - 1){
-								//do creates
+							temp->numResponsesReceived++; //track how many servers we've heard from
+							if(temp->numResponsesReceived == totalNumServers - 1){ //we've heard a no from all servers
 
-								if(temp->isCreateOperation){
-									char* name = new char[temp->data[1]];
-									strncpy(name, temp->data + 2, temp->data[1]);
-									switch(temp->type){
-									case Lock:{
-										compressInt(encodeIndex(ServerCreateLock(name)), inData);
-										outData[0] = HAVE_LOCK;
-										break;
-									}
-									case CV:{
-										compressInt(encodeIndex(ServerCreateCV(name)), inData);
-										outData[0] = HAVE_CV;
-										break;
-									}
-									case MV:{;
-										int numEntries = (int)(temp->data[1]) << 24 + (int)(temp->data[2]) << 16 + (int)(temp->data[3]) << 8 + (int) temp->data[4];
-										int val = (int)(temp->data[6]) << 24 + (int)(temp->data[6]) << 16 + (int)(temp->data[7]) << 8 + (int) temp->data[8];
-										compressInt(encodeIndex(ServerCreateMV(name, numEntries, val)), inData);
-										outData[0] = HAVE_MV;
-										break;
-									}
-									default:
-										break;
-									}
-									PendingCreate* pc;
-									for(unsigned int j = 0; j < pendingCreates.size(); j++){
-										if(pendingCreates.at(j)->isAMatch(name, temp->type)){
-											pc = pendingCreates.at(j);
-											pendingCreates.erase(pendingCreates.begin() + j);
-										}
-									}
-									outPacketHeader->from = myMachineID;
-									outMailHeader->from = 1;
-									for(unsigned int j = 0; j < pc->responseQueue.size(); j++){
-										ResponseQueueEntry* temp2 = pc->responseQueue.at(j);
-										outPacketHeader->to = temp2->replyMachine;
-										outMailHeader->to = temp2->replyMailbox;
-										compressInt(temp2->replyMessageID, outData + 1);
-									}
-									mailHeader = temp->mailHeader;
-									packetHeader = temp->packetHeader;
-									outData = temp->data;
-									action = Respond_Once_To_Client;
-									delete pc;
-
-								}
-								else switch(temp->type){
+								switch(temp->type){ //this means the object didn't exist on any server!
 								case Lock:
 									cout << "Lock did not exist." << endl;
 									break;
@@ -955,6 +1204,8 @@ void ServerToServerMessageHandler(){
 								default:
 									break;
 								}
+								cout << "Server: " << myMachineID << " Mailbox number: 1" << endl;
+								cout << "message data: " << messageTypeName << inData + 1 << endl;
 							}
 						}
 						break;
@@ -973,10 +1224,19 @@ void ServerToServerMessageHandler(){
 
 				switch(action){
 				case Respond_Once_To_Client:{
-						postOffice->Send(*packetHeader, *mailHeader, outData);
+						//everything is pre packaged
+						outPacketHeader->to = packetHeader->from;
+						outPacketHeader->from = myMachineID;
+						outMailHeader->to = mailHeader->from;
+						outMailHeader->from = 1;
+						outMailHeader->length = 4; // only message format we ever have sends one int to a client with the result of a create
+													//any other server messages to clients come from the other function
+						postOffice->Send(*outPacketHeader, *outMailHeader, outData);
 						break;
 				}
 				case Respond_Once_To_Server:{
+
+						//code is always identical
 						outPacketHeader->from = myMachineID;
 						outPacketHeader->to = packetHeader->from;
 						outMailHeader->from = mailHeader->to;
@@ -987,16 +1247,32 @@ void ServerToServerMessageHandler(){
 
 						break;
 				}
+				case Create_Query:{
+					//send message to all servers
+					for(int i = 0; i < totalNumServers; i++){
+						if(i == myMachineID) continue;
+						outPacketHeader = new PacketHeader;
+						outMailHeader = new MailHeader;
+						outPacketHeader->from = myMachineID;
+						outPacketHeader->to = i;
+						outMailHeader->from = 1;
+						outMailHeader->to = mailHeader->from;
+						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
+
+					}
+					break;
+				}
 				case Query_All_Servers:{
-						QueryStatus* qs = new QueryStatus;
-						qs->packetHeader = packetHeader;
-						qs->mailHeader = mailHeader;
-						qs->data = inData;
-						qs->id = nextQueryID;
-						qs->isCreateOperation = isCreation(messageType);
+
+						//instantiate and set up new QueryStatus
+						QueryStatus* qs = new QueryStatus(packetHeader, mailHeader, inData);
 						qs->type = getType(messageType);
-						compressInt(nextQueryID, outData + 1);
+						//grab and package a query id.  this will be so we can
+						//match responses from other servers with this query
+						compressInt(qs->id, outData + 1);
 						nextQueryID++;
+
+						//send message to all servers
 						for(int i = 0; i < totalNumServers; i++){
 							if(i == myMachineID) continue;
 							outPacketHeader = new PacketHeader;
@@ -1020,7 +1296,9 @@ void ServerToServerMessageHandler(){
 				}
 
 
-
+				delete outPacketHeader;
+				delete outMailHeader;
+				delete[] outData;
 	}
 }
 
@@ -1755,4 +2033,6 @@ void Server() {
 		}
 	}
 }
+
+
 

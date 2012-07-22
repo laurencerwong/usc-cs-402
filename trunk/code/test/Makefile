@@ -35,7 +35,7 @@ all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsui
 HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
 exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
 testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
-cashier customer goodsloader manager salesman p4startsupermarket
+cashier customer goodsloader manager salesman p4startsupermarket testCreateRaceConditionDriver testCreateRaceCondition
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -48,6 +48,20 @@ halt: halt.o start.o
 	$(LD) $(LDFLAGS) start.o halt.o -o halt.coff
 	../bin/coff2noff halt.coff halt
 
+testCreateRaceConditionDriver.o: testCreateRaceConditionDriver.c
+	$(CC) $(CFLAGS) -c testCreateRaceConditionDriver.c
+	
+testCreateRaceConditionDriver: testCreateRaceConditionDriver.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o testCreateRaceConditionDriver.o -o testCreateRaceConditionDriver.coff
+	../bin/coff2noff testCreateRaceConditionDriver.coff testCreateRaceConditionDriver
+	
+testCreateRaceCondition.o: testCreateRaceCondition.c
+	$(CC) $(CFLAGS) -c testCreateRaceCondition.c
+	
+testCreateRaceCondition: testCreateRaceCondition.o start.o
+	$(LD) $(LDFLAGS) start.o setup.o testCreateRaceCondition.o -o testCreateRaceCondition.coff
+	../bin/coff2noff testCreateRaceCondition.coff testCreateRaceCondition
+	
 p4startsupermarket.o: p4startsupermarket.c
 	$(CC) $(CFLAGS) -c p4startsupermarket.c
 p4startsupermarket: p4startsupermarket.o start.o

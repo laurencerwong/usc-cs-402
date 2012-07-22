@@ -119,6 +119,10 @@ public:
 					// holds this lock.  Useful for
 					// checking in Release, and in
 					// Condition variable ops below.
+
+    ClientRequest* getOwner(){
+    	return currentClientRequest;
+    }
 #ifdef CHANGED
     bool isBusy();	// check if its busy
 #endif
