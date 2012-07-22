@@ -1197,11 +1197,16 @@ void Server() {
 
 			ClientRequest* temp = ServerRelease(messageFromMachineID, messageFromMailbox, lockIndex);
 			if(temp == NULL) {
-				respond = false;
+				necessaryResponses.push(response);
+				respond = true;
 			}
 			else if(temp->respond){
 				response.toMachine = temp->machineID;
 				response.toMailbox = temp->mailboxNumber;
+				necessaryResponses.push(response);
+				respond = true;
+			}
+			else {
 				necessaryResponses.push(response);
 				respond = true;
 			}
@@ -1430,11 +1435,13 @@ void Server() {
 
 				if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 					printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockIndex);
+					necessaryResponses.push(response);
 					respond = true;
 					return;
 				}
 				if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 					printf("Thread %s called Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+					necessaryResponses.push(response);
 					respond = true;
 					return;
 				}
@@ -1496,16 +1503,19 @@ void Server() {
 
 				if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 					printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockIndex);
+					necessaryResponses.push(response);
 					respond = true;
 					return;
 				}
 				if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 					printf("Thread %s called Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
+					necessaryResponses.push(response);
 					respond = true;
 					return;
 				}
 
 				ServerBroadcast(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);	//adding responses to the queue is handled in broadcast
+				necessaryResponses.push(response);
 				respond = true;
 			}
 			else {
@@ -1560,6 +1570,9 @@ void Server() {
 					respond = true;
 					return;
 				}
+
+				serverLockTable[decodeIndex(lockIndex)].lock->Release(new ClientRequest(messageFromMachineID, messageFromMailbox));
+
 				ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
 			}
 			else {
@@ -1671,6 +1684,8 @@ void Server() {
 				break;
 			}
 
+			necessaryResponses.push(response);
+			respond = true;
 			int entryIndex = extractInt(messageData + 5);
 			int value = extractInt(messageData + 9);
 			ServerSetMV(mvIndex, entryIndex, value);
