@@ -74,15 +74,20 @@ public:
 	}
 };
 
+
+/**Allows us to remember what we want to create for a client
+ * until we gather enough information from other servers to either
+ * create the object or forward to another server
+ */
 class PendingCreate{
 public:
 	char* name;
-	StructureType type;
-	bool *responseTracker;
-	deque<QueryStatus*> waitingClients;
-	deque<ResponseQueueEntry*> serverResponseQueue;
-	int numResponses;
-	int ID;
+	StructureType type; //allows us to have same names across different types
+	bool *responseTracker; //array for tracking which servers have responded. indexed by machine IDs
+	deque<QueryStatus*> waitingClients; //clients needing a response regarding the create
+	deque<ResponseQueueEntry*> serverResponseQueue; //servers we should message once we determine if we are/are not creating lock
+	int numResponses; //number of servers we've heard back from regarding create
+	int ID; //unique identifier for this create
 	PendingCreate(char* n, StructureType t){
 		this->name = n;
 		this->type = t;
@@ -130,6 +135,9 @@ public:
 		}
 	}
 
+	/**call this if we've done the create, so other servers will forward us
+	 * waiting client messages for Creates
+	 */
 	void notifyServersOfCreation(char* outData){
 		PacketHeader* outPacketHeader = new PacketHeader;
 		MailHeader* outMailHeader = new MailHeader;
@@ -148,7 +156,8 @@ public:
 	}
 };
 
-deque<PendingCreate*> pendingCreates;
+
+deque<PendingCreate*> pendingCreates; //where we store PendingCreate objects
 
 BitMap *serverLockMap;
 BitMap *serverConditionMap;
@@ -173,18 +182,25 @@ struct ServerResponse {
 };
 queue<ServerResponse> necessaryResponses;
 
-
+/**Where we store client requests for CV operations while we wait
+ * for lock validation (lock exists + client owns it)
+ */
 struct CVLockTracker {
+
+	//address to respond to client at
 	int clientMachineID;
 	int clientMailbox;
-	int cvNum;
-	int lockNum;
+
+	int cvNum; //remember which CV they want to operate on
+	int lockNum; //remember which lock they say CV is associated wit
 	char messageType;
 };
 
 vector<CVLockTracker> cvLockTrackerList;
 
-
+/**encapsulation for Server function responses to Clients
+ *
+ */
 bool sendMessageWithData(int fromMachine, int fromMailbox, int toMachine, int toMailbox, int dataLength, char* data) {
 	PacketHeader *responsePacketHeader = new PacketHeader;
 	MailHeader *responseMailHeader = new MailHeader;
@@ -234,7 +250,9 @@ int decodeMachineIDFromMVNumber(int mvNum) {
 	return mvNum / MAX_SERVER_MV_ARRAYS;
 }
 
-
+/**encapsulation to see if, on a create, we already have an object created
+ * saves other code from tedious string comparisons
+ */
 int checkIfLockExists(char* name){
 	//check if there already is a lock with this name
 	if(serverLockArraySize == 0) return false;
@@ -249,6 +267,9 @@ int checkIfLockExists(char* name){
 	return -1;
 }
 
+/**encapsulation to see if, on a create, we already have an object created
+ * saves other code from tedious string comparisons
+ */
 int checkIfCVExists(char* name){
 	//check if there already is a CV with this name
 	if(serverConditionArraySize == 0) return false;
@@ -263,6 +284,9 @@ int checkIfCVExists(char* name){
 	return -1;
 }
 
+/**encapsulation to see if, on a create, we already have an object created
+ * saves other code from tedious string comparisons
+ */
 int checkIfMVExists(char* name){
 	//check if there already is a lock with this name
 	if(serverMVArraySize == 0) return false;
