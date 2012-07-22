@@ -1326,7 +1326,7 @@ void Server() {
 			for(unsigned int i = 0; i < cvLockTrackerList.size(); i++) {
 				if( cvLockTrackerList.at(i).clientMachineID == clientMID &&
 						cvLockTrackerList.at(i).clientMailbox == clientMBX &&
-						cvLockTrackerList.at(i).lockNum == lockIndex) {
+						cvLockTrackerList.at(i).lockNum == lockNum) {
 					cvNum = cvLockTrackerList.at(i).cvNum;
 					operation = cvLockTrackerList.at(i).messageType;
 					cvltListEntry = i;
