@@ -98,9 +98,9 @@ public:
 		nextQueryID++;
 	}
 	~PendingCreate(){
-		for(unsigned int i = 0; i < serverResponseQueue.size(); i++){
+		/**for(unsigned int i = 0; i < serverResponseQueue.size(); i++){
 			delete serverResponseQueue.at(i);
-		}
+		}*/
 		delete[] responseTracker;
 	}
 	bool isAMatch(char* otherName, StructureType structType){
@@ -116,7 +116,7 @@ public:
 			temp->packetHeader->to = recipientMachine;
 			temp->mailHeader->to = 1; //send to other machine's ServerToServerHandler, which must handle creates anyways
 			postOffice->Send(*(temp->packetHeader), *(temp->mailHeader), temp->data);
-			delete temp;
+			//delete temp
 		}
 	}
 
@@ -131,7 +131,7 @@ public:
 			temp->packetHeader->from = myMachineID;
 			temp->mailHeader->from = 1;
 			postOffice->Send(*(temp->packetHeader), *(temp->mailHeader), temp->data);
-			delete temp;
+			//delete temp;
 		}
 	}
 
@@ -786,7 +786,7 @@ bool isCreation(char messageType){
  */
 void determineResponseToCreateRequest(StructureType type, char* name, ServerAction* serverAction, char* responseMessage, PacketHeader* packetHeader, MailHeader* mailHeader, char* inData){
 	bool receivedResponse = false;
-	PendingCreate* pc; //temp pointer to remember which PendingCreate object we should be modifying
+	PendingCreate* pc = NULL; //temp pointer to remember which PendingCreate object we should be modifying
 	for(unsigned int i = 0; i < pendingCreates.size(); i++){ //check for pending create
 		if(pendingCreates.at(i)->isAMatch(name, type)){
 			//I do have a pending create for this lock/CV/MV
@@ -801,26 +801,50 @@ void determineResponseToCreateRequest(StructureType type, char* name, ServerActi
 			}
 		}
 	}
-	if(!receivedResponse){ // do this only if we haven't heard an answer from the requesting server
+	if(pc == NULL){ //we don't have a pending Request for the item
+			switch(type){
+				case Lock:
+					responseMessage[0] = DO_NOT_HAVE_LOCK_NAME;
+					break;
+				case CV:
+					responseMessage[0] = DO_NOT_HAVE_CV_NAME;
+					break;
+				case MV:
+					responseMessage[0] = DO_NOT_HAVE_MV_NAME;
+					break;
+				default:
+					cout << "error in determineResponseToCreateRequest: no valid structure type" << endl;
+					break;
+			}
+					(*serverAction) = Respond_Once_To_Server;
+
+
+	}
+	if(!receivedResponse && pc != NULL){ // do this only if we haven't heard an answer from the requesting server
 		if(myMachineID < packetHeader->from){ //gives precedence to server with lower ID. if my ID is lower, let's remember to tell this guy later
 			pc->serverResponseQueue.push_back(new ResponseQueueEntry(packetHeader->from, mailHeader->from, extractInt(inData + 1)));
 			*serverAction = No_Action;
+			cout << "should be resolved for cv " << name << endl;
 		}
 		else{
+			cout << "(box 1) determines other servers should create object " << name << endl;
 			//if we have the higher ID and had not already heard a "I don't have" from the other server, we can tell the other server definitively we don't have the lock
 			//giving the burden of greating it to the other person
 			switch(type){
 			case Lock:
-				*responseMessage = DO_NOT_HAVE_LOCK_NAME;
+				responseMessage[0] = DO_NOT_HAVE_LOCK_NAME;
 				break;
 			case CV:
-				*responseMessage = DO_NOT_HAVE_CV_NAME;
+				responseMessage[0] = DO_NOT_HAVE_CV_NAME;
 				break;
 			case MV:
-				*responseMessage = DO_NOT_HAVE_MV_NAME;
+				responseMessage[0] = DO_NOT_HAVE_MV_NAME;
+				break;
+			default:
+				cout << "error in determineResponseToCreateRequest: no valid structure type" << endl;
 				break;
 			}
-			*serverAction = Respond_Once_To_Server;
+			(*serverAction) = Respond_Once_To_Server;
 		}
 	}
 }
@@ -857,7 +881,7 @@ void ServerToServerMessageHandler(){
 		PacketHeader *packetHeader = new PacketHeader;
 		MailHeader *mailHeader = new MailHeader;
 		char* inData = new char[MaxMailSize];
-
+		cout << "box 1 about to do receive" << endl;
 		postOffice->Receive(1, packetHeader, mailHeader, inData);	//server is always mailbox 1
 		//parse message
 				char messageType = inData[0];
@@ -872,6 +896,7 @@ void ServerToServerMessageHandler(){
 				string messageTypeName = getMessageTypeName(messageType);
 				cout << "\nServer (box 1) received message of type: " << messageTypeName << " from machine "
 					 << machineID << " mailbox " << mailbox << endl;
+
 
 				PacketHeader* outPacketHeader = new PacketHeader;
 				MailHeader* outMailHeader = new MailHeader;
@@ -913,7 +938,7 @@ void ServerToServerMessageHandler(){
 				case DO_YOU_HAVE_MV:{ //cases where other server is trying to perform SetMV, GetMV, or DestroyMV
 					int index = extractInt(inData + 5);
 					index = decodeIndex(index);
-					cout << "Server (box 0) testing MV of encoded index " << index << endl;
+					cout << "Server (box 1) testing MV of encoded index " << index << endl;
 					if(index > 0 && index < serverMVArraySize){
 						outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
 					}
@@ -984,8 +1009,8 @@ void ServerToServerMessageHandler(){
 						if(pendingCreates.at(i)->ID == pendingCreateID){
 							pc = pendingCreates.at(i);
 							pc->forwardWaitingClientMessagesToServer(packetHeader->from);
-							delete pendingCreates.at(i);
 							pendingCreates.erase(pendingCreates.begin() + i);
+
 							break;
 						}
 					}
@@ -997,28 +1022,38 @@ void ServerToServerMessageHandler(){
 				case DO_NOT_HAVE_MV_NAME:{
 					int id = extractInt(inData + 1);
 					PendingCreate* temp;
+					int tempIndex;
+					action = No_Action;
 					for(unsigned int i = 0; i < pendingCreates.size(); i++){
+						cout << "we're trying to find id of " << id << endl;
+						cout << " a pending create has an ID of " << pendingCreates.at(i)->ID << " and is named " << pendingCreates.at(i)->name << endl;
 						if(pendingCreates.at(i)->ID == id){
+
 							temp = pendingCreates.at(i);
+							cout << "updating response count for " << temp->name << endl;
 							temp->numResponses++;
 							temp->responseTracker[packetHeader->from] = true;
-							if(temp->numResponses == totalNumServers -1) pendingCreates.erase(pendingCreates.begin() + i);
+							if(temp->numResponses == totalNumServers -1) tempIndex = i;
 							break;
 						}
-					}
 
+					}
+					if(temp == NULL){
+						action = No_Action;
+						break;
+					}
 					if(temp->numResponses == totalNumServers - 1){
 
 						QueryStatus* temp2 = temp->waitingClients.front();
 						int index;
-						switch(temp2->type){
+						switch(temp->type){
 						case Lock:{
 
 							char* name = new char[temp2->data[1]];
 							strncpy(name, temp2->data + 2, temp2->data[1]);
 							index = encodeIndex(ServerCreateLock(name));
 							cout << "Server " << myMachineID << " (box 1) created a Lock named " << name << " of encoded index " << index << endl;
-							outData[0] = HAVE_LOCK;
+							outData[0] = HAVE_LOCK_NAME;
 							break;
 						}
 						case CV:{
@@ -1026,7 +1061,7 @@ void ServerToServerMessageHandler(){
 							strncpy(name, temp2->data + 2, temp2->data[1]);
 							index = encodeIndex(ServerCreateCV(name));
 							cout << "Server " << myMachineID << " (box 1) created a CV named " << name << " of encoded index " << index << endl;
-							outData[0] = HAVE_CV;
+							outData[0] = HAVE_CV_NAME;
 							break;
 						}
 						case MV:{
@@ -1036,7 +1071,7 @@ void ServerToServerMessageHandler(){
 							int val = extractInt(temp2->data + 5); //initial value should be in data[5:8]
 							index = encodeIndex(ServerCreateMV(name, numEntries, val)); //writes the index into the
 							cout << "Server " << myMachineID << " (box 1) created a MV named " << name << " of encoded index " << index << endl;
-							outData[0] = HAVE_MV;
+							outData[0] = HAVE_MV_NAME;
 							break;
 						}
 						default:
@@ -1052,8 +1087,7 @@ void ServerToServerMessageHandler(){
 						temp->messageBackClients();
 						action = No_Action;
 
-
-						delete temp;
+						pendingCreates.erase(pendingCreates.begin() + tempIndex);
 					}
 					break;
 				}
@@ -1092,13 +1126,14 @@ void ServerToServerMessageHandler(){
 						for(unsigned int i = 0; i < pendingCreates.size(); i++){
 							if(pendingCreates.at(i)->isAMatch(name, Lock)){
 								pendingCreates.at(i)->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
-
+								cout << "Server (box 1) adding lock to pending Create" << endl;
 								createNew = false;
 								action = No_Action;
 								break;
 							}
 						}
 						if(createNew){
+							cout << "Server (box 1) adding PendingCreate for Lock" << endl;
 							pendingCreates.push_back(new PendingCreate(name, Lock)); //so we can track responses from other servers and remember we are trying to create
 							compressInt(pendingCreates.back()->ID, outData + 1);
 							pendingCreates.back()->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
@@ -1126,6 +1161,7 @@ void ServerToServerMessageHandler(){
 						bool createNew = true;
 						for(unsigned int i = 0; i < pendingCreates.size(); i++){
 							if(pendingCreates.at(i)->isAMatch(name, CV)){
+								cout << "Server (box 1) adding CV to  pre-existing pending Create for " << name << endl;
 								pendingCreates.at(i)->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
 								createNew = false;
 								action = No_Action;
@@ -1133,6 +1169,8 @@ void ServerToServerMessageHandler(){
 							}
 						}
 						if(createNew){
+
+							cout << "Server (box 1) adding PendingCreate for CV" << endl;
 							pendingCreates.push_back(new PendingCreate(name, CV)); //so we can track responses from other servers and remember we are trying to create
 							pendingCreates.back()->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
 							compressInt(pendingCreates.back()->ID, outData + 1);
@@ -1186,7 +1224,8 @@ void ServerToServerMessageHandler(){
 				case RELEASE:
 				case DESTROY_LOCK:{
 					outData[0] = DO_YOU_HAVE_LOCK;
-					strncpy(outData + 5, inData + 1, 4);
+					compressInt(extractInt(inData + 1), outData + 5);
+					//strncpy(outData + 5, inData + 1, 4);
 					action = Query_All_Servers;
 					outMailHeader->length = 9;
 					break;
@@ -1198,7 +1237,8 @@ void ServerToServerMessageHandler(){
 				 */
 				case DESTROY_CV:{
 					outData[0] = DO_YOU_HAVE_CV;
-					strncpy(outData + 5, inData + 1, 4);
+					compressInt(extractInt(inData + 1), outData + 5);
+					//strncpy(outData + 5, inData + 1, 4);
 					action = Query_All_Servers;
 					outMailHeader->length = 9;
 					break;
@@ -1207,7 +1247,8 @@ void ServerToServerMessageHandler(){
 				case WAIT:
 				case BROADCAST:{
 					outData[0] = DO_YOU_HAVE_CV;
-					strncpy(outData + 5, inData + 5, 4);
+					compressInt(extractInt(inData + 1), outData + 5); // i had inData + 5, why?
+					//strncpy(outData + 5, inData + 5, 4);
 					action = Query_All_Servers;
 					outMailHeader->length = 9;
 					break;
@@ -1218,7 +1259,8 @@ void ServerToServerMessageHandler(){
 				case GET_MV:
 				case SET_MV:{
 					outData[0] = DO_YOU_HAVE_MV;
-					strncpy(outData + 5, inData + 1, 4);
+					compressInt(extractInt(inData + 1), outData + 5);
+					//strncpy(outData + 5, inData + 1, 4);
 					action = Query_All_Servers;
 					outMailHeader->length = 9;
 					break;
@@ -1308,23 +1350,24 @@ void ServerToServerMessageHandler(){
 						outMailHeader->from = mailHeader->to;
 						outMailHeader->to = mailHeader->from;
 						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to Server " << outPacketHeader->to << " box " << outMailHeader->to <<endl;
+						compressInt(extractInt(inData + 1), outData + 1);
 						//outMailHeaderSize should already be set
-						strncpy(outData + 1, inData + 1, 4); //copy message ID into response
+						//strncpy(outData + 1, inData + 1, 4); //copy message ID into response
+						cout << "out id " << extractInt(outData + 1);
 						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
 
 						break;
 				}
 				case Create_Query:{
 					//send message to all servers
-					cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s" << endl;
+					cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s in case Create_Query" << endl;
 					for(int i = 0; i < totalNumServers; i++){
 						if(i == myMachineID) continue;
-						outPacketHeader = new PacketHeader;
-						outMailHeader = new MailHeader;
 						outPacketHeader->from = myMachineID;
 						outPacketHeader->to = i;
 						outMailHeader->from = 1;
-						outMailHeader->to = mailHeader->from;
+						outMailHeader->to = 1;
+						cout << " id " << extractInt(outData + 1);
 						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
 
 					}
@@ -1338,9 +1381,11 @@ void ServerToServerMessageHandler(){
 						//grab and package a query id.  this will be so we can
 						//match responses from other servers with this query
 						compressInt(qs->id, outData + 1);
+						cout << " id of object being queried about is " << extractInt(inData + 1) << endl;
 						nextQueryID++;
-						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s" << endl;
+						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s in case Query_All_Servers" << endl;
 						//send message to all servers
+						queryQueue.push_back(qs);
 						for(int i = 0; i < totalNumServers; i++){
 							if(i == myMachineID) continue;
 							outPacketHeader = new PacketHeader;
@@ -1348,10 +1393,10 @@ void ServerToServerMessageHandler(){
 							outPacketHeader->from = myMachineID;
 							outPacketHeader->to = i;
 							outMailHeader->from = 1;
-							outMailHeader->to = mailHeader->from;
-							outMailHeader->length = 5;
+							outMailHeader->to = 1;
+							outMailHeader->length = 9;
 							bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
-							queryQueue.push_back(qs);
+
 						}
 						break;
 				}
