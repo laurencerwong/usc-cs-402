@@ -41,10 +41,10 @@ using namespace std;
 //takes buf[0:3] and makes an int, where 0 is the MSByte of the int
 int extractIntFromBytes(char *buf) {
     int a, b, c, d;
-    a = ((int)buf[0]) << 24 & 0xff000000;
-    b = ((int)buf[1]) << 16 & 0x00ff0000;
-    c = ((int)buf[2]) << 8 & 0x0000ff00;
-    d = ((int)buf[3]) << 0 & 0x000000ff;
+    a = (buf[0]) << 24 & 0xff000000;
+    b = (buf[1]) << 16 & 0x00ff0000;
+    c = (buf[2]) << 8 & 0x0000ff00;
+    d = (buf[3]) << 0 & 0x000000ff;
     return (a + b + c + d);
 }
 
@@ -302,9 +302,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 2 + length;
 	//cout << "mheader length " << mailHeader->length << endl;
@@ -364,9 +364,9 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 2 + length;
 
@@ -398,9 +398,9 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	MailHeader *mailHeader = new MailHeader;
 	char* data = new char[2 + length + 2 * sizeof(int)];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 10 + length;
 
@@ -465,9 +465,9 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
@@ -527,9 +527,9 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
@@ -598,9 +598,9 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
@@ -620,9 +620,9 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	data = new char[1 + sizeof(int)];
 	data[0] = ACQUIRE;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5; //server mailbox
 	success = postOffice->Send(*packetHeader, *mailHeader, data);
@@ -669,9 +669,9 @@ void DestroyLock_Syscall(int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
@@ -723,9 +723,9 @@ void DestroyCondition_Syscall(int conditionIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
@@ -746,9 +746,9 @@ void DestroyMV_Syscall( int index){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
@@ -764,9 +764,9 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 13;
 
@@ -789,9 +789,9 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
 
@@ -846,9 +846,9 @@ void Acquire_Syscall(int lockIndex){
 	PacketHeader *packetHeader = new PacketHeader;
 	MailHeader *mailHeader = new MailHeader;
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
@@ -904,9 +904,9 @@ void Release_Syscall(int lockIndex){
 	MailHeader *mailHeader = new MailHeader;
 	char* messageData = new char[MaxMailSize];
 
-	packetHeader->to = 0; //server myMachineID
+	packetHeader->to = pickServer(); //server myMachineID
 	packetHeader->from = myMachineID; //this instance's machine number
-	mailHeader->to = pickServer(); //server mailbox
+	mailHeader->to = 0; //server mailbox
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5;
 
