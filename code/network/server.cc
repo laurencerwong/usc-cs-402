@@ -722,6 +722,12 @@ string getMessageTypeName(char messageType){
 	case HAVE_MV_NAME:
 		messageTypeName = "I do have MV name";
 		break;
+	case DOES_CLIENT_HAVE_LOCK:
+		messageTypeName = "Does Client Have Lock";
+		break;
+	case CV_LOCK_TRACKER_RESPONSE:
+		messageTypeName = "CV Lock Tracker Response";
+		break;
 	default:
 		messageTypeName = "UNKNOWN";
 		cout << "Oops, no message type?" << endl;
@@ -2035,7 +2041,7 @@ void Server() {
 		default:
 		{
 			//oops...
-			cout << "Oops, no message type?" << endl;
+			printf("Received message with no type!  Type field was: %.2x\n", messageType);
 			respond = false;
 			break;
 		}
