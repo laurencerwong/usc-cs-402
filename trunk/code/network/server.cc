@@ -1656,7 +1656,7 @@ void Server() {
 			if(validLock) {
 				ClientRequest *cr = new ClientRequest(clientMID, clientMBX);
 				held = serverLockTable[lockIndex].lock->isHeldByRequester(cr);
-				delete cr;
+				//delete cr;
 			}
 
 			char *rData;
