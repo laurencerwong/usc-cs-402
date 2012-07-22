@@ -730,7 +730,7 @@ string getMessageTypeName(char messageType){
 		break;
 	default:
 		messageTypeName = "UNKNOWN";
-		cout << "Oops, no message type?" << endl;
+		printf("Get message type name got message with no type!  Type field was: %.2x\n", messageType);
 		break;
 	}
 	return messageTypeName;
