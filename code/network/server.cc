@@ -837,7 +837,7 @@ void ServerToServerMessageHandler(){
 				}*/
 
 				string messageTypeName = getMessageTypeName(messageType);
-				cout << "\nServer received message of type: " << messageTypeName << " from machine "
+				cout << "\nServer (box 1) received message of type: " << messageTypeName << " from machine "
 					 << machineID << " mailbox " << mailbox << endl;
 
 				PacketHeader* outPacketHeader = new PacketHeader;
@@ -1366,7 +1366,7 @@ void Server() {
 		string messageTypeName = getMessageTypeName(messageType);
 
 
-		cout << "\nServer received message of type: " << messageTypeName << " from machine "
+		cout << "\nServer (box 0) received message of type: " << messageTypeName << " from machine "
 				<< messageFromMachineID << " mailbox " << messageFromMailbox << endl;
 
 		int replyMachineID = messageFromMachineID;
@@ -1402,6 +1402,7 @@ void Server() {
 				}
 			}
 			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
+				printf("Server %d did not have lock %s\n", myMachineID, name);
 				if(totalNumServers == 1) {
 					response.data = ServerCreateLock(name);
 					necessaryResponses.push(response);
@@ -1507,6 +1508,7 @@ void Server() {
 				}
 			}
 			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
+				printf("Server %d did not have CV %s\n", myMachineID, name);
 				if(totalNumServers == 1) {
 					response.data = ServerCreateCV(name);
 					necessaryResponses.push(response);
@@ -1943,7 +1945,7 @@ void Server() {
 			int mvMachineID = decodeMachineIDFromMVNumber(mvToDestroyNum);
 
 			if(mvMachineID != myMachineID) {
-				printf("DESTROY_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it", mvToDestroyNum, myMachineID, mvMachineID);
+				printf("DESTROY_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it\n", mvToDestroyNum, myMachineID, mvMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
@@ -1961,7 +1963,7 @@ void Server() {
 			int mvMachineID = decodeMachineIDFromMVNumber(mvNum);
 
 			if(mvMachineID != myMachineID) {
-				printf("GET_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it", mvNum, myMachineID, mvMachineID);
+				printf("GET_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it\n", mvNum, myMachineID, mvMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
