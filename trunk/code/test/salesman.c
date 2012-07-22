@@ -12,14 +12,14 @@ void main(){
 	myIndex = GetMV(nextSalesmanIndex, 0);
 	SetMV(nextSalesmanIndex, 0, (GetMV(nextSalesmanIndex, 0) + 1));
 	myDept = GetMV(nextDepartmentIndex, 0);
-	NPrint("Salesman %d got department %d", sizeof("Salesman %d got department %d"),NEncode2to1(myIndex,myDept ) , 0);
+	NPrint("Salesman %d got department %d\n", sizeof("Salesman %d got department %d\n"),NEncode2to1(myIndex,myDept ) , 0);
 	if(GetMV(nextSalesmanIndex, 0) == NUM_SALESMEN){
 		SetMV(nextSalesmanIndex, 0, 0);
-		NPrint("Salesman %d reset the nextsalesmanindex to 0", sizeof("Salesman %d reset the nextsalesmanindex to 0"), myIndex, 0);
+		NPrint("Salesman %d reset the nextsalesmanindex to 0\n", sizeof("Salesman %d reset the nextsalesmanindex to 0\n"), myIndex, 0);
 		SetMV(nextDepartmentIndex, 0, GetMV(nextDepartmentIndex, 0) + 1);
-		NPrint("Salesman %d incremented the nextDepartmentIndex to %d", sizeof("Salesman %d incremented the nextDepartmentIndex to %d"),NEncode2to1(myIndex,GetMV(nextDepartmentIndex, 0) ) , 0);
+		NPrint("Salesman %d incremented the nextDepartmentIndex to %d\n", sizeof("Salesman %d incremented the nextDepartmentIndex to %d\n"),NEncode2to1(myIndex,GetMV(nextDepartmentIndex, 0) ) , 0);
 		if(GetMV(nextDepartmentIndex, 0) == NUM_DEPARTMENTS){
-		    NPrint("Salesman %d reset the nextDepartmentIndex to 0", sizeof("Salesman %d reset the nextDepartmentIndex to 0"), myIndex, 0);
+		    NPrint("Salesman %d reset the nextDepartmentIndex to 0\n", sizeof("Salesman %d reset the nextDepartmentIndex to 0\n"), myIndex, 0);
 			SetMV(nextDepartmentIndex, 0, 0);
 		}
 	}
