@@ -879,10 +879,13 @@ void ServerToServerMessageHandler(){
 				case DO_YOU_HAVE_MV:{ //cases where other server is trying to perform SetMV, GetMV, or DestroyMV
 					int index = extractInt(inData + 5);
 					index = decodeIndex(index);
+					cout << "Server (box 0) testing MV of encoded index " << index;
 					if(index > 0 && index < serverMVArraySize){
 						outData[0] = (serverMVMap->Test(index)) ? HAVE_MV : DO_NOT_HAVE_MV;
 					}
-					else outData[0] = DO_NOT_HAVE_MV;
+					else{
+						outData[0] = DO_NOT_HAVE_MV;
+					}
 					action = Respond_Once_To_Server;
 					outMailHeader->length = 5;
 					break;
@@ -1249,6 +1252,7 @@ void ServerToServerMessageHandler(){
 				switch(action){
 				case Respond_Once_To_Client:{
 						//everything is pre packaged
+						cout << "Server " << myMachineID " (box 1) found object already created and is messaging back client " << packetHeader->from << "-" << mailHeader->from << endl;
 						outPacketHeader->to = packetHeader->from;
 						outPacketHeader->from = myMachineID;
 						outMailHeader->to = mailHeader->from;
@@ -1265,6 +1269,7 @@ void ServerToServerMessageHandler(){
 						outPacketHeader->to = packetHeader->from;
 						outMailHeader->from = mailHeader->to;
 						outMailHeader->to = mailHeader->from;
+						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeString(outData[0]) << " to Server " << outPacketHeader->to << " box " << outMailHeader->to <<endl;
 						//outMailHeaderSize should already be set
 						strncpy(outData + 1, inData + 1, 4); //copy message ID into response
 						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
@@ -1273,6 +1278,7 @@ void ServerToServerMessageHandler(){
 				}
 				case Create_Query:{
 					//send message to all servers
+					cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeString(outData[0]) << " to all server box 1s" << endl;
 					for(int i = 0; i < totalNumServers; i++){
 						if(i == myMachineID) continue;
 						outPacketHeader = new PacketHeader;
@@ -1295,7 +1301,7 @@ void ServerToServerMessageHandler(){
 						//match responses from other servers with this query
 						compressInt(qs->id, outData + 1);
 						nextQueryID++;
-
+						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeString(outData[0]) << " to all server box 1s" << endl;
 						//send message to all servers
 						for(int i = 0; i < totalNumServers; i++){
 							if(i == myMachineID) continue;
