@@ -316,7 +316,9 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 	char messageData[MaxMailSize];
 	//wait for index, sent in message back from server
 
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while(mailHeader->from == 2);
 
 	//parse int, as it will come in char form
 	return extractIntFromBytes(messageData + 0);
@@ -374,7 +376,9 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 	char messageData[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData); //wait for response from server (should be an index)
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while(mailHeader->from == 2);
 
 
 
@@ -405,7 +409,9 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while(mailHeader->from == 2);
 	//((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3])
 	return extractIntFromBytes(messageData + 0);
 }
@@ -467,7 +473,9 @@ void Signal_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(conditionIndex, data + 1);
 	compressIntFromBytes(lockIndex, data + 5);
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	//don't need to wait for a response
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while(mailHeader->from == 2);
 #endif
 }
 
@@ -528,6 +536,9 @@ void Broadcast_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
 	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while(mailHeader->from == 2);
 #endif
 }
 
@@ -597,7 +608,9 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	} while(mailHeader->from == 2);
 	delete data;
 
 	//pack message for an Acquire.  need to reacquire lock before  user program gets control
@@ -610,7 +623,9 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	mailHeader->from =currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 5; //server mailbox
 	success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	} while(mailHeader->from == 2);
 #endif
 }
 
@@ -662,6 +677,9 @@ void DestroyLock_Syscall(int lockIndex){
 	data[0] = DESTROY_LOCK;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while(mailHeader->from == 2);
 	//don't need to wait for response
 #endif
 }
@@ -713,7 +731,9 @@ void DestroyCondition_Syscall(int conditionIndex){
 	data[0] = DESTROY_CV;
 	compressIntFromBytes(conditionIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	//don't need to wait for response
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while(mailHeader->from == 2);
 #endif
 }
 
@@ -754,7 +774,9 @@ void SetMV_Syscall(int arrIndex, int indexInArray, int value ){
 	compressIntFromBytes(value, data + 9);
 	cout << currentThread->getName() << " is sending setMV call to server for MV " << arrIndex << " entry " << indexInArray << " value " << value << endl;
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while(mailHeader->from == 2);
 }
 #endif
 
@@ -778,7 +800,9 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* messageData = new char[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, messageData);
+	} while(mailHeader->from == 2);
 	//cout << "received mv, value: " << extractIntFromBytes(messageData) << endl;
 	return extractIntFromBytes(messageData);
 }
@@ -834,7 +858,9 @@ void Acquire_Syscall(int lockIndex){
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
 
 	char* buff = new char[MaxMailSize];
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff); //must get response for user program to continue
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	} while(mailHeader->from == 2);
 #endif
 }
 
@@ -886,6 +912,9 @@ void Release_Syscall(int lockIndex){
 	data[0] = RELEASE;
 	compressIntFromBytes(lockIndex, data + 1); //copy into data[1:4]
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, data);
+	} while(mailHeader->from == 2);
 	//don't need to wait for response
 #endif
 }
