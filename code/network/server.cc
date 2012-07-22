@@ -1349,59 +1349,7 @@ void Server() {
 			cout << messageData[i] << endl;
 		}*/
 
-		string messageTypeName;
-
-		switch(messageType) {	//first byte is the message type
-		case CREATE_LOCK:	//data[1] = nameLength, data[2:2+nameLength] = name
-			messageTypeName = "Create Lock";
-			break;
-		case DESTROY_LOCK:
-			messageTypeName = "Destroy Lock";
-			break;
-		case ACQUIRE:
-			messageTypeName = "Acquire";
-			break;
-		case RELEASE:
-			messageTypeName = "Release";
-			break;
-		case CREATE_CV:
-			messageTypeName = "Create CV";
-			break;
-		case DESTROY_CV:
-			messageTypeName = "Destroy CV";
-			break;
-			/*case DOES_CLIENT_HAVE_LOCK:
-			messageTypeName = "Does Client Have Lock";
-			break;*/
-		case CV_LOCK_TRACKER_RESPONSE:
-			messageTypeName = "CV Lock Tracker Response";
-			break;
-		case SIGNAL:
-			messageTypeName = "Signal";
-			break;
-		case WAIT:
-			messageTypeName = "Wait";
-			break;
-		case BROADCAST:
-			messageTypeName = "Broadcast";
-			break;
-		case CREATE_MV:
-			messageTypeName = "Create MV";
-			break;
-		case DESTROY_MV:
-			messageTypeName = "Destroy MV";
-			break;
-		case GET_MV:
-			messageTypeName = "Get MV";
-			break;
-		case SET_MV:
-			messageTypeName = "Set MV";
-			break;
-		default:
-			messageTypeName = "UNKNOWN";
-			cout << "Oops, no message type?" << endl;
-			break;
-		}
+		string messageTypeName = getMessageTypeName(messageType);
 
 
 		cout << "\nServer received message of type: " << messageTypeName << " from machine "
