@@ -1926,14 +1926,16 @@ void Server() {
 		case DESTROY_MV:
 		{
 			int mvToDestroyNum = extractInt(messageData + 1);
-			int mvToDestroy = decodeIndex(mvToDestroyNum);
 			int mvMachineID = decodeMachineIDFromMVNumber(mvToDestroyNum);
 
 			if(mvMachineID != myMachineID) {
+				printf("DESTROY_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it", mvToDestroyNum, myMachineID, mvMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
 			}
+
+			int mvToDestroy = decodeIndex(mvToDestroyNum);
 
 			ServerDestroyMV(mvToDestroy);
 			break;
@@ -1941,15 +1943,17 @@ void Server() {
 		case GET_MV:
 		{
 			int mvNum = extractInt(messageData + 1);
-			int mvIndex = decodeIndex(mvNum);
 			//int mvIndex = mvNum;
 			int mvMachineID = decodeMachineIDFromMVNumber(mvNum);
 
 			if(mvMachineID != myMachineID) {
+				printf("GET_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it", mvNum, myMachineID, mvMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
 			}
+
+			int mvIndex = decodeIndex(mvNum);
 
 			int entryIndex = extractInt(messageData + 5);
 			response.data = ServerGetMV(mvIndex, entryIndex);
@@ -1960,15 +1964,17 @@ void Server() {
 		case SET_MV:
 		{
 			int mvNum = extractInt(messageData + 1);
-			int mvIndex = decodeIndex(mvNum);
 
 			int mvMachineID = decodeMachineIDFromMVNumber(mvNum);
 			//cout << "server got a setMV message thinking mv should be on machine " << mvMachineID << endl;
 			if(mvMachineID != myMachineID) {
+				printf("SET_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it", mvNum, myMachineID, mvMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
 			}
+
+			int mvIndex = decodeIndex(mvNum);
 
 			necessaryResponses.push(response);
 			respond = true;
