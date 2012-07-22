@@ -56,7 +56,7 @@ void main(){
 		/* I will get around to it */
 		if(counter % 10 == 0){
 			/* 	cout << customersDone << endl; */
-			/*if(testNumber != 5 && testNumber != 6 && testNumber != 10) cout <<"-------Total Sale of the entire store until now is $" << totalRevenue <<"---------" << endl;*/
+			NPrint("-------Total Sale of the entire store until now is $%d---------\n", sizeof("-------Total Sale of the entire store until now is $%d---------\n"), totalRevenue, 0);
 		}
 
 		Acquire(cashierLinesLock);
