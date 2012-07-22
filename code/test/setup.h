@@ -125,7 +125,6 @@ int loaderIndexLock;
 int cashierFlags;
 int managerItems[NUM_DEPARTMENTS];
 int managerDesk;
-int cashierTotals;
 int numSalesmenOnBreak;
 int customersDone;
 int numCashiersOnBreak;

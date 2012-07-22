@@ -43,7 +43,6 @@ void initManagerArrays(){
 	managerItemsLock = CreateLock("mItemsLock", sizeof("mItemsLock"));
 	
 	/*MVs*/
-	cashierTotals = CreateMV("cTotals", sizeof("cTotals"), NUM_CASHIERS, 0); /*MV 0*/
 	cashierFlags = CreateMV("cFlags", sizeof("cFlags"), NUM_CASHIERS, -1);/*MV 1*/
 	numSalesmenOnBreak = CreateMV("numSOnBreak", sizeof("numSOnBreak"), NUM_DEPARTMENTS, 0);/*MV 2*/
 	numCashiersOnBreak = CreateMV("numCashOnBreak", sizeof("numCashOnBreak"), 1, 0);/*MV 3*/
