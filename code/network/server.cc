@@ -1961,7 +1961,7 @@ void Server() {
 			}
 			if(!alreadyHad) {	//inform my server-server thread to handle creating the object
 				if(totalNumServers == 1) {
-					response.data = ServerCreateMV(name, numEntries, initialValue);
+					response.data = encodeIndex(ServerCreateMV(name, numEntries, initialValue));
 					necessaryResponses.push(response);
 					respond = true;
 				}
