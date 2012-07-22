@@ -1728,6 +1728,10 @@ void Server() {
 						necessaryResponses.push(response);
 						respond = true;
 					}
+					response.toMachine = messageFromMachineID;
+					response.toMailbox = messageFromMailbox;
+					necessaryResponses.push(response);
+					respond = true;
 					delete temp;
 				}
 				else {	//I don't have the CV, send it to server-server thread
