@@ -377,7 +377,7 @@ ClientRequest* ServerSignal(int machineID, int mailbox, int conditionIndex, int 
 	}
 
 	//validation done, ok to perform operation
-	printf("Server %d Signalling ServerCondition %d: %s with lock %d: %s\n", myMachineID, conditionIndex, serverConditionTable[conditionIndex].condition->getName(), lockNum);
+	printf("Server %d Signalling ServerCondition %d: %s with lock %d\n", myMachineID, conditionIndex, serverConditionTable[conditionIndex].condition->getName(), lockNum);
 	return serverConditionTable[conditionIndex].condition->Signal(lockNum, new ClientRequest(machineID, mailbox));
 }
 
