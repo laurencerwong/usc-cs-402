@@ -1866,7 +1866,7 @@ void Server() {
 				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
 				if(cvOwnerMachineID == myMachineID) {	//If I also own the CV, do normal operation
 					int cvIndex = decodeIndex(cvNum);
-					serverLockTable[lockIndex].lock->Release(new ClientRequest(messageFromMachineID, messageFromMailbox));
+					ServerRelease(messageFromMachineID, messageFromMailbox, lockIndex);
 					ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
 				}
 				else {	//I don't have the CV, send it to server-server thread
