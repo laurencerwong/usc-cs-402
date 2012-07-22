@@ -979,6 +979,7 @@ void ServerToServerMessageHandler(){
 						int index;
 						switch(temp2->type){
 						case Lock:{
+
 							char* name = new char[temp2->data[1]];
 							strncpy(name, temp2->data + 2, temp2->data[1]);
 							index = encodeIndex(ServerCreateLock(name));
@@ -1278,7 +1279,7 @@ void ServerToServerMessageHandler(){
 				}
 				case Create_Query:{
 					//send message to all servers
-					cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeString(outData[0]) << " to all server box 1s" << endl;
+					cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s" << endl;
 					for(int i = 0; i < totalNumServers; i++){
 						if(i == myMachineID) continue;
 						outPacketHeader = new PacketHeader;
@@ -1301,7 +1302,7 @@ void ServerToServerMessageHandler(){
 						//match responses from other servers with this query
 						compressInt(qs->id, outData + 1);
 						nextQueryID++;
-						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeString(outData[0]) << " to all server box 1s" << endl;
+						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to all server box 1s" << endl;
 						//send message to all servers
 						for(int i = 0; i < totalNumServers; i++){
 							if(i == myMachineID) continue;
