@@ -34,6 +34,7 @@
 #define DO_YOU_HAVE_MV_NAME 'y'
 #define DOES_CLIENT_HAVE_LOCK 'z'
 #define CV_LOCK_TRACKER_RESPONSE 'A'
+#define NO_ACTION 0xff
 
 
 

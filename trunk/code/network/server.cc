@@ -116,8 +116,8 @@ queue<ServerResponse> necessaryResponses;
 struct CVLockTracker {
 	int clientMachineID;
 	int clientMailbox;
-	int cvIndex;
-	int lockIndex;
+	int cvNum;
+	int lockNum;
 	char messageType;
 };
 
@@ -260,6 +260,7 @@ void ServerDestroyLock(int lockIndex) {
 	}
 	//validation done, ok to perform operation
 	if(!(serverLockTable[lockIndex].lock->isBusy() && serverLockTable[lockIndex].acquireCount == 0)){ //delete now if no one has called an Acquire syscall without a Release syscall
+		printf("Server %d Destroying ServerLock %d: %s\n", myMachineID, lockIndex, serverLockTable[lockIndex].lock->getName());
 		delete serverLockTable[lockIndex].lock;
 		serverLockMap->Clear(lockIndex);
 	}
@@ -279,6 +280,7 @@ ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex) {
 	}
 
 	//validation done, ok to perform operation
+	printf("Server %d Acquiring ServerLock %d: %s\n", myMachineID, lockIndex, serverLockTable[lockIndex].lock->getName());
 	serverLockTable[lockIndex].acquireCount++; //marks this lock as being held by a user thread, protects lock from deletion til same thread call Release syscall
 	return serverLockTable[lockIndex].lock->Acquire(new ClientRequest(machineID, mailbox));
 }
@@ -295,6 +297,7 @@ ClientRequest* ServerRelease(int machineID, int mailbox, int lockIndex) {
 	}
 
 	//validation done, ok to perform operation
+	printf("Server %d Releasing ServerLock %d: %s\n", myMachineID, lockIndex, serverLockTable[lockIndex].lock->getName());
 	serverLockTable[lockIndex].acquireCount--; //decrease count since currentThread no longer depends on lock
 	ClientRequest* rv =  serverLockTable[lockIndex].lock->Release(new ClientRequest(machineID, mailbox));
 	if(serverLockTable[lockIndex].isToBeDeleted && serverLockTable[lockIndex].acquireCount == 0){ //check if needs to be deleted, delete if no one is waiting
@@ -359,25 +362,26 @@ void ServerDestroyCV(int conditionIndex) {
 	}
 }
 
-ClientRequest* ServerSignal(int machineID, int mailbox, int conditionIndex, int lockIndex){
-	if(conditionIndex < 0 || decodeIndex(conditionIndex) > serverConditionArraySize -1){ //array index is out of bounds
+ClientRequest* ServerSignal(int machineID, int mailbox, int conditionIndex, int lockNum){
+	if(conditionIndex < 0 || conditionIndex > serverConditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		return NULL;
 	}
-	if(!serverConditionMap->Test(decodeIndex(conditionIndex))){ //condition has not been instantiated at this index
+	if(!serverConditionMap->Test(conditionIndex)){ //condition has not been instantiated at this index
 		printf("Thread %s called Signal on a condition that does not exist: %d\n", currentThread->getName(), conditionIndex);
 		return NULL;
 	}
-	if(lockIndex < 0 ){ //array index is out of bounds
-		printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockIndex);
+	if(lockNum < 0 ){ //array index is out of bounds
+		printf("Thread %s called Signal with an invalid lock number %d\n", currentThread->getName(), lockNum);
 		return NULL;
 	}
 
 	//validation done, ok to perform operation
-	return serverConditionTable[conditionIndex].condition->Signal(lockIndex, new ClientRequest(machineID, mailbox));
+	printf("Server %d Signalling ServerCondition %d: %s with lock %d: %s\n", myMachineID, conditionIndex, serverConditionTable[conditionIndex].condition->getName(), lockNum);
+	return serverConditionTable[conditionIndex].condition->Signal(lockNum, new ClientRequest(machineID, mailbox));
 }
 
-void ServerWait(int machineID, int mailbox, int conditionIndex, int lockIndex){
+void ServerWait(int machineID, int mailbox, int conditionIndex, int lockNum){
 
 	if(conditionIndex < 0){ //array index is out of bounds
 		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
@@ -390,7 +394,7 @@ void ServerWait(int machineID, int mailbox, int conditionIndex, int lockIndex){
 
 
 	//validation done, ok to perform operation
-	serverConditionTable[conditionIndex].condition->Wait(lockIndex, new ClientRequest(machineID, mailbox));
+	serverConditionTable[conditionIndex].condition->Wait(lockNum, new ClientRequest(machineID, mailbox));
 	//need to check if the condition has been marked for deletion.  if it has,
 	//okay to delete if no one is currently in the condition's queue (this is an atomic operation, so no thread is in the middle of calling wait right now either)
 	if(serverConditionTable[conditionIndex].isToBeDeleted){
@@ -1203,6 +1207,7 @@ void Server() {
 				respond = true;
 			}
 			else if(temp->respond){
+				necessaryResponses.push(response);	//hacky way of responding to two people without having to create an additional ServerResponse object
 				response.toMachine = temp->machineID;
 				response.toMailbox = temp->mailboxNumber;
 				necessaryResponses.push(response);
@@ -1267,7 +1272,8 @@ void Server() {
 		{
 			int clientMID = extractInt(messageData + 1);
 			int clientMBX = extractInt(messageData + 5);
-			int lockIndex = extractInt(messageData + 9);
+			int lockNum = extractInt(messageData + 9);
+			int lockIndex = decodeIndex(lockNum);
 			bool held = false;
 			bool validLock = true;
 
@@ -1320,8 +1326,8 @@ void Server() {
 			for(unsigned int i = 0; i < cvLockTrackerList.size(); i++) {
 				if( cvLockTrackerList.at(i).clientMachineID == clientMID &&
 						cvLockTrackerList.at(i).clientMailbox == clientMBX &&
-						cvLockTrackerList.at(i).lockIndex == lockNum) {
-					cvNum = cvLockTrackerList.at(i).cvIndex;
+						cvLockTrackerList.at(i).lockNum == lockIndex) {
+					cvNum = cvLockTrackerList.at(i).cvNum;
 					operation = cvLockTrackerList.at(i).messageType;
 					cvltListEntry = i;
 					break;
@@ -1335,9 +1341,9 @@ void Server() {
 			}
 
 			if(messageData[13] == FALSE) {	//if lock was not owned by this client
-				necessaryResponses.push(response);
+				necessaryResponses.push(response);	//TODO, need to send to client maybe instead of guy who sent me CVLT resp?
 				respond = true;
-				printf("Client %d - %d called %s on CV %d with lock that it does not have (lock %d)\n", clientMID, clientMBX, getMessageTypeName(operation).c_str(), cvNum, lockNum);
+				printf("Client %d - %d called %s on CV %d with lock that it does not have (lock num %d)\n", clientMID, clientMBX, getMessageTypeName(operation).c_str(), cvNum, lockNum);
 			}
 			else {
 				//yes, he had it, now proceed.  do we have the CV?
@@ -1345,61 +1351,40 @@ void Server() {
 				if(decodeMachineIDFromCVNumber(cvNum) == myMachineID) {
 
 					if(operation == SIGNAL) {
-						if(lockNum < 0 || lockNum > serverLockArraySize -1){ //array index is out of bounds
-							printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockNum);
-							necessaryResponses.push(response);
-							respond = true;
-							return;
-						}
-						if(!serverLockMap->Test(lockNum)){ //lock has not been instantiated at this index
-							printf("Thread %s called Signal on a lock that does not exist: %d\n", currentThread->getName(), lockNum);
-							necessaryResponses.push(response);
-							respond = true;
-							return;
-						}
 
-						ClientRequest *temp = ServerSignal(clientMID, clientMBX, cvNum, lockNum);
+						ClientRequest *temp = ServerSignal(clientMID, clientMBX, decodeIndex(cvNum), lockNum);
 						if(temp == NULL) {
-							respond = false;
+							//respond = false;
 						}
 						else if(temp->respond){
-							response.toMachine = clientMID;	//TODO **done?**, these will be from the server now, so we have to get CVLT data instead
-							response.toMailbox = clientMBX;
+							response.toMachine = temp->machineID;	//TODO **done?**, these will be from the server now, so we have to get CVLT data instead
+							response.toMailbox = temp->mailboxNumber;
 							necessaryResponses.push(response);
 							respond = true;
 						}
+
+						response.toMachine = clientMID;	//respond to guy who sent signal
+						response.toMailbox = clientMBX;
+						necessaryResponses.push(response);
+						respond = true;
+
 						//delete temp;	//TODO commented out for safety?
 					}
 					else if(operation == WAIT) {
-						if(lockNum < 0 || lockNum > serverLockArraySize -1){ //array index is out of bounds
-							printf("Thread %s called Wait with an invalid lock index %d\n", currentThread->getName(), lockNum);
-							necessaryResponses.push(response);
-							respond = true;
-							return;
-						}
-						if(!serverLockMap->Test(lockNum)){ //lock has not been instantiated at this index
-							printf("Thread %s called Wait on a lock that does not exist: %d\n", currentThread->getName(), lockNum);
-							necessaryResponses.push(response);
-							respond = true;
-							return;
-						}
-						ServerWait(clientMID, clientMBX, cvNum, lockNum);
+						ServerWait(clientMID, clientMBX, decodeIndex(cvNum), lockNum);
+						//TODO release lock
+
+						char *releaseData = new char[5];
+						releaseData[0] = RELEASE;
+						compressInt(lockNum, releaseData + 1);
+						sendMessageWithData(myMachineID, 0, decodeMachineIDFromLockNumber(lockNum), 0, 5, releaseData);
+
+						respond = false;
 					}
 					else if(operation == BROADCAST) {
-						if(lockNum < 0 || lockNum > serverLockArraySize -1){ //array index is out of bounds
-							printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockNum);
-							necessaryResponses.push(response);
-							respond = true;
-							return;
-						}
-						if(!serverLockMap->Test(lockNum)){ //lock has not been instantiated at this index
-							printf("Thread %s called Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockNum);
-							necessaryResponses.push(response);
-							respond = true;
-							return;
-						}
-
-						ServerBroadcast(messageFromMachineID, messageFromMailbox, cvNum, lockNum);	//adding responses to the queue is handled in broadcast
+						ServerBroadcast(messageFromMachineID, messageFromMailbox, decodeIndex(cvNum), lockNum);	//adding responses to the queue is handled in broadcast
+						response.toMachine = clientMID;
+						response.toMailbox = clientMBX;
 						necessaryResponses.push(response);
 						respond = true;
 					}
@@ -1422,18 +1407,19 @@ void Server() {
 
 		case SIGNAL:
 		{
-			int cvIndex = extractInt(messageData + 1);
-			int lockIndex = extractInt(messageData + 5);
-			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockIndex);	//get machine who has the lock
+			int cvNum = extractInt(messageData + 1);
+			int lockNum = extractInt(messageData + 5);
+			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockNum);	//get machine who has the lock
 
 			if(lockOwnerMachineID < 0 || lockOwnerMachineID > totalNumServers) {
-				cout << "Invalid lock " << lockIndex << " passed to SIGNAL, cannot decode lock owner" << endl;
+				cout << "Invalid lock " << lockNum << " passed to SIGNAL, cannot decode lock owner" << endl;
 				necessaryResponses.push(response);
 				respond = true;
 			}
 
 			if(lockOwnerMachineID == myMachineID) {	//if i am the owner of the lock
 				//proceed as normal
+				int lockIndex = decodeIndex(lockNum);
 
 				if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 					printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockIndex);
@@ -1448,20 +1434,31 @@ void Server() {
 					return;
 				}
 
-				ClientRequest *temp = ServerSignal(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
-				if(temp == NULL) {
+				//verify who owns the CV
+				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
+
+				if(cvOwnerMachineID == myMachineID) {	//If I also own the CV, do normal operation
+					int cvIndex = decodeIndex(cvNum);
+
+					ClientRequest *temp = ServerSignal(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
+					if(temp == NULL) {
+						respond = false;
+					}
+					else if(temp->respond){
+						response.toMachine = temp->machineID;
+						response.toMailbox = temp->mailboxNumber;
+						necessaryResponses.push(response);
+						respond = true;
+					}
+					delete temp;
+				}
+				else {	//I don't have the CV, send it to server-server thread
+					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 					respond = false;
 				}
-				else if(temp->respond){
-					response.toMachine = temp->machineID;
-					response.toMailbox = temp->mailboxNumber;
-					necessaryResponses.push(response);
-					respond = true;
-				}
-				//delete temp;	//TODO deleted for safety?
 			}
 			else {
-				//some other server has it, do messaging and CVLT
+				//some other server has the lock, do messaging and CVLT
 				int lockOwnerMailbox = 0;	//we know that in this case, we have to send to mailbox 0
 				char *queryData;
 				int queryDataLength = 13;
@@ -1470,12 +1467,12 @@ void Server() {
 				queryData[0] = DOES_CLIENT_HAVE_LOCK;
 				compressInt(lockOwnerMachineID, queryData + 1);
 				compressInt(lockOwnerMailbox, queryData + 5);
-				compressInt(lockIndex, queryData + 9);
+				compressInt(lockNum, queryData + 9);
 
 				CVLockTracker cvlt;
 				cvlt.messageType = messageType;
-				cvlt.cvIndex = cvIndex;
-				cvlt.lockIndex = lockIndex;
+				cvlt.cvNum = cvNum;
+				cvlt.lockNum = lockNum;
 				cvlt.clientMachineID = messageFromMachineID;
 				cvlt.clientMailbox = messageFromMailbox;
 				cvLockTrackerList.push_back(cvlt);
@@ -1490,19 +1487,19 @@ void Server() {
 		case BROADCAST:
 		{
 
-			int cvIndex = extractInt(messageData + 1);
-			int lockIndex = extractInt(messageData + 5);
-			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockIndex);	//get machine who has the lock
+			int cvNum = extractInt(messageData + 1);
+			int lockNum = extractInt(messageData + 5);
+			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockNum);	//get machine who has the lock
 
 			if(lockOwnerMachineID < 0 || lockOwnerMachineID > totalNumServers) {
-				cout << "Invalid lock " << lockIndex << " passed to BROADCAST, cannot decode lock owner" << endl;
+				cout << "Invalid lock " << lockNum << " passed to BROADCAST, cannot decode lock owner" << endl;
 				necessaryResponses.push(response);
 				respond = true;
 			}
 
 			if(lockOwnerMachineID == myMachineID) {	//if i am the owner of the lock
 				//proceed as normal
-
+				int lockIndex = decodeIndex(lockNum);
 				if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 					printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 					necessaryResponses.push(response);
@@ -1516,9 +1513,18 @@ void Server() {
 					return;
 				}
 
-				ServerBroadcast(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);	//adding responses to the queue is handled in broadcast
-				necessaryResponses.push(response);
-				respond = true;
+				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
+				if(cvOwnerMachineID == myMachineID) {	//If I also own the CV, do normal operation
+					int cvIndex = decodeIndex(cvNum);
+					ServerBroadcast(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);	//adding responses to the queue is handled in broadcast
+					necessaryResponses.push(response);
+					respond = true;
+				}
+				else {	//I don't have the CV, send it to server-server thread
+					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+					respond = false;
+				}
+
 			}
 			else {
 				//some other server has it, do messaging and CVLT
@@ -1530,12 +1536,12 @@ void Server() {
 				queryData[0] = DOES_CLIENT_HAVE_LOCK;
 				compressInt(lockOwnerMachineID, queryData + 1);
 				compressInt(lockOwnerMailbox, queryData + 5);
-				compressInt(lockIndex, queryData + 9);
+				compressInt(lockNum, queryData + 9);
 
 				CVLockTracker cvlt;
 				cvlt.messageType = messageType;
-				cvlt.cvIndex = cvIndex;
-				cvlt.lockIndex = lockIndex;
+				cvlt.cvNum = cvNum;
+				cvlt.lockNum = lockNum;
 				cvlt.clientMachineID = messageFromMachineID;
 				cvlt.clientMailbox = messageFromMailbox;
 				cvLockTrackerList.push_back(cvlt);
@@ -1549,18 +1555,19 @@ void Server() {
 		}
 		case WAIT:
 		{
-			int cvIndex = extractInt(messageData + 1);
-			int lockIndex = extractInt(messageData + 5);
-			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockIndex);	//get machine who has the lock
+			int cvNum = extractInt(messageData + 1);
+			int lockNum = extractInt(messageData + 5);
+			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockNum);	//get machine who has the lock
 
 			if(lockOwnerMachineID < 0 || lockOwnerMachineID > totalNumServers) {
-				cout << "Invalid lock " << lockIndex << " passed to WAIT, cannot decode lock owner" << endl;
+				cout << "Invalid lock " << lockNum << " passed to WAIT, cannot decode lock owner" << endl;
 				necessaryResponses.push(response);
 				respond = true;
 			}
 
 			if(lockOwnerMachineID == myMachineID) {	//if i am the owner of the lock
 				//proceed as normal
+				int lockIndex = decodeIndex(lockNum);
 
 				if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 					printf("Thread %s called Wait with an invalid lock index %d\n", currentThread->getName(), lockIndex);
@@ -1573,24 +1580,33 @@ void Server() {
 					return;
 				}
 
-				serverLockTable[decodeIndex(lockIndex)].lock->Release(new ClientRequest(messageFromMachineID, messageFromMailbox));
 
-				ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
+				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
+				if(cvOwnerMachineID == myMachineID) {	//If I also own the CV, do normal operation
+					int cvIndex = decodeIndex(cvNum);
+					serverLockTable[lockIndex].lock->Release(new ClientRequest(messageFromMachineID, messageFromMailbox));
+					ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
+				}
+				else {	//I don't have the CV, send it to server-server thread
+					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
+					respond = false;
+				}
 			}
-			else {
+			else {	//I am not the owner of the lock
 				int lockOwnerMailbox = 0;	//we know that in this case, we have to send to mailbox 0
 				char *queryData;
-				int queryDataLength = 0;
-
-				queryDataLength = 5;
+				int queryDataLength = 13;
 				queryData = new char[queryDataLength];
-				queryData[0] = RELEASE;
-				compressInt(lockIndex, queryData + 1);
+
+				queryData[0] = DOES_CLIENT_HAVE_LOCK;
+				compressInt(lockOwnerMachineID, queryData + 1);
+				compressInt(lockOwnerMailbox, queryData + 5);
+				compressInt(lockNum, queryData + 9);
 
 				CVLockTracker cvlt;
 				cvlt.messageType = messageType;
-				cvlt.cvIndex = cvIndex;
-				cvlt.lockIndex = lockIndex;
+				cvlt.cvNum = cvNum;
+				cvlt.lockNum = lockNum;
 				cvlt.clientMachineID = messageFromMachineID;
 				cvlt.clientMailbox = messageFromMailbox;
 				cvLockTrackerList.push_back(cvlt);
@@ -1693,10 +1709,17 @@ void Server() {
 			ServerSetMV(mvIndex, entryIndex, value);
 			break;
 		}
+		case NO_ACTION:
+		{
+			cout << "Received message response, no action necessary" << endl;
+			respond = false;
+			break;
+		}
 		default:
 		{
 			//oops...
-			cout << "Opps, no message type?" << endl;
+			cout << "Oops, no message type?" << endl;
+			respond = false;
 			break;
 		}
 
