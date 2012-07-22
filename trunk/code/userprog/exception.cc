@@ -600,7 +600,9 @@ void Wait_Syscall(int conditionIndex, int lockIndex){
 	compressIntFromBytes(lockIndex, data + 5); //copy into data[5:8]
 	//send Wait messaage
 	bool success = postOffice->Send(*packetHeader, *mailHeader, data);
-	postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	do{
+		postOffice->Receive(currentThread->mailboxNum, packetHeader, mailHeader, buff);
+	}
 	delete data;
 
 	//pack message for an Acquire.  need to reacquire lock before  user program gets control
