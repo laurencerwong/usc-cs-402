@@ -730,6 +730,9 @@ string getMessageTypeName(char messageType){
 	case CV_LOCK_TRACKER_RESPONSE:
 		messageTypeName = "CV Lock Tracker Response";
 		break;
+	case NO_ACTION:
+		messageTypeName = "No action";
+		break;
 	default:
 		messageTypeName = "UNKNOWN";
 		printf("Get message type name got message with no type!  Type field was: %.2x\n", messageType);
