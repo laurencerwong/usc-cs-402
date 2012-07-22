@@ -123,13 +123,15 @@ public:
 	/**Call this if we had a pending create and this server ended up making the item in question.
 	 *
 	 */
-	void messageBackClients(){
+	void messageBackClients(int encodedIndex){
 		for(unsigned int i = 0; i < waitingClients.size(); i++){
 			QueryStatus* temp = waitingClients.at(i);
 			temp->packetHeader->to = temp->packetHeader->from;
 			temp->mailHeader->to = temp->mailHeader->from;
 			temp->packetHeader->from = myMachineID;
 			temp->mailHeader->from = 1;
+			compressInt(encodedIndex, temp->data);
+			temp->mailHeader->length = 4;
 			postOffice->Send(*(temp->packetHeader), *(temp->mailHeader), temp->data);
 			//delete temp;
 		}
@@ -877,6 +879,10 @@ void LockWatcher(){
 	}
 }
 void ServerToServerMessageHandler(){
+	Thread* t = new Thread("lock pinger");
+	t->mailboxNum = 2;
+	t->threadID =2 ;
+	//t->Fork((VoidFunctionPtr) LockWatcher, 0);
 	while(true){ //infinitely check for messages to handle
 		PacketHeader *packetHeader = new PacketHeader;
 		MailHeader *mailHeader = new MailHeader;
@@ -1084,7 +1090,7 @@ void ServerToServerMessageHandler(){
 						//tell every server with a PendingCreate on the object we just made
 						//that we have it
 						temp->notifyServersOfCreation(outData);
-						temp->messageBackClients();
+						temp->messageBackClients(index);
 						action = No_Action;
 
 						pendingCreates.erase(pendingCreates.begin() + tempIndex);
@@ -1197,7 +1203,7 @@ void ServerToServerMessageHandler(){
 						outMailHeader->length = 5 + 1 + nameLength;
 						action = Create_Query; //need to poll other servers before deciding action
 						bool createNew = true;
-						for(unsigned int i = 0; i < pendingCreates.size(); i++){
+						for(unsigned int i = 0;  i < pendingCreates.size(); i++){
 							if(pendingCreates.at(i)->isAMatch(name, MV)){
 								pendingCreates.at(i)->waitingClients.push_back(new QueryStatus(packetHeader, mailHeader, inData));
 								compressInt(pendingCreates.at(i)->ID, outData + 1);
