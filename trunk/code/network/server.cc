@@ -1329,7 +1329,10 @@ void ServerToServerMessageHandler(){
 void Server() {
 	cout << "Nachos server starting up with machine ID " << myMachineID << endl;
 	cout << " -note, all clients expect a server with machineID 0" << endl;
-
+	Thread* t = new Thread("ServerToServerHandler");
+	t->mailboxNum = 1;
+	t->threadID = 1;
+	if(totalNumServers > 1)t->Fork((VoidFunctionPtr) ServerToServerMessageHandler, 0);
 	while(true) {
 		//get message
 		PacketHeader *packetHeader = new PacketHeader;
