@@ -41,10 +41,10 @@ using namespace std;
 //takes buf[0:3] and makes an int, where 0 is the MSByte of the int
 int extractIntFromBytes(char *buf) {
     int a, b, c, d;
-    a = buf[0] << 24 & 0xff000000;
-    b = buf[1] << 16 & 0x00ff0000;
-    c = buf[2] << 8 & 0x0000ff00;
-    d = buf[3] << 0 & 0x000000ff;
+    a = ((int)buf[0]) << 24 & 0xff000000;
+    b = ((int)buf[1]) << 16 & 0x00ff0000;
+    c = ((int)buf[2]) << 8 & 0x0000ff00;
+    d = ((int)buf[3]) << 0 & 0x000000ff;
     return (a + b + c + d);
 }
 

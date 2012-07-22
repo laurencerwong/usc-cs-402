@@ -618,7 +618,7 @@ int extractInt(char *buf) {
 	return a + b + c + d;
 }
 
-void compressInt(int x, char dest[4]) {
+void compressInt(int x, char *dest) {
 	dest[0] = (x >> 24) & 0x000000ff;
 	dest[1] = (x >> 16) & 0x000000ff;
 	dest[2] = (x >> 8) & 0x000000ff;
@@ -1844,10 +1844,12 @@ void Server() {
 					int cvIndex = decodeIndex(cvNum);
 					ClientRequest *relResp = ServerRelease(messageFromMachineID, messageFromMailbox, lockIndex);
 
-					response.toMachine = relResp->machineID;
-					response.toMailbox = relResp->mailboxNumber;
-					necessaryResponses.push(response);
-					respond = true;
+					if(relResp->respond == true) {
+						response.toMachine = relResp->machineID;
+						response.toMailbox = relResp->mailboxNumber;
+						necessaryResponses.push(response);
+						respond = true;
+					}
 
 					ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
 				}
