@@ -1269,7 +1269,7 @@ void ServerToServerMessageHandler(){
 						outPacketHeader->to = packetHeader->from;
 						outMailHeader->from = mailHeader->to;
 						outMailHeader->to = mailHeader->from;
-						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeString(outData[0]) << " to Server " << outPacketHeader->to << " box " << outMailHeader->to <<endl;
+						cout << "Server " << myMachineID << " (box 1) sending message of type " << getMessageTypeName(outData[0]) << " to Server " << outPacketHeader->to << " box " << outMailHeader->to <<endl;
 						//outMailHeaderSize should already be set
 						strncpy(outData + 1, inData + 1, 4); //copy message ID into response
 						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
