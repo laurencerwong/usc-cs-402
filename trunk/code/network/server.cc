@@ -255,7 +255,7 @@ int decodeMachineIDFromMVNumber(int mvNum) {
  */
 int checkIfLockExists(char* name){
 	//check if there already is a lock with this name
-	if(serverLockArraySize == 0) return false;
+	if(serverLockArraySize == 0) return -1;
 	for(int i = 0; i < MAX_SERVER_LOCKS; i++) {
 		if(serverLockMap->Test(i) == 1) {
 			if(strcmp(serverLockTable[i].lock->getName(), name) == 0) {	//if they have the same name
@@ -272,7 +272,7 @@ int checkIfLockExists(char* name){
  */
 int checkIfCVExists(char* name){
 	//check if there already is a CV with this name
-	if(serverConditionArraySize == 0) return false;
+	if(serverConditionArraySize == 0) return -1;
 	for(int i = 0; i < MAX_SERVER_CVS; i++) {
 		if(serverConditionMap->Test(i) == 1) {
 			if(strcmp(serverConditionTable[i].condition->getName(), name) == 0) {	//if they have the same name
@@ -289,7 +289,7 @@ int checkIfCVExists(char* name){
  */
 int checkIfMVExists(char* name){
 	//check if there already is a lock with this name
-	if(serverMVArraySize == 0) return false;
+	if(serverMVArraySize == 0) return -1;
 	for(int i = 0; i < MAX_SERVER_MV_ARRAYS; i++) {
 		if(serverMVMap->Test(i) == 1) {
 			if(strcmp(serverMVTable[i].name, name) == 0) {	//if they have the same name
@@ -356,6 +356,7 @@ void ServerDestroyLock(int lockIndex) {
 
 ClientRequest* ServerAcquire(int machineID, int mailbox, int lockIndex) {
 	if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
+		cout << "server lock array size is " << serverLockArraySize <<  endl;
 		printf("Thread %s called Acquire with an invalid index %d\n", currentThread->getName(), lockIndex);
 		return NULL;
 	}
