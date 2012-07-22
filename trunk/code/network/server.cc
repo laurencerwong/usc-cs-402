@@ -890,7 +890,7 @@ void ServerToServerMessageHandler(){
 		PacketHeader *packetHeader = new PacketHeader;
 		MailHeader *mailHeader = new MailHeader;
 		char* inData = new char[MaxMailSize];
-		cout << "box 1 about to do receive" << endl;
+		cout << "\nbox 1 about to do receive" << endl;
 		postOffice->Receive(1, packetHeader, mailHeader, inData);	//server is always mailbox 1
 		//parse message
 				char messageType = inData[0];
@@ -903,7 +903,7 @@ void ServerToServerMessageHandler(){
 				}*/
 
 				string messageTypeName = getMessageTypeName(messageType);
-				cout << "\nServer (box 1) received message of type: " << messageTypeName << " from machine "
+				cout << "Server (box 1) received message of type: " << messageTypeName << " from machine "
 					 << machineID << " mailbox " << mailbox << endl;
 
 
@@ -1376,7 +1376,7 @@ void ServerToServerMessageHandler(){
 						outPacketHeader->to = i;
 						outMailHeader->from = 1;
 						outMailHeader->to = 1;
-						cout << " id " << extractInt(outData + 1);
+						cout << " id " << extractInt(outData + 1) << endl;
 						bool success = postOffice->Send(*outPacketHeader, *outMailHeader, outData);
 
 					}
@@ -1663,7 +1663,12 @@ void Server() {
 			compressInt(clientMID, rData + 1);
 			compressInt(clientMBX, rData + 5);
 			compressInt(lockIndex, rData + 9);
-			rData[13] = held;
+			if(held) {
+				rData[13] = 1;
+			}
+			else {
+				rData[13] = 0;
+			}
 
 			sendMessageWithData(myMachineID, 0, messageFromMachineID, messageFromMailbox, responseLength, rData);
 
