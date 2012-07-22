@@ -561,7 +561,7 @@ int ServerGetMV(int mvIndex, int entryIndex) {	//TODO this call could use a fail
 		return -1;
 	}
 	int value = serverMVTable[mvIndex].mvEntries[entryIndex];
-	printf("Getting MV %d entry %d, value %d\n", mvIndex, entryIndex, value);
+	printf("Getting MV %s (%d) entry %d, value %d\n", serverMVTable[mvIndex].name, mvIndex, entryIndex, value);
 	return value;
 }
 
@@ -579,7 +579,7 @@ void ServerSetMV(int mvIndex, int entryIndex, int value) {
 		return;
 	}
 
-	printf("Setting MV %d entry %d to value %d\n", mvIndex, entryIndex, value);
+	printf("Setting MV %s (%d) entry %d to value %d\n", serverMVTable[mvIndex].name, mvIndex, entryIndex, value);
 	serverMVTable[mvIndex].mvEntries[entryIndex] = value;
 }
 
@@ -1987,7 +1987,7 @@ void Server() {
 			int mvIndex = extractInt(messageData + 1);
 
 			int mvMachineID = decodeMachineIDFromMVNumber(mvIndex);
-			cout << "server got a setMV message thinking mv should be on machine " << mvMachineID << endl;
+			//cout << "server got a setMV message thinking mv should be on machine " << mvMachineID << endl;
 			if(mvMachineID != myMachineID) {
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
