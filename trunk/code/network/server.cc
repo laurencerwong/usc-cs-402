@@ -695,6 +695,33 @@ string getMessageTypeName(char messageType){
 	case DO_NOT_HAVE_MV:
 		messageTypeName = "Do not have MV";
 		break;
+	case DO_YOU_HAVE_LOCK_NAME:
+		messageTypeName = "Do you have lock name";
+		break;
+	case DO_YOU_HAVE_CV_NAME:
+		messageTypeName = "Do you have CV name";
+		break;
+	case DO_YOU_HAVE_MV_NAME:
+		messageTypeName = "Do you have MV name";
+		break;
+	case DO_NOT_HAVE_LOCK_NAME:
+		messageTypeName = "I do not have lock name";
+		break;
+	case DO_NOT_HAVE_CV_NAME:
+		messageTypeName = "I do not have CV name";
+		break;
+	case DO_NOT_HAVE_MV_NAME:
+		messageTypeName = "I do not have MV name";
+		break;
+	case HAVE_LOCK_NAME:
+		messageTypeName = "I do have lock name";
+		break;
+	case HAVE_CV_NAME:
+		messageTypeName = "I do have CV name";
+		break;
+	case HAVE_MV_NAME:
+		messageTypeName = "I do have MV name";
+		break;
 	default:
 		messageTypeName = "UNKNOWN";
 		cout << "Oops, no message type?" << endl;
