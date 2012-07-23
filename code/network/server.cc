@@ -1645,12 +1645,12 @@ void Server() {
 			if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 				printf("Thread %s was asked if client %d - %d had a lock at an invalid lock index %d\n", currentThread->getName(), clientMID, clientMBX, lockIndex);
 				validLock = false;
-				return;
+				break;
 			}
 			if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 				printf("Thread %s was asked if client %d - %d had a lock that does not exist: %d\n", currentThread->getName(), clientMID, clientMBX, lockIndex);
 				validLock = false;
-				return;
+				break;
 			}
 
 			//now test if the owner is correct
@@ -1809,13 +1809,13 @@ void Server() {
 					printf("Thread %s called Signal with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 					necessaryResponses.push(response);
 					respond = true;
-					return;
+					break;
 				}
 				if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 					printf("Thread %s called Signal on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 					necessaryResponses.push(response);
 					respond = true;
-					return;
+					break;
 				}
 
 				//verify who owns the CV
@@ -1892,13 +1892,13 @@ void Server() {
 					printf("Thread %s called Broadcast with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 					necessaryResponses.push(response);
 					respond = true;
-					return;
+					break;
 				}
 				if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 					printf("Thread %s called Broadcast on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 					necessaryResponses.push(response);
 					respond = true;
-					return;
+					break;
 				}
 
 				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
@@ -1960,12 +1960,12 @@ void Server() {
 				if(lockIndex < 0 || lockIndex > serverLockArraySize -1){ //array index is out of bounds
 					printf("Thread %s called Wait with an invalid lock index %d\n", currentThread->getName(), lockIndex);
 					respond = true;
-					return;
+					break;
 				}
 				if(!serverLockMap->Test(lockIndex)){ //lock has not been instantiated at this index
 					printf("Thread %s called Wait on a lock that does not exist: %d\n", currentThread->getName(), lockIndex);
 					respond = true;
-					return;
+					break;
 				}
 
 
@@ -2098,7 +2098,7 @@ void Server() {
 			int mvMachineID = decodeMachineIDFromMVNumber(mvNum);
 			//cout << "server got a setMV message thinking mv should be on machine " << mvMachineID << endl;
 			if(mvMachineID != myMachineID) {
-				printf("SET_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it", mvNum, myMachineID, mvMachineID);
+				printf("SET_MV: I don't think MV (num %d) should be on my machine (%d), machine %d should have it\n", mvNum, myMachineID, mvMachineID);
 				sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
 				respond = false;
 				break;
