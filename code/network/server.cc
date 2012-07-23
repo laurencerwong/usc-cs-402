@@ -1839,8 +1839,8 @@ void Server() {
 				queryData = new char[queryDataLength];
 
 				queryData[0] = DOES_CLIENT_HAVE_LOCK;
-				compressInt(lockOwnerMachineID, queryData + 1);
-				compressInt(lockOwnerMailbox, queryData + 5);
+				compressInt(messageFromMachineID, queryData + 1);
+				compressInt(messageFromMailbox, queryData + 5);
 				compressInt(lockNum, queryData + 9);
 
 				CVLockTracker cvlt;
@@ -1908,8 +1908,8 @@ void Server() {
 				queryData = new char[queryDataLength];
 
 				queryData[0] = DOES_CLIENT_HAVE_LOCK;
-				compressInt(lockOwnerMachineID, queryData + 1);
-				compressInt(lockOwnerMailbox, queryData + 5);
+				compressInt(messageFromMachineID, queryData + 1);
+				compressInt(messageFromMailbox, queryData + 5);
 				compressInt(lockNum, queryData + 9);
 
 				CVLockTracker cvlt;
@@ -1981,8 +1981,8 @@ void Server() {
 				queryData = new char[queryDataLength];
 
 				queryData[0] = DOES_CLIENT_HAVE_LOCK;
-				compressInt(lockOwnerMachineID, queryData + 1);
-				compressInt(lockOwnerMailbox, queryData + 5);
+				compressInt(messageFromMachineID, queryData + 1);
+				compressInt(messageFromMailbox, queryData + 5);
 				compressInt(lockNum, queryData + 9);
 
 				CVLockTracker cvlt;
