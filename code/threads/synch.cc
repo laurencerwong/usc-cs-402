@@ -257,7 +257,7 @@ ClientRequest* ServerLock::Release(ClientRequest* cr) {
 	}
 	else{ //make sure ServerLock can be grabbed by anyone if no one was waiting in te ready queue
 		state = FREE;
-		cout << "SL RELEASE: SETTING CURRENT CLIENT REQUEST TO NULL" << endl;
+		//cout << "SL RELEASE: SETTING CURRENT CLIENT REQUEST TO NULL" << endl;
 		currentClientRequest = NULL;
 		cr->respond = false;
 	}
