@@ -8,7 +8,9 @@
 int main(){
 	int lock = CreateLock("Lock", sizeof("Lock"));
 	Acquire(lock);
-	NPrint("Kill me!", sizeof("Kill me!"));
+	while(1)	{
+		NPrint("Kill me!", sizeof("Kill me!"));
+	}
 
 }
 
