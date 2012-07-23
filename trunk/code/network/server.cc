@@ -1972,6 +1972,9 @@ void Server() {
 				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
 				if(cvOwnerMachineID == myMachineID) {	//If I also own the CV, do normal operation
 					int cvIndex = decodeIndex(cvNum);
+
+					ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
+
 					ClientRequest *relResp = ServerRelease(messageFromMachineID, messageFromMailbox, lockIndex);
 
 					if(relResp->respond == true) {
@@ -1980,8 +1983,6 @@ void Server() {
 						necessaryResponses.push(response);
 						respond = true;
 					}
-
-					ServerWait(messageFromMachineID, messageFromMailbox, cvIndex, lockIndex);
 				}
 				else {	//I don't have the CV, send it to server-server thread
 					sendMessageWithData(messageFromMachineID, messageFromMailbox, myMachineID, 1, messageLength, messageData);
