@@ -92,6 +92,9 @@ public:
 		this->name = n;
 		this->type = t;
 		this->responseTracker = new bool[totalNumServers];
+		for(int i = 0; i < totalNumServers; i++){
+			this->responseTracker[i] = false;
+		}
 		this->responseTracker[myMachineID] = true;
 		numResponses = 0;
 		ID = nextQueryID;
@@ -1756,8 +1759,8 @@ void Server() {
 					}
 					else if(operation == WAIT) {
 						ServerWait(clientMID, clientMBX, decodeIndex(cvNum), lockNum);
-						//TODO release lock
 
+						//TODO release lock
 						char *releaseData = new char[5];
 						releaseData[0] = RELEASE;
 						compressInt(lockNum, releaseData + 1);
@@ -1967,7 +1970,6 @@ void Server() {
 					respond = true;
 					break;
 				}
-
 
 				int cvOwnerMachineID = decodeMachineIDFromCVNumber(cvNum);
 				if(cvOwnerMachineID == myMachineID) {	//If I also own the CV, do normal operation
