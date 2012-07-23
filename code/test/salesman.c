@@ -27,8 +27,9 @@ void main(){
 
 	NPrint("Salesman created with index: %d, in department: %d\n", sizeof("Salesman created with index: %d, in department: %d\n"), NEncode2to1(myIndex, myDept));
 	while(1) {
+	    NPrint("Salesman [%d][%d] is trying to acquire the saleslock for his/her department\n", sizeof("Salesman [%d][%d] is trying to acquire the saleslock for his/her department\n"),NEncode2to1(myIndex, myDept) , 0);
 		Acquire(salesLock[myDept]);
-
+		NPrint("Salesman [%d][%d] acquired the saleslock for his/her department\n", sizeof("Salesman [%d][%d] acquired the saleslock for his/her department\n"), NEncode2to1(myIndex, myDept), 0);
 		/* go on break if the manager has left me a note saying to */
 		if(GetMV(salesBreakBoard[myDept], myIndex) == 1) {
 		    prev = GetMV(currentSalesStatus[myDept], myIndex);
@@ -59,7 +60,7 @@ void main(){
 		    SetMV(currentlyTalkingTo[myDept], myIndex, UNKNOWN);
 		    SetMV(currentSalesStatus[myDept], myIndex, SALES_NOT_BUSY);
 		}
-
+		
 		Acquire(individualSalesmanLock[myDept][myIndex]);
 		Release(salesLock[myDept]);
 		Wait (salesmanCV[myDept][myIndex], individualSalesmanLock[myDept][myIndex]);
