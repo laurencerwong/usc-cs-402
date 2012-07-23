@@ -453,6 +453,7 @@ void ServerDestroyCV(int conditionIndex) {
 }
 
 ClientRequest* ServerSignal(int machineID, int mailbox, int conditionIndex, int lockNum){
+	cout << "------------------------------------------ IN SERVERSignal---------------" << endl;
 	if(conditionIndex < 0 || conditionIndex > serverConditionArraySize -1){ //array index is out of bounds
 		printf("Thread %s called Signal with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		return NULL;
@@ -472,7 +473,7 @@ ClientRequest* ServerSignal(int machineID, int mailbox, int conditionIndex, int 
 }
 
 void ServerWait(int machineID, int mailbox, int conditionIndex, int lockNum){
-
+	cout << "------------------------------------------ IN SERVERWAIT---------------" << endl;
 	if(conditionIndex < 0){ //array index is out of bounds
 		printf("Thread %s called Wait with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		return;
@@ -496,7 +497,7 @@ void ServerWait(int machineID, int mailbox, int conditionIndex, int lockNum){
 }
 
 void ServerBroadcast(int machineID, int mailbox, int conditionIndex, int lockIndex){
-
+	cout << "------------------------------------------ IN SERVERBroadcast---------------" << endl;
 	if(conditionIndex < 0){ //array index is out of bounds
 		printf("Thread %s called Broadcast with an invalid index %d\n", currentThread->getName(), conditionIndex);
 		return;
@@ -1682,6 +1683,8 @@ void Server() {
 
 		case CV_LOCK_TRACKER_RESPONSE:
 		{
+
+			cout << "------------------IN CV_LOCK_TRACKER_RESONSE HANDLER" << endl;
 			int clientMID = extractInt(messageData + 1);
 			int clientMBX = extractInt(messageData + 5);
 			int lockNum = extractInt(messageData + 9);
@@ -1693,9 +1696,20 @@ void Server() {
 			response.toMailbox = clientMBX;
 
 			for(unsigned int i = 0; i < cvLockTrackerList.size(); i++) {
+				/**if(cvLockTrackerList.at(i).clientMachineID == clientMID){
+					ASSERT(FALSE);
+				}
+				if(cvLockTrackerList.at(i).clientMailbox == clientMBX ){
+					//ASSERT(FALSE);
+				}
+				if(cvLockTrackerList.at(i).lockNum == lockNum){
+					//ASSERT(FALSE);
+				}*/
 				if( cvLockTrackerList.at(i).clientMachineID == clientMID &&
 						cvLockTrackerList.at(i).clientMailbox == clientMBX &&
 						cvLockTrackerList.at(i).lockNum == lockNum) {
+					//ASSERT(FALSE);
+					cout << "------------------FOUND CV_LOCK_TRACKER MATCH ------------" << endl;
 					cvNum = cvLockTrackerList.at(i).cvNum;
 					operation = cvLockTrackerList.at(i).messageType;
 					cvltListEntry = i;
@@ -1778,7 +1792,7 @@ void Server() {
 		case SIGNAL:
 		{
 			int cvNum = extractInt(messageData + 1);
-			int lockNum = extractInt(messageData + 5);
+			int lockNum   = extractInt(messageData + 5);
 			int lockOwnerMachineID = decodeMachineIDFromLockNumber(lockNum);	//get machine who has the lock
 
 			if(lockOwnerMachineID < 0 || lockOwnerMachineID > totalNumServers) {
