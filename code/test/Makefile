@@ -32,7 +32,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult  testfiles_verification \
+all: halt matmult   \
  supermarket startsupermarket \
   testBroadcast testsignal \
  test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
