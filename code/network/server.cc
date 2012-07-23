@@ -891,7 +891,7 @@ void ServerToServerMessageHandler(){
 	Thread* t = new Thread("lock pinger");
 	t->mailboxNum = 2;
 	t->threadID =2 ;
-	//t->Fork((VoidFunctionPtr) LockWatcher, 0);
+	t->Fork((VoidFunctionPtr) LockWatcher, 0);
 	while(true){ //infinitely check for messages to handle
 		PacketHeader *packetHeader = new PacketHeader;
 		MailHeader *mailHeader = new MailHeader;
