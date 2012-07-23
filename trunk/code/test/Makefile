@@ -1,3 +1,4 @@
+
 # use normal make for this Makefile
 #
 # Makefile for building user programs to run on top of Nachos
@@ -31,10 +32,10 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles project2_part1_testsuite project2_part2_testsuite addrspace_verification \
-HelloWorld Smiley NumberCounter ExecAddingThings MaxLockCVMaker MakeSomeLocksAndCVs queueTest supermarket startsupermarket \
-exec_matmult test_fork_matmult exec_sort test_fork_sort testmutex testBroadcast testsignal \
-testsequencing test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
+all: halt matmult  testfiles_verification \
+ supermarket startsupermarket \
+  testBroadcast testsignal \
+ test_server_create_destroy test_server_creates test_server_acquire_release test_server_MV \
 cashier customer goodsloader manager salesman p4startsupermarket p4startcustomer p4startloaders \
 p4startcashier p4startsalesmen p4startmanager testCreateRaceConditionDriver testCreateRaceCondition \
 testDetectDeadLock
@@ -174,47 +175,6 @@ testsignal: testsignal.o start.o
 	$(LD) $(LDFLAGS) start.o testsignal.o -o testsignal.coff
 	../bin/coff2noff testsignal.coff testsignal
 
-testsequencing.o: testsequencing.c
-	$(CC) $(CFLAGS) -c testsequencing.c
-testsequencing: testsequencing.o start.o
-	$(LD) $(LDFLAGS) start.o testsequencing.o -o testsequencing.coff
-	../bin/coff2noff testsequencing.coff testsequencing
-
-exec_matmult.o: exec_matmult.c
-	$(CC) $(CFLAGS) -c exec_matmult.c
-exec_matmult: exec_matmult.o start.o
-	$(LD) $(LDFLAGS) start.o exec_matmult.o -o exec_matmult.coff
-	../bin/coff2noff exec_matmult.coff exec_matmult
-
-test_fork_matmult.o: test_fork_matmult.c
-	$(CC) $(CFLAGS) -c test_fork_matmult.c
-test_fork_matmult: test_fork_matmult.o start.o
-	$(LD) $(LDFLAGS) start.o test_fork_matmult.o -o test_fork_matmult.coff
-	../bin/coff2noff test_fork_matmult.coff test_fork_matmult
-
-test_fork_sort.o: test_fork_sort.c
-	$(CC) $(CFLAGS) -c test_fork_sort.c
-test_fork_sort: test_fork_sort.o start.o
-	$(LD) $(LDFLAGS) start.o test_fork_sort.o -o test_fork_sort.coff
-	../bin/coff2noff test_fork_sort.coff test_fork_sort
-
-exec_sort.o: exec_sort.c
-	$(CC) $(CFLAGS) -c exec_sort.c
-exec_sort: exec_sort.o start.o
-	$(LD) $(LDFLAGS) start.o exec_sort.o -o exec_sort.coff
-	../bin/coff2noff exec_sort.coff exec_sort
-
-project2_part1_testsuite.o: project2_part1_testsuite.c
-	$(CC) $(CFLAGS) -c project2_part1_testsuite.c
-project2_part1_testsuite: project2_part1_testsuite.o start.o
-	$(LD) $(LDFLAGS) start.o project2_part1_testsuite.o -o project2_part1_testsuite.coff
-	../bin/coff2noff project2_part1_testsuite.coff project2_part1_testsuite
-
-project2_part2_testsuite.o: project2_part2_testsuite.c
-	$(CC) $(CFLAGS) -c project2_part2_testsuite.c
-project2_part2_testsuite: project2_part2_testsuite.o start.o
-	$(LD) $(LDFLAGS) start.o project2_part2_testsuite.o -o project2_part2_testsuite.coff
-	../bin/coff2noff project2_part2_testsuite.coff project2_part2_testsuite
 
 supermarket.o: supermarket.c
 	$(CC) $(CFLAGS) -c supermarket.c
@@ -233,60 +193,6 @@ addrspace_verification.o: addrspace_verification.c
 addrspace_verification: addrspace_verification.o start.o
 	$(LD) $(LDFLAGS) start.o addrspace_verification.o -o addrspace_verification.coff
 	../bin/coff2noff addrspace_verification.coff addrspace_verification
-
-testmutex.o: testmutex.c
-	$(CC) $(CFLAGS) -c testmutex.c
-testmutex: testmutex.o start.o
-	$(LD) $(LDFLAGS) start.o testmutex.o -o testmutex.coff
-	../bin/coff2noff testmutex.coff testmutex
-
-HelloWorld.o: HelloWorld.c
-	$(CC) $(CFLAGS) -c HelloWorld.c
-HelloWorld: HelloWorld.o start.o
-	$(LD) $(LDFLAGS) start.o HelloWorld.o -o HelloWorld.coff
-	../bin/coff2noff HelloWorld.coff HelloWorld
-
-queueTest.o: queueTest.c
-	$(CC) $(CFLAGS) -c queueTest.c
-queueTest: queueTest.o start.o
-	$(LD) $(LDFLAGS) start.o queueTest.o -o queueTest.coff
-	../bin/coff2noff queueTest.coff queueTest
-
-Smiley.o: Smiley.c
-	$(CC) $(CFLAGS) -c Smiley.c
-Smiley: Smiley.o start.o
-	$(LD) $(LDFLAGS) start.o Smiley.o -o Smiley.coff
-	../bin/coff2noff Smiley.coff Smiley
-
-MaxLockCVMaker.o: MaxLockCVMaker.c
-	$(CC) $(CFLAGS) -c MaxLockCVMaker.c
-MaxLockCVMaker: MaxLockCVMaker.o start.o
-	$(LD) $(LDFLAGS) start.o MaxLockCVMaker.o -o MaxLockCVMaker.coff
-	../bin/coff2noff MaxLockCVMaker.coff MaxLockCVMaker
-
-MakeSomeLocksAndCVs.o: MakeSomeLocksAndCVs.c
-	$(CC) $(CFLAGS) -c MakeSomeLocksAndCVs.c
-MakeSomeLocksAndCVs: MakeSomeLocksAndCVs.o start.o
-	$(LD) $(LDFLAGS) start.o MakeSomeLocksAndCVs.o -o MakeSomeLocksAndCVs.coff
-	../bin/coff2noff MakeSomeLocksAndCVs.coff MakeSomeLocksAndCVs
-
-NumberCounter.o: NumberCounter.c
-	$(CC) $(CFLAGS) -c NumberCounter.c
-NumberCounter: NumberCounter.o start.o
-	$(LD) $(LDFLAGS) start.o NumberCounter.o -o NumberCounter.coff
-	../bin/coff2noff NumberCounter.coff NumberCounter
-
-ExecAddingThings.o: ExecAddingThings.c
-	$(CC) $(CFLAGS) -c ExecAddingThings.c
-ExecAddingThings: ExecAddingThings.o start.o
-	$(LD) $(LDFLAGS) start.o ExecAddingThings.o -o ExecAddingThings.coff
-	../bin/coff2noff ExecAddingThings.coff ExecAddingThings
-
-sort.o: sort.c
-	$(CC) $(CFLAGS) -c sort.c
-sort: sort.o start.o
-	$(LD) $(LDFLAGS) start.o sort.o -o sort.coff
-	../bin/coff2noff sort.coff sort
 
 matmult.o: matmult.c
 	$(CC) $(CFLAGS) -c matmult.c
