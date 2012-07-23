@@ -325,7 +325,7 @@ int CreateLock_Syscall(unsigned int nameIndex, int length){
 
 	//parse int, as it will come in char form
 	int index = extractIntFromBytes(messageData + 0);
-	cout << "Create lock for " << name << " returned index " << index << endl;
+	//cout << "Create lock for " << name << " returned index " << index << endl;
 	return index;
 #endif
 }
@@ -387,7 +387,7 @@ int CreateCondition_Syscall(unsigned int nameIndex, int length){
 
 
 	int index = extractIntFromBytes(messageData + 0);
-	cout << "Create CV for " << name << " returned index " << index << endl;
+	//cout << "Create CV for " << name << " returned index " << index << endl;
 	return index;
 #endif
 
@@ -420,7 +420,7 @@ int CreateMV_Syscall(unsigned int nameIndex, int length, int numArrayEntries, in
 	} while(mailHeader->from == 2);
 	//((int) messageData[0]) << 24 + ((int) messageData[1]) << 16 + ((int) messageData[2]) << 8 + ((int) messageData[3])
 	int index = extractIntFromBytes(messageData + 0);
-	cout << "CreateMV for " << name << " returned index " << index << endl;
+	//cout << "CreateMV for " << name << " returned index " << index << endl;
 	return index;
 }
 #endif
@@ -799,7 +799,7 @@ int GetMV_Syscall(int arrIndex, int varIndex){
 	mailHeader->to = 0; //server mailbox
 	mailHeader->from = currentThread->mailboxNum; //change if multiple user processes!
 	mailHeader->length = 9;
-	cout << "calling getMV with arrIndex " << arrIndex << endl;
+	//cout << "calling getMV with arrIndex " << arrIndex << endl;
 	char* data = new char[9];
 	data[0] = GET_MV;
 	compressIntFromBytes(arrIndex, data + 1); //copy into data[1:4]

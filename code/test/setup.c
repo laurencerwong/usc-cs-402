@@ -179,7 +179,7 @@ void initLoaderArrays(){
   shelfLock[2][9] = CreateLock("shelfLock[2][9]", sizeof("shelfLock[2][9]"));
   shelfCV[2][9] = CreateCondition("shelfCV[2][9]", sizeof("shelfCV[2][9]"));
   
-  NPrint("finished initializing loader arrays\n", sizeof("finished initializing loader arrays\n"));
+  /*NPrint("finished initializing loader arrays\n", sizeof("finished initializing loader arrays\n"));*/
 }
 
 void initCashierArrays(){
